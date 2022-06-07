@@ -1442,7 +1442,8 @@ contains
         !     separate_annihilation = true/false,
         !     write = true/false/id,
         !     read = id,
-        !     ci_space = { ... },               -- required if space == 'ci'.  Reference table.
+        !     ci_space = { ... },               -- one of these required if space == 'ci'. Reference table.
+        !     ci_range = {lo, hi},              -- one of these required if space == 'ci'. Two-integer array.
         !     separate_stats = true/false, 
         ! }
 
@@ -1457,6 +1458,7 @@ contains
 
         use flu_binding, only: flu_State
         use aot_table_module, only: aot_get_val, aot_exists, aot_table_open, aot_table_close
+        use aot_vector_module, only: aot_get_val
         use parallel, only: parent
         use errors, only: stop_all, warning
 
@@ -1472,6 +1474,7 @@ contains
         integer :: semi_stoch_table, err
         character(len=10) :: str
         logical :: separate_annihilation
+        integer, allocatable :: ci_range(:), err_arr(:)
         character(21), parameter :: keys(10) = [character(21) :: 'space', 'size', 'start_iteration', 'separate_annihilation', &
                                                                 'shift_start_iteration', 'write_determ_space', 'write', 'read', &
                                                                 'ci_space', 'separate_stats']
@@ -1498,8 +1501,17 @@ contains
                 case('ci')
                     semi_stoch_in%space_type = ci_determ_space
                     call read_reference_t(lua_state, semi_stoch_table, semi_stoch_in%ci_space, ref_table_name='ci_space')
-                    if (semi_stoch_in%ci_space%ex_level < 0) &
-                        call stop_all('read_semi_stoch_in', 'Max excitation level not given for ci_space')
+                    call aot_get_val(ci_range, err_arr, 2, lua_state, semi_stoch_table, key='ci_range')
+                    if (semi_stoch_in%ci_space%ex_level < 0 .and. size(ci_range) == 0) &
+                        call stop_all('read_semi_stoch_in', 'Neither max excitation level nor ci_range given for ci_space')
+                    if (size(ci_range) /= 2) call stop_all('read_semi_stoch_in', 'ci_range not specified correctly.')
+                    if (semi_stoch_in%ci_space%ex_level > 0 .and. size(ci_range) == 2) &
+                        call stop_all('read_semi_stoch_in', 'Both max excitation level and ci_range given for ci_space')
+                    if (size(ci_range) == 2) then
+                        semi_stoch_in%use_ci_range = .true.
+                        semi_stoch_in%ci_range = ci_range
+                    end if
+                    deallocate(ci_range)
                 case default
                     if (parent) call stop_all('read_semi_stoch_in', 'Unknown semi stochastic space type')
                 end select

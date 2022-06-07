@@ -371,6 +371,7 @@ metadata : list of dict
         # confusing!  [todo] Fix.
         df['Proj. Energy'] = df[kH0jNj] / df[kN0]
         if semi_stoch_sep_stats:
+            # Decide whether to keep this
             df['Proj. Energy, determ'] = df[kH0jNj_D] / df[kN0]
             df['Proj. Energy, stoch'] = df[kH0jNj_S] / df[kN0]
         data.append(df)

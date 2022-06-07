@@ -247,7 +247,7 @@ contains
             else if (allocated(ss_in%ci_space%occ_list0)) then
                 ci_ref%occ_list0 = ss_in%ci_space%occ_list0
             end if
-            call create_ci_determ_space(dets_this_proc, determ, spawn, sys, ci_ref)
+            call create_ci_determ_space(dets_this_proc, determ, spawn, sys, ci_ref, ss_in)
             call dealloc_reference_t(ci_ref)
         end if
 
@@ -1879,7 +1879,7 @@ contains
 
     end subroutine recreate_determ_space
 
-    subroutine create_ci_determ_space(dets_this_proc, determ, spawn, sys, ss_ref)
+    subroutine create_ci_determ_space(dets_this_proc, determ, spawn, sys, ss_ref, ss_in)
 
         ! Create a deterministic space from a small CI space.
 
@@ -1898,21 +1898,24 @@ contains
         !    sys: system being studied.
         !    ss_ref: reference_t object defining the CI space.  Currently only
         !        occ_list0 and ex_level are used.
+        !    ss_in: semi_stoch_in_t object defining CI range, if used.
 
         use checking, only: check_allocate, check_deallocate
 
         use determinants, only: spin_orb_list
-        use determinant_enumeration, only: enumerate_determinants
+        use determinant_enumeration, only: enumerate_determinants, enumerate_determinants_specific_levels
         use parallel, only: iproc
         use reference_determinant, only: reference_t
         use spawn_data, only: spawn_t
         use system, only: sys_t
+        use qmc_data, only: semi_stoch_in_t
 
         integer(i0), intent(inout), allocatable :: dets_this_proc(:,:)
         type(semi_stoch_t), intent(inout) :: determ
         type(spawn_t), intent(in) :: spawn
         type(sys_t), intent(in) :: sys
         type(reference_t), intent(in) :: ss_ref
+        type(semi_stoch_in_t), intent(in) :: ss_in
 
         integer(i0), allocatable :: determ_dets(:,:)
         integer, allocatable :: sym_space_size(:)
@@ -1921,13 +1924,18 @@ contains
 
         spin_flip = spin_orb_list(sys%basis%basis_fns, ss_ref%occ_list0) /= sys%Ms
 
-        ! Count the number of determinants in the space.
-        call enumerate_determinants(sys, .true., spin_flip, ss_ref%ex_level, sym_space_size, determ%tot_size, determ_dets, &
-                                    sys%symmetry, ss_ref%occ_list0, .false.)
+        if (ss_in%use_ci_range) then
+            call enumerate_determinants_specific_levels(sys, spin_flip, ss_in%ci_range, determ%tot_size, sys%symmetry, &
+                                                        ss_ref%occ_list0, determ_dets)
+        else
+            ! Count the number of determinants in the space.
+            call enumerate_determinants(sys, .true., spin_flip, ss_ref%ex_level, sym_space_size, determ%tot_size, determ_dets, &
+                                        sys%symmetry, ss_ref%occ_list0, .false.)
 
-        ! Actually store the determinants, in the determ_dets array.
-        call enumerate_determinants(sys, .false., spin_flip, ss_ref%ex_level, sym_space_size, determ%tot_size, determ_dets, &
-                                    sys%symmetry, ss_ref%occ_list0, .false.)
+            ! Actually store the determinants, in the determ_dets array.
+            call enumerate_determinants(sys, .false., spin_flip, ss_ref%ex_level, sym_space_size, determ%tot_size, determ_dets, &
+                                        sys%symmetry, ss_ref%occ_list0, .false.)
+        end if
 
         determ%sizes(iproc) = 0
 

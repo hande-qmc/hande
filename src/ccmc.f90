@@ -844,7 +844,7 @@ contains
                             call do_stochastic_ccmc_propagation(rng(it), sys, qs, &
                                                                 ccmc_in, logging_info, ms_stats(it), bloom_stats, &
                                                                 contrib(it), nattempts_spawn, ndeath, ps_stats(it), &
-                                                                determ, determ_parent) ! determ_parent temporarily set to false
+                                                                determ, determ_parent)
                         end if
                     end if
                 end do

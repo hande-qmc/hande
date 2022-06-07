@@ -326,6 +326,9 @@ type semi_stoch_in_t
     type(reference_t) :: ci_space
     ! If true, report the deteministic and stochastic contributions to E_proj separately.
     logical :: separate_stats = .false.
+    ! Instead of generating CI space up to ex_level, only generate a certain range?
+    logical :: use_ci_range = .false.
+    integer :: ci_range(2) = (/-1, -1/)
 end type semi_stoch_in_t
 
 type ccmc_in_t
@@ -1143,6 +1146,8 @@ contains
         call json_write_key(js, 'read_id', semi_stoch%read_id)
         call json_write_key(js, 'write_id', semi_stoch%write_id)
         call reference_t_json(js, semi_stoch%ci_space, key='ci_space')
+        call json_write_key(js, 'use_ci_range', semi_stoch%use_ci_range)
+        call json_write_key(js, 'ci_range', semi_stoch%ci_range)
         call json_write_key(js, 'separate_stats', semi_stoch%separate_stats, terminal=.true.)
         call json_object_end(js, terminal)
 

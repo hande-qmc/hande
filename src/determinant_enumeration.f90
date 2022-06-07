@@ -347,6 +347,139 @@ contains
 
     end subroutine enumerate_determinants
 
+    subroutine enumerate_determinants_specific_levels(sys, spin_flip, ex_level_range, ndets, ref_sym, occ_list0, dets, &
+                                                      verbose_in, add_ref_in)
+
+        ! Enumerate determinants in a range of excitations that does not start from 0.
+        ! I.e., only find double excitations from a reference determinant, or doubles and triples.
+        ! In:
+        !    ex_level_range: an array containing two elements specifying the range. 
+        !       e.g, [2,2] means doubles only, [0,3] is identical to calling enumerate_determinants
+        !       with ex_level=3.
+
+        use errors, only: stop_all, warning
+        use checking, only: check_allocate, check_deallocate
+        use sort, only: qsort
+        use bit_utils, only: bit_str_cmp
+        use determinants, only: encode_det
+        use system, only: sys_t
+
+        type(sys_t), intent(in) :: sys
+        logical, intent(in) :: spin_flip
+        integer, intent(in) :: ex_level_range(2), ref_sym, occ_list0(sys%nel)
+        integer, intent(out) :: ndets
+        integer(i0), allocatable, intent(out) :: dets(:,:)
+        logical, optional, intent(in) :: verbose_in, add_ref_in
+
+        integer, allocatable :: sym_space_size(:)
+        integer :: ndets_hi, ndets_lo, ierr, i, j, k, cmp
+        integer(i0), allocatable :: dets_hi(:,:), dets_lo(:,:)
+        integer(i0) :: f0(sys%basis%tot_string_len)
+        logical :: wrap, verbose, add_ref
+
+        if (present(verbose_in)) then
+            verbose = verbose_in
+        else
+            verbose = .false.
+        end if
+
+        if (present(add_ref_in)) then
+            add_ref = add_ref_in
+        else
+            add_ref = .true.
+        end if
+
+        if (any(ex_level_range < 0)) then
+            call stop_all('enumerate_determinants_specific_levels', 'One or both ranges are smaller than zero!')
+        end if
+
+        if (ex_level_range(2) < ex_level_range(1)) then
+            call stop_all('enumerate_determinants_specific_levels', 'The upper range is smaller than the lower range!')
+        end if
+
+        ! Are we simply just wrapping enumerate_determinants? True if lower bound == 0.
+        wrap = .false.
+        if ((ex_level_range(1) == 1 .and. add_ref) .or. (ex_level_range(1) == 0)) then
+            ! Cases where we're just wrapping, and since enumerate_determinants already adds reference, add_ref=.false.
+            ! The edge case here being lower range == 1 and add_ref == .false., we just shunt it to the else clause.
+            wrap = .true.
+            add_ref = .false.
+        end if
+
+        if (wrap) then
+            ! Count the number of determinants in the space.
+            call enumerate_determinants(sys, .true., spin_flip, ex_level_range(2), sym_space_size, ndets, dets, &
+                                        sys%symmetry, occ_list0, verbose)
+
+            ! Actually store the determinants, in the determ_dets array.
+            call enumerate_determinants(sys, .false., spin_flip, ex_level_range(2), sym_space_size, ndets, dets, &
+                                        sys%symmetry, occ_list0, verbose)
+
+            deallocate(sym_space_size, stat=ierr)
+            call check_deallocate('sym_space_size', ierr)
+        else
+            ! The lower range
+            call enumerate_determinants(sys, .true., spin_flip, ex_level_range(1)-1, sym_space_size, ndets_lo, dets_lo, &
+                                        sys%symmetry, occ_list0, verbose)
+            call enumerate_determinants(sys, .false., spin_flip, ex_level_range(1)-1, sym_space_size, ndets_lo, dets_lo, &
+                                        sys%symmetry, occ_list0, verbose)
+
+            ! The higher range
+            call enumerate_determinants(sys, .true., spin_flip, ex_level_range(2), sym_space_size, ndets_hi, dets_hi, &
+                                        sys%symmetry, occ_list0, verbose)
+            call enumerate_determinants(sys, .false., spin_flip, ex_level_range(2), sym_space_size, ndets_hi, dets_hi, &
+                                        sys%symmetry, occ_list0, verbose)
+
+            ! Take the difference between the two sets
+            ndets = ndets_hi - ndets_lo
+            if (ndets == 0) call stop_all('enumerate_determinants_specific_levels', 'No determinant in list!')
+            if (add_ref) ndets = ndets + 1
+            
+            allocate(dets(sys%basis%tot_string_len, ndets), stat=ierr)
+            call check_allocate('dets', sys%basis%tot_string_len*ndets, ierr)
+
+            ! Prepare determinant lists
+            call qsort(dets_lo)
+            call qsort(dets_hi)
+
+            i = 1
+            j = 1
+            k = 1
+            ! Whatever's in dets_hi is a superset of dets_lo, we use this to our advantage.
+            ! We store elements that are only in dets_hi
+            do while (i <= ndets_lo .or. j <= ndets_hi)
+                cmp = bit_str_cmp(dets_lo(:,i),dets_hi(:,j))
+                if (cmp == 0) then
+                    ! Equal, increment both counters
+                    i = i + 1
+                    j = j + 1
+                else
+                    ! cmp cannot be equal to +1, i.e. dets_lo(i) is always greater than or equal to dets_hi(j) 
+                    ! due to it being a subset.
+
+                    ! dets_lo(i) > dets_hi(j)
+                    ! This means dets_hi(j) is only present in dets_hi, we add this
+                    dets(:, k) = dets_hi(:, j)
+                    k = k + 1
+                    j = j + 1
+                end if
+            end do
+
+            if (add_ref) then
+                call encode_det(sys%basis, occ_list0, f0)
+                dets(:,ndets) = f0(:)
+            end if
+
+            deallocate(dets_lo, stat=ierr)
+            call check_deallocate('dets_lo', ierr)
+            deallocate(dets_hi, stat=ierr)
+            call check_deallocate('dets_hi', ierr)
+            deallocate(sym_space_size, stat=ierr)
+            call check_deallocate('sym_space_size', ierr)
+        end if
+
+    end subroutine enumerate_determinants_specific_levels
+
     subroutine print_dets_list(sys, ndets, dets, filename)
 
         ! Print out the determinants.
