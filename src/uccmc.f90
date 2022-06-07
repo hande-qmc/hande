@@ -468,7 +468,7 @@ contains
 
                 !$omp parallel default(none) &
                 !$omp private(it, iexcip_pos, i, seen_D0, hit, pos, population, real_population, k, annihilation_flags) &
-                !$omp shared(rng, cumulative_abs_real_pops, tot_abs_real_pop &
+                !$omp shared(rng, cumulative_abs_real_pops, tot_abs_real_pop, &
                 !$omp        max_cluster_size, contrib, D0_normalisation, D0_pos, rdm, &
                 !$omp        qs, sys, bloom_stats, min_cluster_size, ref_det, selection_data, &
                 !$omp        uccmc_in, ccmc_in, nprocs, ms_stats, ps_stats, qmc_in, load_bal_in, count_discard, &  
@@ -1083,11 +1083,11 @@ contains
                 cluster%amplitude = cluster_population/(normalisation**(cluster%nexcitors-1))
 
                 if (cluster%pselect/abs(cluster%amplitude) < threshold) then
-                        allowed = .false.
-                        cluster%excitation_level = huge(0)
-                        !$omp atomic update
-                        counter = counter + 1
-                        !$omp end atomic
+                    allowed = .false.
+                    cluster%excitation_level = huge(0)
+                    !$omp atomic update
+                    counter = counter + 1
+                    !$omp end atomic
                 end if
             else
                 ! Simply set excitation level to a too high (fake) level to avoid

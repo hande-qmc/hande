@@ -1202,7 +1202,12 @@ contains
                 call warning('ccmc_in_t_json','There are more than 20 secondary references, &
                 &printing suppressed, consider using the mr_read_in functionality.')
             end if
-            call json_write_key(js, 'mr_acceptance_search', ccmc%mr_acceptance_search)
+            select case (ccmc%mr_acceptance_search)
+            case (0)
+                call json_write_key(js, 'mr_acceptance_search', 'linear')
+            case (1)
+                call json_write_key(js, 'mr_acceptance_search', 'bk_tree')
+            end select
         end if
         call json_write_key(js, 'multiref', ccmc%multiref, terminal=.true.)
         call json_object_end(js, terminal)
