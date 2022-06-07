@@ -325,7 +325,7 @@ contains
         use qmc_data, only: load_bal_in_t, qmc_state_t, annihilation_flags_t, estimators_t, blocking_t
         use qmc_data, only: qmc_in_t_json, ccmc_in_t_json, semi_stoch_in_t_json, restart_in_t_json
         use qmc_data, only: blocking_in_t_json, excit_gen_power_pitzer_orderN, excit_gen_heat_bath
-        use qmc_data, only: empty_determ_space, mp1_determ_space, semi_stoch_separate_annihilation
+        use qmc_data, only: empty_determ_space, cas_determ_space, semi_stoch_separate_annihilation
         use reference_determinant, only: reference_t, reference_t_json
         use check_input, only: check_qmc_opts, check_ccmc_opts, check_blocking_opts
         use json_out, only: json_out_t, json_object_init, json_object_end

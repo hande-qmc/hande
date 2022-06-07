@@ -16,7 +16,7 @@ contains
 !--- Hilbert space enumeration ---
 
     subroutine enumerate_determinants(sys, init, spin_flip, ex_level, sym_space_size, ndets, dets_list, ref_sym, occ_list0, &
-                                      verbose_in)
+                                      verbose_in, cas_in)
 
         ! Find the Slater determinants of a given system that can be formed from
         ! the basis functions.
@@ -73,8 +73,9 @@ contains
         integer, intent(out) :: ndets
         integer(i0), intent(out), allocatable :: dets_list(:,:) ! (tot_string_len,ndets)
         logical, intent(in), optional :: verbose_in
+        integer, intent(in), optional :: cas_in(2)
 
-        integer :: i, j, iel, idet, ierr
+        integer :: i, j, iel, idet, ierr, ex_level_loc, nbasis_loc, nalpha_loc, nbeta_loc, nel_loc, nfrozen
         integer :: nbeta_combinations
         integer, allocatable :: nalpha_combinations(:)
         integer :: sym_beta, sym, Ms, excit_level_alpha, excit_level_beta
@@ -84,12 +85,37 @@ contains
         type(det_info_t) :: d0
         logical :: in_space, force_full, truncate_space, verbose
         integer :: iunit
+        logical :: cas_set
+        integer :: cas(2)
 
         iunit = 6
 
-        truncate_space = ex_level /= sys%nel
+        ! Provided for compatibility with CAS enumeration
+        ex_level_loc = ex_level
+        nbasis_loc = sys%basis%nbasis
+        nalpha_loc = sys%nalpha
+        nbeta_loc = sys%nbeta
+        ! Extra care needed for this one, since for some places we need sys%nel for both cases
+        nel_loc = sys%nel
+        nfrozen = 0
+
+        truncate_space = ex_level_loc /= sys%nel
         verbose = init
         if (present(verbose_in)) verbose = verbose_in
+
+        cas_set = .false.
+        if (present(cas_in)) then
+            cas = cas_in
+            cas_set = .true.
+            ex_level_loc = min(cas(1),cas(2)*2-cas(1))
+            ! Make sure we get directed to cas_set clauses
+            truncate_space = .false.
+            nbasis_loc = cas(2)*2
+            nalpha_loc = cas(1)/2
+            nbeta_loc = cas(1)/2
+            nel_loc = cas(1)
+            nfrozen = sys%nel - cas(1)
+        end if
 
         force_full = .false.
         if (init) then
@@ -135,16 +161,16 @@ contains
             if (.not.present(occ_list0)) then
                 call stop_all('enumerate_determinants', 'Require reference for truncated CI spaces.')
             end if
-            allocate(nalpha_combinations(0:sys%nbeta), stat=ierr)
-            call check_allocate('nalpha_combinations',sys%nbeta+1,ierr)
+            allocate(nalpha_combinations(0:nbeta_loc), stat=ierr)
+            call check_allocate('nalpha_combinations',nbeta_loc+1,ierr)
             nalpha_combinations = 0
             nbeta_combinations = 0
             ! Identical to the settings in the else statements if ex_level == nel.
-            associate(na=>sys%nalpha, nb=>sys%nbeta, &
+            associate(na=>nalpha_loc, nb=>nbeta_loc, &
                       nva=>sys%nvirt_alpha , nvb=>sys%nvirt_beta)
-                do i = 0, minval([ex_level, nb, nvb])
+                do i = 0, minval([ex_level_loc, nb, nvb])
                     nbeta_combinations = nbeta_combinations + binom_i(nb, i)*binom_i(nvb, i)
-                    do j = 0, minval([ex_level-i, na, nva])
+                    do j = 0, minval([ex_level_loc-i, na, nva])
                         nalpha_combinations(i) = nalpha_combinations(i) + binom_i(na, j)*binom_i(nva, j)
                     end do
                 end do
@@ -162,14 +188,26 @@ contains
             ! combinations are allowed.
             allocate(nalpha_combinations(0:0), stat=ierr)
             call check_allocate('nalpha_combinations',1,ierr)
-            nbeta_combinations = binom_i(sys%basis%nbasis/2, sys%nbeta)
-            nalpha_combinations = binom_i(sys%basis%nbasis/2, sys%nalpha)
+            if (cas_set) then
+                nbeta_combinations = binom_i(cas(2), cas(1)/2)
+                nalpha_combinations = binom_i(cas(2), cas(1)/2)
+            else
+                nbeta_combinations = binom_i(nbasis_loc/2, nbeta_loc)
+                nalpha_combinations = binom_i(nbasis_loc/2, nalpha_loc)
+            end if
         end if
-        allocate(comb(2*ex_level, 2), stat=ierr)
-        call check_allocate('comb', 4*ex_level, ierr)
+        allocate(comb(2*ex_level_loc, 2), stat=ierr)
+        call check_allocate('comb', 4*ex_level_loc, ierr)
 
         allocate(occ(sys%nel), stat=ierr)
         call check_allocate('occ', sys%nel, ierr)
+
+        ! Put the frozen electrons at the top
+        if (cas_set) then
+            do i = 1, sys%nel-cas(1)
+                occ(cas(1)+i) = i
+            end do
+        end if
 
         select case(sys%system)
 
@@ -187,9 +225,9 @@ contains
                 ! the Hilbert space.  No need to enumerate them all first.
                 if (truncate_space) then
                     sym_space_size = 0
-                    do i = 0, ex_level
+                    do i = 0, ex_level_loc
                         associate(nsites=>sys%lattice%nsites, nel=>sys%nel)
-                            sym_space_size = sym_space_size + binom_i(nel, ex_level)*binom_i(nsites-nel, ex_level)
+                            sym_space_size = sym_space_size + binom_i(nel, ex_level_loc)*binom_i(nsites-nel, ex_level_loc)
                         end associate
                     end do
                 else
@@ -198,12 +236,12 @@ contains
             else
                 if (truncate_space) then
                     ! Need list of spin-down sites (ie 'unoccupied' bits).
-                    allocate(unocc(sys%basis%nbasis-sys%nel), stat=ierr)
-                    call check_allocate('unocc', sys%basis%nbasis-sys%nel, ierr)
+                    allocate(unocc(nbasis_loc-sys%nel), stat=ierr)
+                    call check_allocate('unocc', nbasis_loc-sys%nel, ierr)
                     call decode_bit_string(d0%f(1), unocc)
                     do i = 1, ndets
-                        call next_string(i==1, .false., sys%basis%nbasis, sys%nel, d0%occ_list, &
-                                         unocc, ex_level, force_full, comb(:,1),  &
+                        call next_string(i==1, .false., nbasis_loc, sys%nel, d0%occ_list, &
+                                         unocc, ex_level_loc, force_full, comb(:,1),  &
                                          occ, excit_level_alpha)
                         call encode_det(sys%basis, occ, dets_list(:,i))
                     end do
@@ -214,7 +252,7 @@ contains
                     ! No symmetry to check!
                     ! Assume that we're not attempting to do FCI for more than
                     ! a i0_length sites , which is quite large... ;-)
-                    if (sys%basis%nbasis > i0_length) then
+                    if (nbasis_loc > i0_length) then
                         call stop_all('enumerate_determinants','Number of spin functions longer than the an i0 integer.')
                     end if
                     dets_list(:,:) = 0_i0
@@ -227,7 +265,7 @@ contains
 
         case default
 
-            if (init .and. sys%system == hub_real .and. .not.truncate_space) then
+            if (init .and. sys%system == hub_real .and. .not. truncate_space) then
                 ! Closed form for size of Hilbert space.  No symmetry implemented!
                 sym_space_size = nalpha_combinations*nbeta_combinations
             else
@@ -249,9 +287,12 @@ contains
                 do i = 1, nbeta_combinations
 
                     ! Get beta orbitals.
-                    call next_string(i==1, .false., sys%basis%nbasis/2, sys%nbeta, d0%occ_list_beta, &
-                                     d0%unocc_list_beta, ex_level, force_full, comb(:,1),  &
-                                     occ(1:sys%nbeta), excit_level_beta)
+                    call next_string(i==1, .false., nbasis_loc/2, nbeta_loc, d0%occ_list_beta, &
+                                     d0%unocc_list_beta, ex_level_loc, force_full, comb(:,1),  &
+                                     occ(1:nbeta_loc), excit_level_beta)
+
+                    ! Raise the basis labels
+                    if (cas_set) occ(1:nbeta_loc) = occ(1:nbeta_loc) + nfrozen
 
                     ! Symmetry.
                     ! Have to treat the UEG as a special case as we don't consider
@@ -259,30 +300,33 @@ contains
                     ! which exist in the basis set.
                     if (sys%system == ueg) then
                         k_beta = 0
-                        do iel = 1, sys%nbeta
+                        do iel = 1, nbeta_loc
                             k_beta = k_beta + sys%basis%basis_fns(occ(iel))%l
                         end do
                     else
-                        sym_beta = symmetry_orb_list(sys, occ(1:sys%nbeta))
+                        sym_beta = symmetry_orb_list(sys, occ(1:nbeta_loc))
                     end if
 
                     do j = 1, nalpha_combinations(excit_level_beta)
 
                         ! Get alpha orbitals.
-                        call next_string(j==1, .true., sys%basis%nbasis/2, sys%nalpha, d0%occ_list_alpha, &
-                                         d0%unocc_list_alpha, ex_level-excit_level_beta, force_full, &
-                                         comb(:,2), occ(sys%nbeta+1:), excit_level_alpha)
+                        call next_string(j==1, .true., nbasis_loc/2, nalpha_loc, d0%occ_list_alpha, &
+                                         d0%unocc_list_alpha, ex_level_loc-excit_level_beta, force_full, &
+                                         comb(:,2), occ(nbeta_loc+1:nel_loc), excit_level_alpha)
+
+                        ! Raise the basis labels
+                        if (cas_set) occ(nbeta_loc+1:nel_loc) = occ(nbeta_loc+1:nel_loc) + nfrozen
 
                         ! Symmetry of all orbitals.
                         if (sys%system == ueg) then
                             k = k_beta
-                            do iel = sys%nbeta+1, sys%nel
+                            do iel = nbeta_loc+1, sys%nel
                                 k = k + sys%basis%basis_fns(occ(iel))%l
                             end do
                             ! Symmetry label (convert from basis index).
                             sym = (ueg_basis_index(sys%ueg%basis,k,1)+1)/2
                         else
-                            sym = cross_product(sys, sym_beta, symmetry_orb_list(sys, occ(sys%nbeta+1:sys%nel)))
+                            sym = cross_product(sys, sym_beta, symmetry_orb_list(sys, occ(nbeta_loc+1:sys%nel)))
                         end if
 
                         ! Inside truncated space?  TODO: fix above code so it
@@ -291,7 +335,7 @@ contains
                         in_space = .true.
                         if (truncate_space) then
                             call encode_det(sys%basis, occ, f)
-                            in_space = get_excitation_level(d0%f,f) <= ex_level
+                            in_space = get_excitation_level(d0%f,f) <= ex_level_loc
                         end if
 
                         if (in_space) then
@@ -319,16 +363,19 @@ contains
 
         if (verbose .and. parent) then
             ! Output information about the size of the space.
-            Ms = sys%nalpha - sys%nbeta
+            Ms = nalpha_loc - nbeta_loc
             write (iunit,'(1X,a75,'//int_fmt(Ms,0)//',a1)') &
                      'The table below gives the number of determinants for each symmetry with Ms=', &
                      Ms,"."
             if (truncate_space) then
-                write (iunit,'(1X,a24,'//int_fmt(ex_level,1)//',1X,a54)') &
-                    'Only determinants within', ex_level, &
+                write (iunit,'(1X,a24,'//int_fmt(ex_level_loc,1)//',1X,a54)') &
+                    'Only determinants within', ex_level_loc, &
                     'excitations of the reference determinant are included.'
                 write (iunit,'(1X,a29,1X)',advance='no') 'Reference determinant, |D0> ='
                 call write_det(sys%basis, sys%nel, d0%f, new_line=.true.)
+            end if
+            if (cas_set) then
+                write (iunit,'(1X,A)') 'Only determinants in the specified CAS are included.'
             end if
             write (iunit,'(/,1X,a14,6X,a6)') 'Symmetry index','# dets'
             do i = lbound(sym_space_size,dim=1), ubound(sym_space_size, dim=1)

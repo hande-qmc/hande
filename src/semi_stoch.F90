@@ -154,7 +154,8 @@ contains
         use checking, only: check_allocate, check_deallocate
         use calc, only: doing_calc, dmqmc_calc
         use qmc_data, only: empty_determ_space, high_pop_determ_space, read_determ_space, reuse_determ_space, ci_determ_space, &
-                            semi_stoch_separate_annihilation, particle_t, annihilation_flags_t, semi_stoch_in_t, propagator_t
+                            cas_determ_space, semi_stoch_separate_annihilation, particle_t, annihilation_flags_t, &
+                            semi_stoch_in_t, propagator_t
         use parallel
         use sort, only: qsort
         use spawn_data, only: spawn_t
@@ -249,6 +250,8 @@ contains
             end if
             call create_ci_determ_space(dets_this_proc, determ, spawn, sys, ci_ref, ss_in)
             call dealloc_reference_t(ci_ref)
+        else if (ss_in%space_type == cas_determ_space) then
+            call create_cas_determ_space(dets_this_proc, determ, spawn, sys, reference%occ_list0, ss_in)
         end if
 
         ! Let each process hold the number of deterministic states on each process.
@@ -1948,5 +1951,74 @@ contains
         call check_deallocate('determ_dets', ierr)
 
     end subroutine create_ci_determ_space
+
+    subroutine create_cas_determ_space(dets_this_proc, determ, spawn, sys, occ_list0, ss_in)
+
+        ! Create a deterministic space from a small CI space.
+
+        ! In/Out:
+        !    dets_this_proc: The deterministic states belonging to this
+        !        processor in the created deterministic space.
+        !    determ: semi_stoch_t object.  On output, the tot_size value will
+        !        be equal to the total size of the deterministic space on all
+        !        processors, and the component of the sizes array corresponding
+        !        to this processor will equal the number of deterministic
+        !        states on this processor (but values for other processors
+        !        will not be set). All other components of this object are
+        !        unchanged from their input status, on output.
+        ! In:
+        !    spawn: spawn_t object to which deterministic spawning will occur.
+        !    sys: system being studied.
+        !    occ_list0: the occupation vector of the reference..
+        !    ss_in: semi_stoch_in_t object defining CI range, if used.
+
+        use checking, only: check_allocate, check_deallocate
+        use errors, only: stop_all
+
+        use determinants, only: spin_orb_list
+        use determinant_enumeration, only: enumerate_determinants, enumerate_determinants_specific_levels
+        use parallel, only: iproc
+        use reference_determinant, only: reference_t
+        use spawn_data, only: spawn_t
+        use system, only: sys_t
+        use qmc_data, only: semi_stoch_in_t
+
+        integer(i0), intent(inout), allocatable :: dets_this_proc(:,:)
+        type(semi_stoch_t), intent(inout) :: determ
+        type(spawn_t), intent(in) :: spawn
+        type(sys_t), intent(in) :: sys
+        integer, intent(in) :: occ_list0(:)
+        type(semi_stoch_in_t), intent(in) :: ss_in
+
+        integer(i0), allocatable :: determ_dets(:,:)
+        integer, allocatable :: sym_space_size(:)
+        integer :: i, ierr
+        logical :: spin_flip
+
+        spin_flip = spin_orb_list(sys%basis%basis_fns, occ_list0) /= sys%Ms
+
+        ! [todo]: if we can check this earlier in read in, do that instead.
+        if (spin_flip) call stop_all('create_cas_determ_space', &
+                                     'CAS determ space does not currently support spin flip calculations!')
+
+        ! Count the number of determinants in the space.
+        call enumerate_determinants(sys, .true., spin_flip, 0, sym_space_size, determ%tot_size, determ_dets, &
+                                    sys%symmetry, occ_list0, .false., ss_in%cas)
+
+        ! Actually store the determinants, in the determ_dets array.
+        call enumerate_determinants(sys, .false., spin_flip, 0, sym_space_size, determ%tot_size, determ_dets, &
+                                    sys%symmetry, occ_list0, .false., ss_in%cas)
+
+        determ%sizes(iproc) = 0
+
+        do i = 1, determ%tot_size
+            call add_det_to_determ_space(determ%sizes(iproc), dets_this_proc, spawn, determ_dets(:,i), .true., &
+                                         sys%basis%info_string_len)
+        end do
+
+        deallocate(determ_dets, stat=ierr)
+        call check_deallocate('determ_dets', ierr)
+
+    end subroutine create_cas_determ_space
 
 end module semi_stoch

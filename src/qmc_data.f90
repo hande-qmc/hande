@@ -87,8 +87,8 @@ enum, bind(c)
     ! This option means we use a generated deterministic space from a (truncated)
     ! CI space.
     enumerator :: ci_determ_space
-    ! This option uses a MP1 wavefunction to generate the deterministic space.
-    enumerator :: mp1_determ_space
+    ! This option uses a CAS criterion to generate the active space.
+    enumerator :: cas_determ_space
 end enum
 
 enum, bind(c)
@@ -329,6 +329,8 @@ type semi_stoch_in_t
     ! Instead of generating CI space up to ex_level, only generate a certain range?
     logical :: use_ci_range = .false.
     integer :: ci_range(2) = (/-1, -1/)
+    ! If a CAS is used to create the activate space.
+    integer :: cas(2) = (/-1, -1/)
 end type semi_stoch_in_t
 
 type ccmc_in_t
@@ -1148,6 +1150,7 @@ contains
         call reference_t_json(js, semi_stoch%ci_space, key='ci_space')
         call json_write_key(js, 'use_ci_range', semi_stoch%use_ci_range)
         call json_write_key(js, 'ci_range', semi_stoch%ci_range)
+        call json_write_key(js, 'cas', semi_stoch%cas)
         call json_write_key(js, 'separate_stats', semi_stoch%separate_stats, terminal=.true.)
         call json_object_end(js, terminal)
 

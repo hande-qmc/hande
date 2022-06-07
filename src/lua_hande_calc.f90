@@ -383,7 +383,7 @@ contains
         call read_qmc_in(lua_state, opts, qmc_in)
         call read_fciqmc_in(lua_state, opts, fciqmc_in)
         call read_blocking_in(lua_state, opts, blocking_in)
-        call read_semi_stoch_in(lua_state, opts, qmc_in, semi_stoch_in)
+        call read_semi_stoch_in(lua_state, opts, qmc_in, semi_stoch_in, sys)
         call read_restart_in(lua_state, opts, restart_in)
         call read_load_bal_in(lua_state, opts, load_bal_in)
         call read_reference_t(lua_state, opts, reference, sys)
@@ -515,7 +515,7 @@ contains
 
         call read_blocking_in(lua_state, opts, blocking_in)
 
-        call read_semi_stoch_in(lua_state, opts, qmc_in, semi_stoch_in)
+        call read_semi_stoch_in(lua_state, opts, qmc_in, semi_stoch_in, sys)
         call read_restart_in(lua_state, opts, restart_in)
         ! load balancing is not available in CCMC; must use default settings.
         call read_reference_t(lua_state, opts, reference, sys)
@@ -1430,12 +1430,12 @@ contains
 
     end subroutine read_fciqmc_in
 
-    subroutine read_semi_stoch_in(lua_state, opts, qmc_in, semi_stoch_in)
+    subroutine read_semi_stoch_in(lua_state, opts, qmc_in, semi_stoch_in, sys)
 
         ! Read in an semi_stoch table (if it exists) to an semi_stoch_in object.
 
         ! semi_stoch = {
-        !     space = 'read'/'high'/'ci',       -- required if semi_stoch table exists.
+        !     space = 'read'/'high'/'ci'/'cas', -- required if semi_stoch table exists.
         !     size = target_pop,                -- required if space == 'high'
         !     start_iteration = mc_cycles,
         !     shift_start_iteration = mc_cycle, -- overrides start_iteration
@@ -1453,6 +1453,7 @@ contains
         !        options are present, then qmc_in%real_amplitudes is forced to be true.
         ! In:
         !    opts: handle for the table containing the semi_stoch table.
+        !    sys: system under consideration.
         ! Out:
         !    semi_stoch_in: semi_stoch_in_t object containing semi-stochastic-specific input options.
 
@@ -1461,20 +1462,22 @@ contains
         use aot_vector_module, only: aot_get_val
         use parallel, only: parent
         use errors, only: stop_all, warning
+        use system, only: sys_t
 
         use qmc_data, only: qmc_in_t, semi_stoch_in_t, high_pop_determ_space, read_determ_space, ci_determ_space, &
-                            semi_stoch_combined_annihilation, semi_stoch_separate_annihilation
+                            cas_determ_space, semi_stoch_combined_annihilation, semi_stoch_separate_annihilation
         use lua_hande_utils, only: warn_unused_args, get_flag_and_id
 
         type(flu_State), intent(inout) :: lua_state
         integer, intent(in) :: opts
         type(qmc_in_t), intent(inout) :: qmc_in
         type(semi_stoch_in_t), intent(out) :: semi_stoch_in
+        type(sys_t), intent(in) :: sys
 
         integer :: semi_stoch_table, err
         character(len=10) :: str
         logical :: separate_annihilation
-        integer, allocatable :: ci_range(:), err_arr(:)
+        integer, allocatable :: ci_range(:), cas(:), err_arr(:)
         character(21), parameter :: keys(10) = [character(21) :: 'space', 'size', 'start_iteration', 'separate_annihilation', &
                                                                 'shift_start_iteration', 'write_determ_space', 'write', 'read', &
                                                                 'ci_space', 'separate_stats']
@@ -1504,7 +1507,8 @@ contains
                     call aot_get_val(ci_range, err_arr, 2, lua_state, semi_stoch_table, key='ci_range')
                     if (semi_stoch_in%ci_space%ex_level < 0 .and. size(ci_range) == 0) &
                         call stop_all('read_semi_stoch_in', 'Neither max excitation level nor ci_range given for ci_space')
-                    if (size(ci_range) /= 2) call stop_all('read_semi_stoch_in', 'ci_range not specified correctly.')
+                    if (size(ci_range) == 1 .or. size(ci_range) > 2) &
+                        call stop_all('read_semi_stoch_in', 'ci_range not specified correctly.')
                     if (semi_stoch_in%ci_space%ex_level > 0 .and. size(ci_range) == 2) &
                         call stop_all('read_semi_stoch_in', 'Both max excitation level and ci_range given for ci_space')
                     if (size(ci_range) == 2) then
@@ -1512,6 +1516,18 @@ contains
                         semi_stoch_in%ci_range = ci_range
                     end if
                     deallocate(ci_range)
+                case('cas')
+                    semi_stoch_in%space_type = cas_determ_space
+                    call aot_get_val(cas, err_arr, 2, lua_state, semi_stoch_table, key='cas')
+                    if (size(cas) == 0) call stop_all('read_semi_stoch_in', 'CAS space not specified!')
+                    if (size(cas) /= 2) call stop_all('read_semi_stoch_in', 'CAS space not specified correctly.')
+                    if (size(cas) == 2) then
+                        if (cas(1) > sys%nel) call stop_all('read_semi_stoch_in', 'More CAS electron than available.')
+                        if (mod(cas(1),2) /= 0) call stop_all('read_semi_stoch_in', 'Only even # of CAS electrons supported.')
+                        if (cas(2)*2 > sys%basis%nbasis) call stop_all('read_semi_stoch_in', 'More CAS basis fns than available.')
+                        semi_stoch_in%cas = cas
+                    end if
+                    deallocate(cas)
                 case default
                     if (parent) call stop_all('read_semi_stoch_in', 'Unknown semi stochastic space type')
                 end select
