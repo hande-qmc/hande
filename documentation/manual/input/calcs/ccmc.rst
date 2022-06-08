@@ -296,3 +296,12 @@ ccmc options
     .. note::
 
         This essentially disables the ability to set excitation levels separately for each secondary reference.
+
+``sym_only``
+    type: boolean.
+
+    Whether to include only secondary references that belong to the symmetry sector specified in ``sys``.
+
+    .. note::
+
+        This is only compatible with ``mr_read_in`` being set to true.

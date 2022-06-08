@@ -1700,6 +1700,9 @@ contains
         !     multiref = true/false,
         !     n_secondary_ref = number of additional references,
         !     secondary_ref1,...,secondary_ref999 ={...},
+        !     mr_read_in = true/false,
+        !     mr_secref_file = filename,
+        !     mr_excit_lvl = ex_level,
         ! }
 
         ! In/Out:
@@ -1731,11 +1734,12 @@ contains
         integer :: ccmc_table, err, i, ir, ios, nel, iel
         integer(i0) :: bstring
         character(255) :: err_msg
-        character(28), parameter :: keys(15) = [character(28) :: 'move_frequency', 'cluster_multispawn_threshold', &
+        character(28), parameter :: keys(16) = [character(28) :: 'move_frequency', 'cluster_multispawn_threshold', &
                                                                 'full_non_composite', 'linked', 'vary_shift_reference', &
                                                                 'density_matrices', 'density_matrix_file', 'even_selection', &
                                                                 'multiref', 'n_secondary_ref', 'mr_acceptance_search', &
-                                                                'mr_excit_lvl','mr_secref_file','mr_read_in', 'discard_threshold']
+                                                                'mr_excit_lvl','mr_secref_file','mr_read_in', 'sym_only', &
+                                                                'discard_threshold']
         character(23) :: string ! 32 bit integer has 10 digits, should be more than enough
         ! secondary_refX keywords are not hardcoded in, so we dynamically add them into the
         ! array of allowed keys 
@@ -1764,6 +1768,9 @@ contains
             call aot_get_val(ccmc_in%multiref, err, lua_state, ccmc_table, 'multiref')
             if (ccmc_in%multiref) then
                 call aot_get_val(ccmc_in%mr_read_in, err, lua_state, ccmc_table, 'mr_read_in')
+                call aot_get_val(ccmc_in%sym_only, err, lua_state, ccmc_table, 'sym_only')
+                if (ccmc_in%sym_only .and. .not. ccmc_in%mr_read_in) call stop_all('read_ccmc_in', &
+                    'sym_only is only supported if mr_read_in is true.')
 
                 call aot_get_val(ccmc_in%n_secondary_ref, err, lua_state, ccmc_table, 'n_secondary_ref')
                 if (ccmc_in%n_secondary_ref == 0 .and. .not. ccmc_in%mr_read_in) then

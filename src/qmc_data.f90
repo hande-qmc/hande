@@ -363,6 +363,8 @@ type ccmc_in_t
     integer :: mr_n_frozen = 0
     ! Whether to read in a secondary reference file.
     logical :: mr_read_in = .false.
+    ! Whether to only include the secondary references of correct symmetry.
+    logical :: sym_only = .false.
     ! The threshold of pselect/amplitude for a cluster, below which the cluster is discarded.
     real(p) :: discard_threshold = -1.0_p
 end type ccmc_in_t
@@ -1190,7 +1192,7 @@ contains
         call json_write_key(js, 'density_matrix_file', ccmc%density_matrix_file)
         call json_write_key(js, 'even_selection', ccmc%even_selection)
         if (ccmc%multiref) then
-            call json_write_key(js, 'mr_read_in', ccmc%mr_read_in)            
+            call json_write_key(js, 'mr_read_in', ccmc%mr_read_in)
             call json_write_key(js, 'n_secondary_ref', ccmc%n_secondary_ref)
             if (ccmc%n_secondary_ref .le. 20 .and. .not. ccmc%mr_read_in) then
                 do i=1, size(ccmc%secondary_refs)
@@ -1198,7 +1200,7 @@ contains
                     call reference_t_json(js, ccmc%secondary_refs(i), key = trim(string))
                 end do
             else if (ccmc%mr_read_in) then
-                continue
+                call json_write_key(js, 'sym_only', ccmc%sym_only)
             else
                 call warning('ccmc_in_t_json','There are more than 20 secondary references, &
                 &printing suppressed, consider using the mr_read_in functionality.')
