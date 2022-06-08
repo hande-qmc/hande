@@ -363,6 +363,8 @@ type ccmc_in_t
     integer :: mr_n_frozen = 0
     ! Whether to read in a secondary reference file.
     logical :: mr_read_in = .false.
+    ! The threshold of pselect/amplitude for a cluster, below which the cluster is discarded.
+    real(p) :: discard_threshold = -1.0_p
 end type ccmc_in_t
 
 type uccmc_in_t
