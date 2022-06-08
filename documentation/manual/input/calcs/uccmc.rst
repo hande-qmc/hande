@@ -81,7 +81,7 @@ Options
     Further options to enable direction of calculation output to a different file.
     See :ref:`output_table` for more information.
 
-.. _ccmc_table:
+.. _uccmc_table:
 
 uccmc options
 -------------

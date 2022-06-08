@@ -1,3 +1,5 @@
+.. _mp1:
+
 MP1 wavefunction
 ================
 
