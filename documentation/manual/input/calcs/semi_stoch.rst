@@ -13,7 +13,7 @@ stochastic error in many cases.
 
     Required.
 
-    Possible values: 'read', 'high', 'ci'.
+    Possible values: 'read', 'high', 'ci', 'cas'.
 
     The type of deterministic space to use.  Using 'read' uses a deterministic space
     produced from a previous calculation and saved to file using the semi_stoch 
@@ -21,7 +21,9 @@ stochastic error in many cases.
     Using 'high' sets the deterministic space to consist of the states with
     the highest population when the semi-stochastic projection is enabled.
     Using 'ci' sets the deterministic space to consist of a (small!) truncated
-    configuration interaction space relative to a reference determinant.
+    configuration interaction space relative to a reference determinant. 
+    Using 'cas' sets the deterministic space to all determinants within a CAS 
+    of the same symmetry as the system.
 ``size``
     type: integer.
 
@@ -31,12 +33,29 @@ stochastic error in many cases.
 ``ci_space``
     type: reference table.  See :ref:`reference_table` for options.
 
-    Required if ``space`` is 'ci', otherwise ignored.  Must contain at least ``ex_level``.
+    One of ``ci_space`` and ``ci_range`` is required if ``space`` is 'ci', otherwise ignored. 
+    Must contain at least ``ex_level``. 
     The reference determinant, if not supplied, is identical to that given in the
     calculation's ``reference`` option.
     
     Defines the deterministic space to contain all determinants in a small (truncated)
     configuration interaction space.
+``ci_range``
+    type: 2D-vector of integers.
+
+    One of ``ci_space`` and ``ci_range`` is required if ``space`` is 'ci', otherwise ignored. 
+
+    Defines the deterministic space to be a range of excitations that does not necessarily start 
+    at 0. For example, ``ci_range = {2,2}`` generates a deterministic space of only doubly excited 
+    determinants (we always add in the reference), while ``ci_range = {1,3}`` or ``{0,3}`` being identical 
+    to specifying ``ci_space = {ex_level = 2}``.
+``cas``
+    type: 2D-vector of integers.
+
+    Required if ``space`` is 'cas', otherwise ignored.
+
+    The :math:`(e,o)` (number of electrons in number of *spatial* orbitals) specification of a CAS. 
+    Only works with closed shell systems with RHF references, which implies :math:`e` must be even.
 ``start_iteration``
     type: integer.
 
@@ -97,3 +116,10 @@ stochastic error in many cases.
 
     Index of the file containing the deterministic space produced from a previous
     calculation.
+``separate_stats``
+    type: boolean.
+
+    Optional.  Default: false.
+
+    Whether to report deterministic and stochastic contributions to :math:`\sum_j H_{0j}N_j` 
+    separately. This enables us to gauge the effectiveness of the deterministic space.

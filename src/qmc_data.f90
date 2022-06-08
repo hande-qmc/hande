@@ -87,7 +87,7 @@ enum, bind(c)
     ! This option means we use a generated deterministic space from a (truncated)
     ! CI space.
     enumerator :: ci_determ_space
-    ! This option uses a CAS criterion to generate the active space.
+    ! This option uses a CAS criterion to generate the deterministic space.
     enumerator :: cas_determ_space
 end enum
 
@@ -329,7 +329,7 @@ type semi_stoch_in_t
     ! Instead of generating CI space up to ex_level, only generate a certain range?
     logical :: use_ci_range = .false.
     integer :: ci_range(2) = (/-1, -1/)
-    ! If a CAS is used to create the activate space.
+    ! Used if a CAS is used to create the deterministic space.
     integer :: cas(2) = (/-1, -1/)
 end type semi_stoch_in_t
 

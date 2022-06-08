@@ -45,6 +45,7 @@ contains
         !        of electrons in the system.
         !    verbose_in(optional): print out info about number of determinants in each symmetry
         !        block.  Default: same value as init.
+        !    cas_in(optional): if provided, all determinants in the (e,o) CAS will be enumerated.
         ! In/Out:
         !    sym_space_size: number of determinants of each symmetry.  Output if init
         !        is true, input if init is false.
@@ -105,11 +106,13 @@ contains
 
         cas_set = .false.
         if (present(cas_in)) then
-            cas = cas_in
-            cas_set = .true.
-            ex_level_loc = min(cas(1),cas(2)*2-cas(1))
             ! Make sure we get directed to cas_set clauses
+            cas_set = .true.
             truncate_space = .false.
+
+            cas = cas_in
+
+            ex_level_loc = min(cas(1),cas(2)*2-cas(1))
             nbasis_loc = cas(2)*2
             nalpha_loc = cas(1)/2
             nbeta_loc = cas(1)/2

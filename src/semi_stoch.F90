@@ -1954,7 +1954,7 @@ contains
 
     subroutine create_cas_determ_space(dets_this_proc, determ, spawn, sys, occ_list0, ss_in)
 
-        ! Create a deterministic space from a small CI space.
+        ! Create a deterministic space from a CAS criterion.
 
         ! In/Out:
         !    dets_this_proc: The deterministic states belonging to this
@@ -1970,15 +1970,14 @@ contains
         !    spawn: spawn_t object to which deterministic spawning will occur.
         !    sys: system being studied.
         !    occ_list0: the occupation vector of the reference..
-        !    ss_in: semi_stoch_in_t object defining CI range, if used.
+        !    ss_in: semi_stoch_in_t object defining the CAS.
 
-        use checking, only: check_allocate, check_deallocate
+        use checking, only: check_deallocate
         use errors, only: stop_all
 
         use determinants, only: spin_orb_list
-        use determinant_enumeration, only: enumerate_determinants, enumerate_determinants_specific_levels
+        use determinant_enumeration, only: enumerate_determinants
         use parallel, only: iproc
-        use reference_determinant, only: reference_t
         use spawn_data, only: spawn_t
         use system, only: sys_t
         use qmc_data, only: semi_stoch_in_t

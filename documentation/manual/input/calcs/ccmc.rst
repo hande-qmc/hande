@@ -14,6 +14,7 @@ Coupled Cluster Monte Carlo
         logging = { ... },
         output = { ... },
         blocking = { ... },
+        semi_stoch = { ... },
         qmc_state = qmc_state,
     }
 
@@ -79,6 +80,15 @@ Options
     Optional.
 
     Further options to switch on and control blocking on the fly. See :ref:`blocking_table`.
+``semi_stoch``
+    type: lua table.
+
+    Optional.
+
+    Further options to control using a semi-stochastic projection of the Hamiltonian
+    operator instead of a purely stochastic projection.  Note that some options in the
+    ``semi_stoch`` table are required to be set if the table is given.  See
+    :ref:`semi_stoch_table`.
 ``qmc_state``
     type: qmc_state object.
 
