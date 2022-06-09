@@ -1437,7 +1437,7 @@ contains
 
     end subroutine create_high_pop_space
 
-    pure subroutine find_most_populated_dets(dets_in, pops_in, ndets_in, ndets_out, dets_out, pops_out)
+    pure subroutine find_most_populated_dets(dets_in, pops_in, ndets_in, ndets_out, dets_out, pops_out, abs_pop)
 
         ! On output dets_out and pops_out hold the determinants and populations
         ! corresponding to the ndets_out most populated determinants, as
@@ -1453,56 +1453,102 @@ contains
         !    ndets_out: The number of determinants to keep when finding the
         !        most populated determinants. Anything beyond ndets_out in
         !        dets_out and pops_out may be garbage.
+        !    abs_pop (optional): if true (default), return the sum of absolute population, 
+        !        otherwise return the sum of signed populations. Most useful when there's just one type of population.
         ! Out:
         !    dets_out: List of most populated determinants.
-        !    pops_out: Populations corresponding to the determinants in dets_out.
+        !    pops_out: Absolute populations corresponding to the determinants in dets_out.
 
         ! dets_in(:,i) holds determinant i.
         integer(i0), intent(in) :: dets_in(:,:) 
         ! pops_in(j,i) holds the population of particle type j on determinant i.
-        integer(int_p), intent(in) :: pops_in(:,:)
+        integer(i0), intent(in) :: pops_in(:,:)
         integer, intent(in) :: ndets_in, ndets_out
         ! dets_out(:,i) holds determinant i.
         integer(i0), intent(out) :: dets_out(:,:)
-        ! pops_in(j,i) holds the population of particle type j on determinant i.
-        integer(int_p), intent(out) :: pops_out(:)
+        ! pops_out(i) holds the sum of absolute populations of all particle types on determinant i.
+        integer(i0), intent(out) :: pops_out(:)
+        logical, optional, intent(in) :: abs_pop
 
         integer :: i, j, min_ind
-        integer(int_p) :: min_pop
+        integer(i0) :: min_pop
+        logical :: abs_loc
 
-        ! To start with add the first ndets_out determinants to the list.
-        dets_out(:,1:ndets_out) = dets_in(:,1:ndets_out)
-        pops_out(1) = sum(abs(pops_in(:,1)))
-        min_pop = pops_out(1)
-        min_ind = 1
-        do i = 2, ndets_out
-            pops_out(i) = sum(abs(pops_in(:,i)))
-            if (pops_out(i) < min_pop) then
-                min_pop = pops_out(i)
-                min_ind = i
-            end if
-        end do
+        if (present(abs_pop)) then
+            abs_loc = abs_pop
+        else
+            abs_loc = .true.
+        end if
 
-        ! Now loop over all remaining determinants and see if any have a larger
-        ! amplitude than those in the list already.
-        do i = ndets_out+1, ndets_in
-            if (sum(abs(pops_in(:,i))) > min_pop) then
-                ! Add this determinant to the list in the position of the
-                ! previous smallest population.
-                dets_out(:,min_ind) = dets_in(:,i)
-                pops_out(min_ind) = sum(abs(pops_in(:,i)))
-                ! Now find the position and value of the new smallest
-                ! population.
-                min_pop = pops_out(1)
-                min_ind = 1
-                do j = 2, ndets_out
-                    if (pops_out(j) < min_pop) then
-                        min_pop = pops_out(j)
-                        min_ind = j
-                    end if
-                end do
-            end if
-        end do
+        if (abs_loc) then
+            ! To start with add the first ndets_out determinants to the list.
+            dets_out(:,1:ndets_out) = dets_in(:,1:ndets_out)
+            pops_out(1) = sum(abs(pops_in(:,1)))
+            min_pop = pops_out(1)
+            min_ind = 1
+            do i = 2, ndets_out
+                pops_out(i) = sum(abs(pops_in(:,i)))
+                if (pops_out(i) < min_pop) then
+                    min_pop = pops_out(i)
+                    min_ind = i
+                end if
+            end do
+
+            ! Now loop over all remaining determinants and see if any have a larger
+            ! amplitude than those in the list already.
+            do i = ndets_out+1, ndets_in
+                if (sum(abs(pops_in(:,i))) > min_pop) then
+                    ! Add this determinant to the list in the position of the
+                    ! previous smallest population.
+                    dets_out(:,min_ind) = dets_in(:,i)
+                    pops_out(min_ind) = sum(abs(pops_in(:,i)))
+                    ! Now find the position and value of the new smallest
+                    ! population.
+                    min_pop = pops_out(1)
+                    min_ind = 1
+                    do j = 2, ndets_out
+                        if (pops_out(j) < min_pop) then
+                            min_pop = pops_out(j)
+                            min_ind = j
+                        end if
+                    end do
+                end if
+            end do
+        else
+            ! To start with add the first ndets_out determinants to the list.
+            dets_out(:,1:ndets_out) = dets_in(:,1:ndets_out)
+            pops_out(1) = sum(pops_in(:,1))
+            min_pop = sum(abs(pops_in(:,1)))
+            min_ind = 1
+            do i = 2, ndets_out
+                pops_out(i) = sum(pops_in(:,i))
+                if (sum(abs(pops_in(:,i))) < min_pop) then
+                    min_pop = sum(abs(pops_in(:,i)))
+                    min_ind = i
+                end if
+            end do
+
+            ! Now loop over all remaining determinants and see if any have a larger
+            ! amplitude than those in the list already.
+            do i = ndets_out+1, ndets_in
+                if (sum(abs(pops_in(:,i))) > min_pop) then
+                    ! Add this determinant to the list in the position of the
+                    ! previous smallest population.
+                    dets_out(:,min_ind) = dets_in(:,i)
+                    pops_out(min_ind) = sum(pops_in(:,i))
+                    ! Now find the position and value of the new smallest
+                    ! population.
+                    min_pop = abs(pops_out(1))
+                    min_ind = 1
+                    do j = 2, ndets_out
+                        if (abs(pops_out(j)) < min_pop) then
+                            min_pop = abs(pops_out(j))
+                            min_ind = j
+                        end if
+                    end do
+                end if
+            end do
+        end if
 
     end subroutine find_most_populated_dets
 
@@ -1511,7 +1557,7 @@ contains
         ! On output indices will store the indices of the nind_out largest
         ! populations in pops.
 
-        ! NOTE: If nind_out > npops_in then all indices beyond npops_in  will be
+        ! NOTE: If nind_out > npops_in then all indices beyond npops_in will be
         ! returned as zero.
 
         ! In:

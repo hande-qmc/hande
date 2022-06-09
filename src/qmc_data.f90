@@ -289,6 +289,18 @@ type fciqmc_in_t
     ! Filename to write density matrix to
     character(255) :: density_matrix_file = 'RDM'
 
+    ! Are we performing FCIQMC-tailored multi-reference CCMC? 
+    ! This means accumulating a list of highly occupied determinants, with the parameters that follow
+    logical :: doing_fciqmc_tailored_mrccmc = .false.
+    ! The final number of highest occupied determinants to keep
+    integer :: mrcc_selection_target_ndets = -1
+    ! OR, the percentage of the tailoring wavefunction to keep
+    real(p) :: mrcc_selection_wfn_weightage = -1.0_p
+    integer :: mrcc_selection_max_ndets = -1
+    integer :: mrcc_selection_nreports = -1
+    character(255) :: mrcc_selection_dets_file = 'fciqmc.secref'
+    integer :: mrcc_selection_det_list_new_size = -1
+
 end type fciqmc_in_t
 
 type semi_stoch_in_t
@@ -859,6 +871,44 @@ type propagator_t
     real(p) :: quasi_newton_pop_control
 end type propagator_t
 
+type highest_dets_t
+    ! Derived type containing a list of (cumulatively) highest occupied determinants, and parameters about this list.
+    ! Number of reports over which information is accumulated
+    integer :: nreports = -1
+    ! Number of reports collected
+    integer :: ireport = 0
+    ! Maximum number of determinants that can be held by this list.
+    integer :: max_ndets = -1
+    integer :: det_list_new_size = -1
+    ! Current number of determinant in the main list
+    integer :: ndets = -1
+    ! The number of newly added determinants. For truncating the tailoring wavefunction by weight (i.e., variable new dets)
+    integer :: ndets_new = -1
+    ! The final number of highest occupied determinants to keep
+    integer :: target_ndets = -1
+    ! The name of the output determinant file
+    character(255) :: det_file = 'fciqmc.secref'
+    ! What criterion are we using to filter important determinants? Fixed number or weightage of tailoring wavefunction?
+    logical :: using_target = .false.
+    logical :: using_weightage = .false.
+    real(p) :: wfn_weightage = -1.0_p
+    ! Holds the highest determinants and their absolute populations. 
+    ! int_s is used as a result (which is 64 bit if one of det_size and pop_size is 64 bit)
+    ! det_list(:,i) stores information of the i-th highest occupied determinant, 
+    ! with the first element being the cumulative squared FCI coefficient,  
+    ! and the remaining bit_string_len elements contain the bitstring.
+    ! This list is sorted by determinants
+    integer(int_s), allocatable :: det_list_main(:,:) ! (1+bit_string_len, max_ndets)
+    ! Holds the highest occupied determinant for the current report loop, the first element is the absolute population,
+    ! and the second is the signed population (if using weightage criterion) or the same absolute population (if using target).
+    integer(int_s), allocatable :: det_list_new(:,:) ! (2+bit_string_len, max_ndets)
+    ! Holds the sorted determinant list only, to speed up searching
+    integer(i0), allocatable :: det_only_list_main(:,:) ! (bit_string_len, max_ndets)
+    ! Whether det_list_main is full
+    logical :: error = .false.
+    real(dp), allocatable :: nw_cumul_proc(:)
+end type highest_dets_t
+
 type qmc_state_t
     ! When performing dmqmc calculations, dmqmc_factor = 2.0. This factor is
     ! required because in DMQMC calculations, instead of spawning from one end with
@@ -930,6 +980,13 @@ type qmc_state_t
     type(dSFMT_state_t) :: rng_state
     ! BK tree object for multi-reference searching
     type(tree_t) :: secondary_ref_tree
+
+    ! Are we performing FCIQMC-tailored multi-reference CCMC? 
+    ! This means accumulating a list of highly occupied determinants (see below)
+    logical :: doing_fciqmc_tailored_mrccmc = .false.
+    ! Contains a list of (cumulatively) highest occupied determinants, and parameters about this list, 
+    ! used in a FCIQMC-tailored multi-reference CCMC run, where a short FCIQMC run is performed to determine the reference space.
+    type(highest_dets_t) :: highest_dets
 end type qmc_state_t
 
 ! Copies of various settings that are required during annihilation.  This avoids having to pass through lots of different

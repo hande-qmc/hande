@@ -82,6 +82,7 @@ contains
         use report, only: write_date_time_close
         use replica_rdm, only: update_rdm_from_spawns, calc_rdm_energy, write_final_rdm
         use state_histograms
+        use mrcc_utils, only: init_highest_dets_t, update_highest_dets, write_out_highest_dets
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -252,6 +253,12 @@ contains
             allocate(rdm(sys%basis%nbasis*(sys%basis%nbasis-1)/2,sys%basis%nbasis*(sys%basis%nbasis-1)/2), stat=ierr)
             call check_allocate('rdm', size(rdm), ierr)
             rdm = 0.0_p
+        end if
+
+        if (fciqmc_in%doing_fciqmc_tailored_mrccmc) then
+            ! Initiate parameters and arrays needed to accumulate highest occupied determinants.
+            print*, 'initialising highest dets'
+            call init_highest_dets_t(qs, sys, fciqmc_in)
         end if
 
         ! Main fciqmc loop.
@@ -455,6 +462,22 @@ contains
                                            sys%basis%info_string_len, rng)
 
             qs%psip_list%tot_nparticles = nparticles_old
+
+            if (all(qs%vary_shift) .and. qs%doing_fciqmc_tailored_mrccmc) then
+                ! Accumulate highest occupied determinants
+                if (qs%highest_dets%ireport < qs%highest_dets%nreports) then
+                    call update_highest_dets(qs, sys)
+                    if (qs%highest_dets%error) then
+                        call write_out_highest_dets(qs, sys, qs%highest_dets, trim(qs%highest_dets%det_file))
+                        soft_exit = .true.
+                    end if
+                    qs%highest_dets%ireport = qs%highest_dets%ireport + 1
+                else
+                    call update_highest_dets(qs, sys)
+                    call write_out_highest_dets(qs, sys, qs%highest_dets, trim(qs%highest_dets%det_file))
+                    soft_exit = .true.
+                end if
+            end if
 
             if (soft_exit) exit
 
