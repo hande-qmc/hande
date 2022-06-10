@@ -28,7 +28,9 @@ ccmc_opt = {
     mr_acceptance_search = 'bk_tree',
     mr_read_in = true,
     mr_excit_lvl = 2,
-    mr_secref_file = 'secondary_references'
+    mr_secref_file = 'secondary_references',
+    sym_only = true,
+    discard_threshold = 0.1,
 }
 
 psip_list = mp1_mc {
