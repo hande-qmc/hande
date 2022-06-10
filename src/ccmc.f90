@@ -340,6 +340,7 @@ contains
         use logging, only: logging_in_t, logging_t, logging_in_t_json, logging_t_json, write_logging_select_ccmc
         use report, only: write_date_time_close
         use excit_gens, only: p_single_double_coll_t
+        use mrcc_utils, only: init_highest_dets_t, update_highest_dets
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -372,7 +373,7 @@ contains
         type(logging_t) :: logging_info
         type(selection_data_t) :: selection_data
         type(semi_stoch_t) :: determ
-        logical :: determ_parent
+        logical :: determ_parent, semi_stoch_average_done
 
         logical :: soft_exit, dump_restart_shift, restarting, restart_proj_est
 
@@ -407,6 +408,8 @@ contains
             write (io_unit,'(1X,"----",/)')
         end if
 
+        semi_stoch_average_done = .false.
+
         restarting = present(qmc_state_restart) .or. restart_in%read_restart
         ! Check input options.
         if (parent) then
@@ -419,14 +422,6 @@ contains
             call check_ccmc_opts(sys, ccmc_in, qmc_in)
             call check_blocking_opts(sys, blocking_in, restart_in)
         end if
-
-        !if (semi_stoch_in%space == mp1_determ_space .and. present(psip_list_in)) then
-            ! We need to have performed an MP1 calculation beforehand to use mp1_determ_space
-            ! THIS IS NOT DONE!
-        !    call create_mp1_determ_space(semi_stoch_in)
-        !else if (semi_stoch_in%space == mp1_determ_space) then
-        !    call stop_all('do_ccmc', 'Asked for mp1_determ_space but no MP1 calculation performed.')
-        !end if
 
         ! Initialise data.
         call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, io_unit, annihilation_flags, qs, &
@@ -661,16 +656,31 @@ contains
                 end if
 
                 ! Should we turn on semistochastic CCMC?
-                if (iter == semi_stoch_iter .and. semi_stoch_in%space_type /= empty_determ_space) then
-                    determ%doing_semi_stoch = .true.
-                    call init_semi_stoch_t(determ, semi_stoch_in, sys, qs%propagator, qs%psip_list, qs%ref, annihilation_flags, &
-                                           qs%spawn_store%spawn, qmc_in%use_mpi_barriers, io_unit)
-                    if (nD0_proc == 1 .and. determ%flags(D0_pos) /= 0) then
-                        ! If for some reason D0 is not in the deterministic space, stop all
-                        ! Brian: [todo] - quietly add it in
-                        call stop_all('do_ccmc', 'D0 not in the deterministic space, something may have gone wrong.')
+                if ((iter == semi_stoch_iter .and. semi_stoch_in%space_type /= empty_determ_space) &
+                    .or. semi_stoch_average_done) then
+                    ! If semi_stoch_average_done, it implies semi_stoch_in%average == true and qs%averaging == true
+                    if (semi_stoch_in%average .and. .not. qs%averaging) then
+                        call init_highest_dets_t(qs, sys, ss_in=semi_stoch_in)
+                    else
+                        determ%doing_semi_stoch = .true.
+                        if (semi_stoch_average_done) then
+                            call init_semi_stoch_t(determ, semi_stoch_in, sys, qs%propagator, qs%psip_list, qs%ref, &
+                                                   annihilation_flags, qs%spawn_store%spawn, qmc_in%use_mpi_barriers, io_unit, &
+                                                   qs%highest_dets)
+                            ! This makes sure we only initialise determ once if averaging.
+                            semi_stoch_average_done = .false.
+                            qs%averaging = .false.
+                        else
+                            call init_semi_stoch_t(determ, semi_stoch_in, sys, qs%propagator, qs%psip_list, qs%ref, &
+                                                   annihilation_flags, qs%spawn_store%spawn, qmc_in%use_mpi_barriers, io_unit)
+                        end if
+                        if (nD0_proc == 1 .and. determ%flags(D0_pos) /= 0) then
+                            ! If for some reason D0 is not in the deterministic space, stop all
+                            ! Brian: [todo] - quietly add it in
+                            call stop_all('do_ccmc', 'D0 not in the deterministic space, something may have gone wrong.')
+                        end if
+                        call hamil_cc_transform(determ%hamil, determ%dets, qs%ref%f0)
                     end if
-                    call hamil_cc_transform(determ%hamil, determ%dets, qs%ref%f0)
                 end if
 
                 ! Note that 'death' in CCMC creates particles in the spawned
@@ -1003,6 +1013,21 @@ contains
                                            rng(0))
 
             qs%psip_list%tot_nparticles = nparticles_old
+
+            if (qs%averaging) then
+                ! Accumulate highest occupied determinants, for now we assume this is to determine the 'high pop' space 
+                ! for a semi-stochastic CCMC calculation.
+                if (qs%highest_dets%ireport < qs%highest_dets%nreports) then
+                    call update_highest_dets(qs, sys)
+                    if (qs%highest_dets%error) then
+                        semi_stoch_average_done = .true.
+                    end if
+                    qs%highest_dets%ireport = qs%highest_dets%ireport + 1
+                else
+                    call update_highest_dets(qs, sys)
+                    semi_stoch_average_done = .true.
+                end if
+            end if
 
             if (soft_exit) exit
 

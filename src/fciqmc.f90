@@ -463,7 +463,7 @@ contains
 
             qs%psip_list%tot_nparticles = nparticles_old
 
-            if (all(qs%vary_shift) .and. qs%doing_fciqmc_tailored_mrccmc) then
+            if (all(qs%vary_shift) .and. qs%averaging) then
                 ! Accumulate highest occupied determinants
                 if (qs%highest_dets%ireport < qs%highest_dets%nreports) then
                     call update_highest_dets(qs, sys)

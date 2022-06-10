@@ -16,21 +16,28 @@ implicit none
 
 contains
 
-    subroutine init_highest_dets_t(qs, sys, fciqmc_in)
+    subroutine init_highest_dets_t(qs, sys, fciqmc_in, ss_in)
 
         ! Initialises the derived type storing highest (cumulative) occupied determinants
 
         use parallel
         use errors, only: stop_all
-        use qmc_data, only: fciqmc_in_t
+        use qmc_data, only: fciqmc_in_t, semi_stoch_in_t
         use system, only: sys_t
         use checking, only: check_allocate
 
-        type(fciqmc_in_t), intent(in) :: fciqmc_in
+        type(fciqmc_in_t), intent(in), optional :: fciqmc_in
+        type(semi_stoch_in_t), intent(in), optional :: ss_in
         type(sys_t), intent(in) :: sys
         type(qmc_state_t), intent(inout) :: qs
 
         integer :: ierr, nelements
+        logical :: fciqmc_set, ss_set
+
+        fciqmc_set = .false.
+        ss_set = .false.
+        if (present(fciqmc_in)) fciqmc_set = .true.
+        if (present(ss_in)) ss_set = .true.
         
         ! Brian: [todo] - These should be sorted before review!
         if (nprocs > 1) then
@@ -41,18 +48,41 @@ contains
             call stop_all('init_highest_dets_t', 'FCIQMC-tailored mr-CCMC does not currently handle more than 64 basis functions.')
         end if
 
-        qs%doing_fciqmc_tailored_mrccmc = .true.
-        qs%highest_dets%nreports = fciqmc_in%mrcc_selection_nreports
+        qs%averaging = .true.
 
-        if (fciqmc_in%mrcc_selection_target_ndets > 0) then
-            qs%highest_dets%target_ndets = fciqmc_in%mrcc_selection_target_ndets
-            qs%highest_dets%using_target = .true.
-        else if (fciqmc_in%mrcc_selection_wfn_weightage > 0.0_p) then
-            qs%highest_dets%target_ndets = fciqmc_in%mrcc_selection_det_list_new_size
-            allocate(qs%highest_dets%nw_cumul_proc(nprocs), source=0.0_dp, stat=ierr)
-            call check_allocate('nw_cumul_proc', nprocs, ierr)
-            qs%highest_dets%wfn_weightage = fciqmc_in%mrcc_selection_wfn_weightage
-            qs%highest_dets%using_weightage = .true.
+        if (fciqmc_set) then
+            qs%highest_dets%nreports = fciqmc_in%mrcc_selection_nreports
+
+            if (fciqmc_in%mrcc_selection_target_ndets > 0) then
+                qs%highest_dets%target_ndets = fciqmc_in%mrcc_selection_target_ndets
+                qs%highest_dets%using_target = .true.
+            else if (fciqmc_in%mrcc_selection_wfn_weightage > 0.0_p) then
+                qs%highest_dets%target_ndets = fciqmc_in%mrcc_selection_det_list_new_size
+                allocate(qs%highest_dets%nw_cumul_proc(nprocs), source=0.0_dp, stat=ierr)
+                call check_allocate('nw_cumul_proc', nprocs, ierr)
+                qs%highest_dets%wfn_weightage = fciqmc_in%mrcc_selection_wfn_weightage
+                qs%highest_dets%using_weightage = .true.
+            end if
+            
+            qs%highest_dets%max_ndets = fciqmc_in%mrcc_selection_max_ndets
+            qs%highest_dets%det_file = fciqmc_in%mrcc_selection_dets_file
+        else if (ss_set) then
+            qs%highest_dets%nreports = ss_in%nreports
+            if (ss_in%target_size > 0) then
+                qs%highest_dets%target_ndets = ss_in%target_size
+                qs%highest_dets%using_target = .true.
+                qs%highest_dets%max_ndets = ss_in%max_ndets
+            else if (ss_in%wfn_weightage > 0.0_p) then
+                ! Just to be safe..
+                qs%highest_dets%target_ndets = 2*qs%psip_list%nstates
+                allocate(qs%highest_dets%nw_cumul_proc(nprocs), source=0.0_dp, stat=ierr)
+                call check_allocate('nw_cumul_proc', nprocs, ierr)
+                qs%highest_dets%wfn_weightage = ss_in%wfn_weightage
+                qs%highest_dets%using_weightage = .true.
+
+                ! [todo] - document why this is different than fciqmc_set, or better yet make them consistent
+                qs%highest_dets%max_ndets = 2*qs%psip_list%nstates
+            end if
         end if
 
         if (qs%highest_dets%using_target) then
@@ -62,14 +92,12 @@ contains
             ! No truncation will be done, so no absolute population need to be stored
             nelements = 1 + sys%basis%bit_string_len
         end if
-        
-        qs%highest_dets%max_ndets = fciqmc_in%mrcc_selection_max_ndets
-        qs%highest_dets%det_file = fciqmc_in%mrcc_selection_dets_file
+
 
         allocate(qs%highest_dets%det_list_main(nelements,qs%highest_dets%max_ndets), stat=ierr)
         call check_allocate('qs%highest_dets%det_list_main', nelements*qs%highest_dets%max_ndets, ierr)
 
-        ! We only collect the highest target_ndets determinants from each iteration, and then sort and merge it into the main
+        ! We only collect the highest target_ndets determinants from each report, and then sort and merge it into the main
         ! determinant list, which has more than target_ndets slots, so that we have some buffer space in the scenario where
         ! some determinants are initially less occupied but becomes more occupied later on
         allocate(qs%highest_dets%det_list_new(nelements,qs%highest_dets%target_ndets), stat=ierr)
@@ -92,7 +120,7 @@ contains
         type(sys_t), intent(in) :: sys
         real(dp) :: norm
 
-        norm = sqrt(real(sum((qs%psip_list%pops(1,:qs%psip_list%nstates))**2),dp))
+        norm = sqrt(sum((real(qs%psip_list%pops(1,:qs%psip_list%nstates),p)/qs%psip_list%pop_real_factor)**2))
 
         ! iproc is 0-indexed
         call get_highest_occupied_dets(sys, qs%highest_dets, qs%psip_list, norm)
@@ -121,16 +149,21 @@ contains
         real(dp), intent(in) :: norm
         type(sys_t), intent(in) :: sys
 
+        integer :: target_ndets
+
+        ! Careful not to collect meaningless data
+        target_ndets = min(hd%target_ndets, psip_list%nstates)
+
         if (hd%using_target) then
             ! The second last argument is for the array holding determinants, and the last for the corresponding population
-            call find_most_populated_dets(psip_list%states, psip_list%pops, psip_list%nstates, hd%target_ndets, &
+            call find_most_populated_dets(psip_list%states, psip_list%pops, psip_list%nstates, target_ndets, &
                                           hd%det_list_new(3:,:), hd%det_list_new(2,:), abs_pop = .false.)
 
             ! The first element is absolute pop, second is the signed population
             hd%det_list_new(1,:) = abs(hd%det_list_new(2,:))
 
             ! Only use the absolute population to sort (nsort=1)
-            hd%ndets_new = hd%target_ndets
+            hd%ndets_new = target_ndets
             call qsort(hd%det_list_new, head=hd%ndets_new, nsort=1)
             
         else if (hd%using_weightage) then
@@ -571,7 +604,7 @@ contains
         do while (weight < wfn_weight)
             ! Note that if we use MPI, this will be taking wfn_weight of each of the local slice of the wavefunction,
             ! to be combined at the end.
-            weight = weight + (psip_list_in%pops(1, args(i))/norm)**2
+            weight = weight + ((real(psip_list_in%pops(1, args(i)),p)/psip_list_in%pop_real_factor)/norm)**2
             ! Bitstring
             wfn_out(1:bit_string_len,j) = int(psip_list_in%states(1:bit_string_len,args(i)), int_s)
             ! Population

@@ -132,7 +132,7 @@ contains
     end subroutine init_semi_stoch_t_flags
 
     subroutine init_semi_stoch_t(determ, ss_in, sys, propagator, psip_list, reference, &
-                                 annihilation_flags, spawn, mpi_barriers, io_unit)
+                                 annihilation_flags, spawn, mpi_barriers, io_unit, highest_dets_in)
 
         ! Create a semi_stoch_t object which holds all of the necessary
         ! information to perform a semi-stochastic calculation. The type of
@@ -150,12 +150,14 @@ contains
         !    spawn: spawn_t object to which deterministic spawning will occur.
         !    mpi_barriers: If true then use an mpi_barrier call to measure
         !        load balancing before semi-stochastic communication.
+        !    highest_dets_in(optional): highest_dets_t object containing a time-averaged wavefunction 
+        !        used to create the deterministic space.
 
         use checking, only: check_allocate, check_deallocate
         use calc, only: doing_calc, dmqmc_calc
         use qmc_data, only: empty_determ_space, high_pop_determ_space, read_determ_space, reuse_determ_space, ci_determ_space, &
                             cas_determ_space, semi_stoch_separate_annihilation, particle_t, annihilation_flags_t, &
-                            semi_stoch_in_t, propagator_t
+                            semi_stoch_in_t, propagator_t, highest_dets_t
         use parallel
         use sort, only: qsort
         use spawn_data, only: spawn_t
@@ -174,6 +176,7 @@ contains
         type(spawn_t), intent(in) :: spawn
         logical, intent(in) :: mpi_barriers
         integer, intent(in) :: io_unit
+        type(highest_dets_t), intent(in), optional :: highest_dets_in
 
         integer :: i, ierr, determ_dets_mem, max_nstates, n_spawnees
         integer :: displs(0:nprocs-1)
@@ -235,7 +238,12 @@ contains
         ! deterministic space will be used. This is the default behaviour
         ! (space_type = empty_determ_space).
         if (ss_in%space_type == high_pop_determ_space) then
-            call create_high_pop_space(dets_this_proc, psip_list, spawn, ss_in%target_size, determ%sizes(iproc))
+            if (ss_in%average) then
+                call create_high_pop_space(sys, dets_this_proc, psip_list, spawn, ss_in%target_size, determ%sizes(iproc), &
+                                           highest_dets_in)
+            else
+                call create_high_pop_space(sys, dets_this_proc, psip_list, spawn, ss_in%target_size, determ%sizes(iproc))
+            end if
         else if (ss_in%space_type == read_determ_space) then
             call read_determ_from_file(dets_this_proc, determ, spawn, sys, ss_in%read_id, print_info, io_unit)
         else if (ss_in%space_type == reuse_determ_space) then
@@ -1317,7 +1325,7 @@ contains
 
     end subroutine add_det_to_determ_space
 
-    subroutine create_high_pop_space(dets_this_proc, psip_list, spawn, target_size, determ_size_this_proc)
+    subroutine create_high_pop_space(sys, dets_this_proc, psip_list, spawn, target_size, determ_size_this_proc, highest_dets)
 
         ! Find the most highly populated determinants in psip_list%states and use
         ! these to define the deterministic space.
@@ -1326,6 +1334,7 @@ contains
         !    dets_this_proc: The deterministic states belonging to this
         !        processor in the final created deterministic space.
         ! In:
+        !    sys: system under study
         !    psip_list: particle_t object containing psip information.
         !    spawn: spawn_t object to which deterministic spawning will occur.
         !    target_size: Size of deterministic space to use if possible. If
@@ -1336,15 +1345,18 @@ contains
         !        on this processor only.
 
         use checking, only: check_allocate, check_deallocate
-        use qmc_data, only: particle_t
+        use qmc_data, only: particle_t, highest_dets_t
         use parallel
         use spawn_data, only: spawn_t
+        use system, only: sys_t
 
+        type(sys_t), intent(in) :: sys
         integer(i0), intent(out) :: dets_this_proc(:,:)
         type(particle_t), intent(in) :: psip_list
         type(spawn_t), intent(in) :: spawn
         integer, intent(in) :: target_size
         integer, intent(out) :: determ_size_this_proc
+        type(highest_dets_t), intent(in), optional :: highest_dets
 
         integer :: ndets, ndets_tot, determ_size
         integer :: all_ndets(0:nprocs-1), displs(0:nprocs)
@@ -1355,54 +1367,86 @@ contains
         integer :: i, ind_local, ierr
         logical :: on_this_proc
 
-        ! If there are less determinants on this processor than the target
-        ! number then obviously we need to consider a smaller number.
-        ndets = min(target_size, psip_list%nstates)
+        if (.not. present(highest_dets)) then
 
-        ! all_ndets will hold the values of ndets from each processor.
+            ! If there are less determinants on this processor than the target
+            ! number then obviously we need to consider a smaller number.
+            ndets = min(target_size, psip_list%nstates)
+
+            ! all_ndets will hold the values of ndets from each processor.
 #ifdef PARALLEL
-        call mpi_allgather(ndets, 1, mpi_integer, all_ndets, 1, mpi_integer, MPI_COMM_WORLD, ierr)
+            call mpi_allgather(ndets, 1, mpi_integer, all_ndets, 1, mpi_integer, MPI_COMM_WORLD, ierr)
 #else
-        all_ndets = ndets
+            all_ndets = ndets
 #endif
-        ndets_tot = sum(all_ndets)
+            ndets_tot = sum(all_ndets)
 
-        ! Displacements used for MPI communication.
-        displs(0) = 0
-        do i = 1, nprocs-1
-            displs(i) = displs(i-1) + all_ndets(i-1)
-        end do
-        displs(nprocs) = ndets_tot
+            ! Displacements used for MPI communication.
+            displs(0) = 0
+            do i = 1, nprocs-1
+                displs(i) = displs(i-1) + all_ndets(i-1)
+            end do
+            displs(nprocs) = ndets_tot
 
-        determ_size = target_size
-        ! If there are fewer determinants on all processors than the target
-        ! number then we will have to use a smaller deterministic space than
-        ! requested.
-        if (target_size > ndets_tot) determ_size = ndets_tot
+            determ_size = target_size
+            ! If there are fewer determinants on all processors than the target
+            ! number then we will have to use a smaller deterministic space than
+            ! requested.
+            if (target_size > ndets_tot) determ_size = ndets_tot
 
-        allocate(determ_dets(size(dets_this_proc, dim=1), ndets), stat=ierr)
-        call check_allocate('determ_dets', size(dets_this_proc, dim=1)*ndets, ierr)
-        allocate(determ_pops(ndets), stat=ierr)
-        call check_allocate('determ_pops', ndets, ierr)
-        allocate(all_determ_pops(ndets_tot), stat=ierr)
-        call check_allocate('all_determ_pops', ndets_tot, ierr)
-        allocate(indices(determ_size), stat=ierr)
-        call check_allocate('indices', determ_size, ierr)
+            allocate(determ_dets(size(dets_this_proc, dim=1), ndets), stat=ierr)
+            call check_allocate('determ_dets', size(dets_this_proc, dim=1)*ndets, ierr)
+            allocate(determ_pops(ndets), stat=ierr)
+            call check_allocate('determ_pops', ndets, ierr)
+            allocate(all_determ_pops(ndets_tot), stat=ierr)
+            call check_allocate('all_determ_pops', ndets_tot, ierr)
+            allocate(indices(determ_size), stat=ierr)
+            call check_allocate('indices', determ_size, ierr)
 
-        ! In determ_dets and determ_pops, return the determinants and
-        ! populations of the most populated determinants on this processor.
-        call find_most_populated_dets(psip_list%states, psip_list%pops, &
-                                      psip_list%nstates, ndets, determ_dets, determ_pops)
+            ! In determ_dets and determ_pops, return the determinants and
+            ! populations of the most populated determinants on this processor.
+            call find_most_populated_dets(psip_list%states, psip_list%pops, &
+                                          psip_list%nstates, ndets, determ_dets, determ_pops)
 
-        ! Create a joined list, all_determ_pops, of the most populated
-        ! determinants from each processor.
+            ! Create a joined list, all_determ_pops, of the most populated
+            ! determinants from each processor.
 #ifdef PARALLEL
-        call mpi_allgatherv(determ_pops, ndets, mpi_pop_integer, all_determ_pops, all_ndets, &
-                            displs(0:nprocs-1), mpi_pop_integer, MPI_COMM_WORLD, ierr)
+            call mpi_allgatherv(determ_pops, ndets, mpi_pop_integer, all_determ_pops, all_ndets, &
+                                displs(0:nprocs-1), mpi_pop_integer, MPI_COMM_WORLD, ierr)
 #else
-        ! In serial these arrays are of equal size.
-        all_determ_pops = determ_pops
+            ! In serial these arrays are of equal size.
+            all_determ_pops = determ_pops
 #endif
+        else
+            if (highest_dets%using_target) then
+                ndets = highest_dets%target_ndets
+            else if (highest_dets%using_weightage) then
+                ndets = highest_dets%ndets
+            end if
+            determ_size = ndets
+            ndets_tot = ndets
+            ! Dummpy displs.
+            displs(0) = 0
+            displs(1) = ndets
+
+            allocate(determ_dets(size(dets_this_proc, dim=1), ndets), stat=ierr)
+            call check_allocate('determ_dets', size(dets_this_proc, dim=1)*ndets, ierr)
+            allocate(determ_pops(ndets), stat=ierr)
+            call check_allocate('determ_pops', ndets, ierr)
+            allocate(all_determ_pops(ndets), stat=ierr)
+            call check_allocate('all_determ_pops', ndets, ierr)
+            allocate(indices(ndets), stat=ierr)
+            call check_allocate('indices', ndets, ierr)
+
+            if (highest_dets%using_target) then
+                determ_dets(:,1:ndets) = highest_dets%det_list_main(3:,highest_dets%ndets-ndets+1:highest_dets%ndets)
+                ! first element is the absolute population
+                all_determ_pops(1:ndets) = highest_dets%det_list_main(1,highest_dets%ndets-ndets+1:highest_dets%ndets)
+            else if (highest_dets%using_weightage) then
+                determ_dets(:,1:ndets) = highest_dets%det_list_main(1:sys%basis%bit_string_len,1:ndets)
+                all_determ_pops(1:ndets) = abs(highest_dets%det_list_main(sys%basis%bit_string_len+1,1:ndets))
+            end if
+        end if
 
         ! In the array indices return a list of indices of the determ_size
         ! populations in all_determ_pops which are largest.

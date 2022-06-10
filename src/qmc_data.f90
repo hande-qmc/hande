@@ -343,6 +343,12 @@ type semi_stoch_in_t
     integer :: ci_range(2) = (/-1, -1/)
     ! Used if a CAS is used to create the deterministic space.
     integer :: cas(2) = (/-1, -1/)
+
+    logical :: average = .false.
+    real(p) :: wfn_weightage = -1.0_p
+    integer :: max_ndets = -1
+    integer :: nreports = -1
+
 end type semi_stoch_in_t
 
 type ccmc_in_t
@@ -981,11 +987,10 @@ type qmc_state_t
     ! BK tree object for multi-reference searching
     type(tree_t) :: secondary_ref_tree
 
-    ! Are we performing FCIQMC-tailored multi-reference CCMC? 
+    ! Are we averaging the wavefunction currently, e.g. for a FCIQMC-tailored CCMC or to establish a deterministic space? 
     ! This means accumulating a list of highly occupied determinants (see below)
-    logical :: doing_fciqmc_tailored_mrccmc = .false.
-    ! Contains a list of (cumulatively) highest occupied determinants, and parameters about this list, 
-    ! used in a FCIQMC-tailored multi-reference CCMC run, where a short FCIQMC run is performed to determine the reference space.
+    logical :: averaging = .false.
+    ! Contains a list of (cumulatively) highest occupied determinants, and parameters about this list.
     type(highest_dets_t) :: highest_dets
 end type qmc_state_t
 
@@ -1207,7 +1212,10 @@ contains
         call reference_t_json(js, semi_stoch%ci_space, key='ci_space')
         call json_write_key(js, 'use_ci_range', semi_stoch%use_ci_range)
         call json_write_key(js, 'ci_range', semi_stoch%ci_range)
-        call json_write_key(js, 'cas', semi_stoch%cas)
+        call json_write_key(js, 'average', semi_stoch%average)
+        call json_write_key(js, 'wfn_weightage', semi_stoch%wfn_weightage)
+        call json_write_key(js, 'max_ndets', semi_stoch%max_ndets)
+        call json_write_key(js, 'nreports', semi_stoch%nreports)
         call json_write_key(js, 'separate_stats', semi_stoch%separate_stats, terminal=.true.)
         call json_object_end(js, terminal)
 

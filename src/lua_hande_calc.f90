@@ -1473,15 +1473,19 @@ contains
 
         ! semi_stoch = {
         !     space = 'read'/'high'/'ci'/'cas', -- required if semi_stoch table exists.
-        !     size = target_pop,                -- required if space == 'high'
+        !     size = target_pop,                -- required if space == 'high', and average == 'false'.
         !     start_iteration = mc_cycles,
-        !     shift_start_iteration = mc_cycle, -- overrides start_iteration
+        !     shift_start_iteration = mc_cycle, -- overrides start_iteration.
         !     separate_annihilation = true/false,
         !     write = true/false/id,
         !     read = id,
         !     ci_space = { ... },               -- one of these required if space == 'ci'. Reference table.
         !     ci_range = {lo, hi},              -- one of these required if space == 'ci'. Two-integer array.
         !     separate_stats = true/false, 
+        !     average = true/false,
+        !     wfn_weightage = float,            -- one of this or size required if average == true.
+        !     max_ndets = integer,              -- required if average == true.
+        !     nreports = integer,               -- required if average == true.
         ! }
 
         ! In/Out:
@@ -1515,9 +1519,10 @@ contains
         character(len=10) :: str
         logical :: separate_annihilation
         integer, allocatable :: ci_range(:), cas(:), err_arr(:)
-        character(21), parameter :: keys(10) = [character(21) :: 'space', 'size', 'start_iteration', 'separate_annihilation', &
+        character(21), parameter :: keys(14) = [character(21) :: 'space', 'size', 'start_iteration', 'separate_annihilation', &
                                                                 'shift_start_iteration', 'write_determ_space', 'write', 'read', &
-                                                                'ci_space', 'separate_stats']
+                                                                'ci_space', 'separate_stats', 'average', 'wfn_weightage', &
+                                                                'max_ndets', 'nreports']
 
         if (aot_exists(lua_state, opts, 'semi_stoch')) then
 
@@ -1536,8 +1541,30 @@ contains
                     semi_stoch_in%target_size = -1
                 case('high')
                     semi_stoch_in%space_type = high_pop_determ_space
-                    call aot_get_val(semi_stoch_in%target_size, err, lua_state, semi_stoch_table, 'size')
-                    if (err /= 0 .and. parent) call stop_all('read_semi_stoch_in', 'Target space size not given.')
+                    call aot_get_val(semi_stoch_in%average, err, lua_state, semi_stoch_table, 'average')
+                    if (.not. semi_stoch_in%average) then
+                        call aot_get_val(semi_stoch_in%target_size, err, lua_state, semi_stoch_table, 'size')
+                        if (err /= 0 .and. parent) call stop_all('read_semi_stoch_in', 'Target space size not given.')
+                        if (semi_stoch_in%target_size < 1) call stop_all('read_semi_stoch_in', 'Target space size smaller than 1.')
+                    else
+                        !if (.not. aot_exists(lua_state, semi_stoch_table, 'shift_start_iteration')) &
+                        !    call stop_all('read_semi_stoch_in', 'If averaging, shift_start_iteration must be set!')
+                        call aot_get_val(semi_stoch_in%target_size, err, lua_state, semi_stoch_table, 'size')
+                        call aot_get_val(semi_stoch_in%wfn_weightage, err, lua_state, semi_stoch_table, 'wfn_weightage')
+                        if (aot_exists(lua_state, semi_stoch_table, 'size') .and. & 
+                            aot_exists(lua_state, semi_stoch_table, 'wfn_weightage')) then
+                            call stop_all('read_semi_stoch_in', 'Both size and wfn_weightage are provided, choose one!')
+                        else if (.not. aot_exists(lua_state, semi_stoch_table, 'size') .and. & 
+                                 .not. aot_exists(lua_state, semi_stoch_table, 'wfn_weightage')) then
+                            call stop_all('read_semi_stoch_in', 'One of size and wfn_weightage needs to be provided!')
+                        end if
+                        if (aot_exists(lua_state, semi_stoch_table, 'size')) then
+                            call aot_get_val(semi_stoch_in%max_ndets, err, lua_state, semi_stoch_table, 'max_ndets')
+                            if (semi_stoch_in%max_ndets < semi_stoch_in%target_size) &
+                                call stop_all('read_semi_stoch_in', 'max_ndets smaller than target space size!') 
+                        end if
+                        call aot_get_val(semi_stoch_in%nreports, err, lua_state, semi_stoch_table, 'nreports')
+                    end if
                 case('ci')
                     semi_stoch_in%space_type = ci_determ_space
                     call read_reference_t(lua_state, semi_stoch_table, semi_stoch_in%ci_space, ref_table_name='ci_space')
