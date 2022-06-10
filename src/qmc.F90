@@ -1319,16 +1319,11 @@ contains
             qs%ref%max_ex_level = total_max
         else
             core_bstring = 0_i0
-            if (sys%CAS(1) == -1) then
-                ! -1 is the default (unset) value
-                do i = 0, qs%mr_n_frozen-1
-                    core_bstring = ibset(core_bstring, i)
-                end do
-            else
-                do i = 0, qs%mr_n_frozen-sys%cas(1)-1
-                    core_bstring = ibset(core_bstring, i)
-                end do
-            end if
+            ! -1 is the default (unset) value
+            ! mr_n_frozen already takes the CAS into account in lua_hande_calc::read_ccmc_in
+            do i = 0, qs%mr_n_frozen-1
+                core_bstring = ibset(core_bstring, i)
+            end do
 
             allocate(read_in_ref%occ_list0(sys%nel))
             open(newunit=ir, file=qs%mr_secref_file, status='old', form='formatted', action='read')            
