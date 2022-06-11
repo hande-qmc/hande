@@ -357,6 +357,9 @@ type ccmc_in_t
     integer :: mr_acceptance_search
     ! Name of the file containing secondary references (only if mr_read_in is true).
     character(255) :: mr_secref_file
+    ! The bit string length used in the secondary reference file. 
+    ! This enables reading in references with more than 64 basis functions.
+    integer :: secref_bit_string_len
     ! CC level from every secondary reference.
     integer :: mr_excit_lvl = -1
     ! Number of frozen electrons to add to the secondary references.
@@ -919,11 +922,11 @@ type qmc_state_t
     type(trial_t) :: trial
     type(restart_in_t) :: restart_in
     ! Flags for multireference CCMC calculations.
-    logical :: multiref = .false., mr_read_in = .false.
-    integer :: n_secondary_ref = 0, mr_n_frozen, mr_excit_lvl
+    logical :: multiref = .false.
     type(reference_t), allocatable :: secondary_refs(:)
     integer :: mr_acceptance_search
-    character(255) :: mr_secref_file
+    ! BK tree object for multi-reference searching
+    type(tree_t) :: secondary_ref_tree
     ! WARNING: par_info is the 'reference/master' (ie correct) version
     ! of parallel_t, in particular of proc_map_t.  However, copies of it
     ! are kept in spawn_t objects, and it is these copies which are used
@@ -940,8 +943,6 @@ type qmc_state_t
     ! String representing state of RNG. Should be set, used and deallocated as quickly as possible as it becomes invalid as soon as
     ! the next random number is drawn -- only present really for a convenient way of handling the RNG state during restarts.
     type(dSFMT_state_t) :: rng_state
-    ! BK tree object for multi-reference searching
-    type(tree_t) :: secondary_ref_tree
 end type qmc_state_t
 
 ! Copies of various settings that are required during annihilation.  This avoids having to pass through lots of different
@@ -1206,6 +1207,7 @@ contains
                 &printing suppressed, consider using the mr_read_in functionality.')
             end if
             call json_write_key(js, 'mr_secref_file', ccmc%mr_secref_file)
+            call json_write_key(js, 'secref_bit_string_len', ccmc%secref_bit_string_len)
             call json_write_key(js, 'mr_acceptance_search', ccmc%mr_acceptance_search)
             call json_write_key(js, 'mr_excit_lvl', ccmc%mr_excit_lvl)
             call json_write_key(js, 'mr_n_frozen', ccmc%mr_n_frozen)

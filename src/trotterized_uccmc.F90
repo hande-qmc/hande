@@ -243,14 +243,6 @@ contains
             ! Initialise multireference CCMC specific data.
             qs%multiref = .true.
             qs%mr_acceptance_search = ccmc_in%mr_acceptance_search
-            qs%n_secondary_ref = ccmc_in%n_secondary_ref
-            if(ccmc_in%mr_read_in) then
-                qs%mr_read_in = ccmc_in%mr_read_in
-                qs%mr_secref_file = ccmc_in%mr_secref_file
-                qs%mr_n_frozen = ccmc_in%mr_n_frozen
-                qs%mr_excit_lvl = ccmc_in%mr_excit_lvl
-            end if
-
             call init_secondary_references(sys, ccmc_in, io_unit, qs)
         else 
             qs%ref%max_ex_level = qs%ref%ex_level

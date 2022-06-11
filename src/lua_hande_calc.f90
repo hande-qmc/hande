@@ -1725,15 +1725,17 @@ contains
         use lua_hande_utils, only: warn_unused_args
         use system, only: sys_t
         use errors, only: stop_all
+        use checking, only: check_allocate
 
         type(flu_State), intent(inout) :: lua_state
         integer, intent(in) :: opts
         type (sys_t), intent(in) :: sys
         type(ccmc_in_t), intent(out) :: ccmc_in
 
-        integer :: ccmc_table, err, i, ir, ios, nel, iel
-        integer(i0) :: bstring
-        character(255) :: err_msg
+        integer :: ccmc_table, err, i, ir, ios, nel, iel, bit_string_len, ierr
+        integer(i0) :: test_arr(50)
+        integer(i0), allocatable :: bstring(:)
+        character(255) :: err_msg, test_line
         character(28), parameter :: keys(16) = [character(28) :: 'move_frequency', 'cluster_multispawn_threshold', &
                                                                 'full_non_composite', 'linked', 'vary_shift_reference', &
                                                                 'density_matrices', 'density_matrix_file', 'even_selection', &
@@ -1785,14 +1787,34 @@ contains
                     inquire(file=ccmc_in%mr_secref_file, exist=secref_exist)
                     if (.not. secref_exist) call stop_all('read_ccmc_in','mr_secref_file not found!')
 
-                    ! Find out how many secondary references are in the file
+                    
                     open(newunit=ir, file=ccmc_in%mr_secref_file, status='old', form='formatted', action='read')
+                    ! Find out the bit string length used in the file
+                    read(ir, '(A)') test_line
+                    test_line = trim(test_line)
+                    ! ios==iostat_end occurs 1 iteration after the actual end, 
+                    ! i.e., if there are two columns, ios==iostat_end will occur at i==3, therefore ncols start at 0.
+                    ccmc_in%secref_bit_string_len = 0
+                    do i = 1, size(test_arr)
+                        read(test_line, *, iostat=ios) test_arr(1:i)
+                        ! The smallest i for which the test_line can be read is the number of columns.
+                        if (ios == iostat_end) exit
+                        ccmc_in%secref_bit_string_len = ccmc_in%secref_bit_string_len + 1
+                    end do
+                    rewind(ir)
+
+                    allocate(bstring(ccmc_in%secref_bit_string_len), stat=ierr)
+                    call check_allocate('bstring', ccmc_in%secref_bit_string_len, ierr)
+
+                    ! Find out how many secondary references are in the file
                     ccmc_in%n_secondary_ref = 0
                     do
-                        read(ir, *, iostat=ios) bstring
+                        bstring(:) = 0_i0
+                        read(ir, *, iostat=ios) bstring(1:ccmc_in%secref_bit_string_len)
+                        if (ios == iostat_end) exit
 
                         ! Make sure all of them have the same number of electrons as the first one, which we assume to be correct.
-                        iel = count_set_bits(bstring)
+                        iel = sum(count_set_bits(bstring))
                         ! Check that the bitstrings are sensible..
                         if (ccmc_in%n_secondary_ref == 0) then
                             nel = iel
@@ -1814,8 +1836,6 @@ contains
                                 bstring,' does not contain the same number of electrons as the first reference!'
                             call stop_all('read_ccmc_in', trim(err_msg))
                         end if
-
-                        if (ios == iostat_end) exit
                         ccmc_in%n_secondary_ref = ccmc_in%n_secondary_ref + 1
                     end do
 
