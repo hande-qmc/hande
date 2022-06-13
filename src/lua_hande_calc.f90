@@ -451,6 +451,7 @@ contains
         use flu_binding, only: flu_State, flu_copyptr
         use aot_table_module, only: aot_table_top, aot_table_close
 
+        use const, only: p
         use dmqmc_data, only: dmqmc_in_t
         use ccmc, only: do_ccmc
         use lua_hande_system, only: get_sys_t
@@ -486,11 +487,11 @@ contains
 
         logical :: have_restart_state, have_psip_list
         integer :: opts, io_unit
-        real :: t1, t2
+        integer(p) :: t1, t2, count_rate, count_max
         character(10), parameter :: keys(10) = [character(10) :: 'sys', 'qmc', 'ccmc', 'restart', 'reference', 'qmc_state', &
                                                                 'logging', 'output', 'blocking', 'psip_list']
 
-        call cpu_time(t1)
+        call system_clock(t1, count_rate, count_max)
 
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys)
@@ -559,8 +560,11 @@ contains
         call push_qmc_state(lua_state, qmc_state_out)
         nresult = 1
 
-        call cpu_time(t2)
-        call register_timing(lua_state, "CCMC calculation", t2-t1)
+        call system_clock(t2)
+
+        if (t2 < t1) t2 = t2 + count_max
+
+        call register_timing(lua_state, "CCMC calculation", real(t2-t1)/count_rate)
 
     end function lua_ccmc
 

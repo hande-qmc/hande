@@ -381,7 +381,7 @@ contains
         character(36) :: uuid_restart
         type(ex_lvl_dist_t) :: ex_lvl_dist
 
-        real :: t1, t2
+        integer(p) :: t1, t2, count_rate, count_max
 
         logical :: update_tau, error
 
@@ -574,7 +574,7 @@ contains
         call initial_qmc_status(sys, qmc_in, qs, nparticles_old, doing_ccmc=.true., io_unit=io_unit)
 
         ! Initialise timer.
-        call cpu_time(t1)
+        call system_clock(t1, count_rate, count_max)
 
         ! The iteration on which to start performing semi-stochastic.
         semi_stoch_iter = qs%mc_cycles_done + semi_stoch_in%start_iter
@@ -911,10 +911,13 @@ contains
                                  error=error, vary_shift_reference=ccmc_in%vary_shift_reference)
             if (error) exit
 
-            call cpu_time(t2)
+            call system_clock(t2)
+
+            if (t2 < t1) t2 = t2 + count_max
+
             if (parent) then
                 if (bloom_stats%nblooms_curr > 0) call bloom_stats_warning(bloom_stats, io_unit=io_unit)
-                call write_qmc_report(qmc_in, qs, ireport, nparticles_old, t2-t1, .false., .false., &
+                call write_qmc_report(qmc_in, qs, ireport, nparticles_old, real(t2-t1)/count_rate, .false., .false., &
                                         io_unit=io_unit, cmplx_est=sys%read_in%comp, rdm_energy=ccmc_in%density_matrices, &
                                         nattempts=.true.)
                 if (blocking_in%blocking_on_the_fly) then
