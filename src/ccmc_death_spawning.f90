@@ -156,13 +156,8 @@ contains
             end if
         end if
         ! 3. Attempt spawning.
-        if (qs%cheby_prop%using_chebyshev) then
-            nspawn = attempt_to_spawn(rng, qs%cheby_prop%weights(qs%cheby_prop%icheb), spawn_cutoff, &
+        nspawn = attempt_to_spawn(rng, qs%tau*qs%cheby_prop%weights(qs%cheby_prop%icheb), spawn_cutoff, &
                                   qs%psip_list%pop_real_factor, hmatel%r, pgen, parent_sign)
-        else
-            nspawn = attempt_to_spawn(rng, qs%tau, spawn_cutoff, qs%psip_list%pop_real_factor, hmatel%r, pgen, parent_sign)
-        end if
-
         if (nspawn /= 0_int_p) then
             ! 4. Convert the random excitation from a determinant into an
             ! excitor.  This might incur a sign change and hence result in

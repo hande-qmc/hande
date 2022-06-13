@@ -244,16 +244,11 @@ type qmc_in_t
     logical :: chebyshev = .false.
     ! Default so the loop over the original qmc cycle code only gets executed once if not using Chebyshev
     integer :: chebyshev_order = 1 
-    ! Saving the original tau to switch back to linear propagation for statistic collection
-    real(p) :: tau_save = 0.0_p
     ! Fudge factors: E_max = (E_max + shift) * scale
     real(p) :: chebyshev_shift = 0.0_p
     real(p) :: chebyshev_scale = 1.1_p
-    ! Turn off the Chebyshev projector when target population is reached
-    logical :: disable_chebyshev_shoulder = .false.
-    ! The iteration after shoulder is reached where we start collecting statistics with the linear projector
-    integer :: disable_chebyshev_lag = 0    
-
+    ! Do we skip the Gershgorin estimate of upper spectral range and just use the highest diagonal (with fudge factors)?
+    logical :: chebyshev_skip_gershgorin = .false.
 end type qmc_in_t
 
 type fciqmc_in_t
@@ -1072,15 +1067,17 @@ contains
         call json_write_key(js, 'ncycles', qmc%ncycles)
         call json_write_key(js, 'nreport', qmc%nreport)
         call json_write_key(js, 'power_pitzer_min_weight', qmc%power_pitzer_min_weight)
+        call json_write_key(js, 'chebyshev', qmc%chebyshev)
+        if (qmc%chebyshev) then
+            call json_write_key(js, 'chebyshev_order', qmc%chebyshev_order)
+            call json_write_key(js, 'chebyshev_shift', qmc%chebyshev_shift)
+            call json_write_key(js, 'chebyshev_scale', qmc%chebyshev_scale)
+            call json_write_key(js, 'skip_gershgorin', qmc%chebyshev_skip_gershgorin)
+        end if
         call json_write_key(js, 'quasi_newton', qmc%quasi_newton)
         call json_write_key(js, 'quasi_newton_threshold', qmc%quasi_newton_threshold)
         call json_write_key(js, 'quasi_newton_value', qmc%quasi_newton_value)
-        call json_write_key(js, 'quasi_newton_pop_control', qmc%quasi_newton_pop_control)
-        call json_write_key(js, 'chebyshev', qmc%chebyshev)
-        call json_write_key(js, 'chebyshev_order', qmc%chebyshev_order)
-        call json_write_key(js, 'chebyshev_shift', qmc%chebyshev_shift)
-        call json_write_key(js, 'chebyshev_scale', qmc%chebyshev_scale, .true.)
-
+        call json_write_key(js, 'quasi_newton_pop_control', qmc%quasi_newton_pop_control, .true.)
         call json_object_end(js, terminal)
 
     end subroutine qmc_in_t_json

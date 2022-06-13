@@ -128,7 +128,7 @@ contains
         logical :: determ_parent, restart_proj_est
 
         real :: t1, t2
-        logical :: update_tau, restarting, imag, reached_shoulder
+        logical :: update_tau, restarting, imag
 
         ! Physical notation: rdm(p,q,r,s) = <Psi|a_p^+a_q^+a_sa_r|Psi>
         real(p), allocatable :: rdm(:,:)
@@ -272,9 +272,6 @@ contains
             open(newunit=iunit, file=blocking_in%filename, status='unknown')
             call write_blocking_report_header(iunit, sys%read_in%comp)
         end if
-
-        ! Used for turning off the Chebyshev propagator
-        reached_shoulder = .false.
 
         do ireport = 1, qmc_in%nreport
 

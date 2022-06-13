@@ -89,40 +89,42 @@ contains
 
             qs%cheby_prop%order = qmc_in%chebyshev_order
 
-            qs%cheby_prop%disable_chebyshev_shoulder = qmc_in%disable_chebyshev_shoulder
-            qs%cheby_prop%disable_chebyshev_lag = qmc_in%disable_chebyshev_lag
-
             allocate(qs%cheby_prop%zeroes(qs%cheby_prop%order), stat=ierr)
             call check_allocate('qs%cheby_prop%zeroes', qs%cheby_prop%order, ierr)
             allocate(qs%cheby_prop%weights(qs%cheby_prop%order), stat=ierr)
             call check_allocate('qs%cheby_prop%weights', qs%cheby_prop%order, ierr)
 
             call highest_det(sys, occ_list_max)
-            call enumerate_determinants(sys, .true., .false., 2, sym_space_size, ndets, singles_doubles,&
-                                        sys%symmetry, occ_list_max) ! init first
-            call enumerate_determinants(sys, .false., .false., 2, sym_space_size, ndets, singles_doubles,&
-                                        sys%symmetry, occ_list_max) ! store determs
-            ! BZ [TODO] - Make sure this works with even selection, which has 1 info_string in tot_string_len
             allocate(f_max(sys%basis%tot_string_len), stat=ierr)
             call check_allocate('f_max', sys%basis%tot_string_len, ierr)
 
             call encode_det(sys%basis, occ_list_max, f_max)
 
-            ! The Gershgorin circle theorem gives us the upper bound on the highest eigenvalue (in the current symmetry sector): 
-            ! E_{N-1} \leq H_{N-1, N-1} + \sum_{i \neq N-1} abs(H_{i, N-1})
-            e_max = 0.0_p
-            do i=1, ndets
-                ! BZ [TODO] - Deal with complex systems
-                ! Note 'offdiagel' here actually includes the diagonal element, as enumerate_determinant returns it
-                offdiagel = get_hmatel(sys, f_max, singles_doubles(:,i))
-                e_max = e_max + abs(offdiagel%r)
-            end do
+            if (.not. qmc_in%chebyshev_skip_gershgorin) then
+                call enumerate_determinants(sys, .true., .false., 2, sym_space_size, ndets, singles_doubles,&
+                                            sys%symmetry, occ_list_max) ! init first
+                call enumerate_determinants(sys, .false., .false., 2, sym_space_size, ndets, singles_doubles,&
+                                            sys%symmetry, occ_list_max) ! store determinants
 
-            offdiagel = get_hmatel(sys, f_max, f_max)
-            ! In HANDE we set E_HF to zero
-            e_max = e_max - abs(offdiagel%r) + offdiagel%r - qs%ref%H00
-            ! Fudge factors: E_max = (E_max + shift) * scale
-            e_max = (e_max + qmc_in%chebyshev_shift) * qmc_in%chebyshev_scale
+                ! The Gershgorin circle theorem gives us the upper bound on the highest eigenvalue (in the current symmetry sector): 
+                ! E_{N-1} \leq H_{N-1, N-1} + \sum_{i \neq N-1} abs(H_{i, N-1})
+                e_max = 0.0_p
+                do i=1, ndets
+                    ! BZ [TODO] - Deal with complex systems
+                    ! Note 'offdiagel' here actually includes the diagonal element, as enumerate_determinant returns it
+                    offdiagel = get_hmatel(sys, f_max, singles_doubles(:,i))
+                    e_max = e_max + abs(offdiagel%r)
+                end do
+                offdiagel = get_hmatel(sys, f_max, f_max)
+                ! E_HF is zero
+                e_max = e_max - abs(offdiagel%r) + offdiagel%r - qs%ref%H00
+                ! Fudge factors: E_max = (E_max + shift) * scale
+                e_max = (e_max + qmc_in%chebyshev_shift) * qmc_in%chebyshev_scale
+            else
+                offdiagel = get_hmatel(sys, f_max, f_max)
+                e_max = offdiagel%r - qs%ref%H00
+                e_max = (e_max + qmc_in%chebyshev_shift) * qmc_in%chebyshev_scale
+            end if
 
             qs%cheby_prop%spectral_range(1) = 0.0_p
             qs%cheby_prop%spectral_range(2) = e_max
@@ -206,40 +208,5 @@ contains
         end do
 
     end subroutine update_chebyshev
-
-    subroutine disable_chebyshev(qs, qmc_in)
-        ! Called at disable_chebyshev_iter when the ground state energy is reached and more statistics can be collected
-        ! by switching to the linear propagator. Deallocates all arrays in the cheb_t object.
-        ! In:
-        !   qmc_in: input qmc options containing the original tau.
-        ! Inout:
-        !   qs: the qmc_state_t object containing the Chebyshev propagator being deallocated.
-
-        use qmc_data, only: qmc_state_t, qmc_in_t
-
-        type(qmc_state_t), intent(inout) :: qs
-        type(qmc_in_t), intent(in) :: qmc_in
-        integer :: ierr
-
-        associate(cp => qs%cheby_prop)
-            cp%using_chebyshev = .false.
-            cp%order = 1
-            cp%icheb = 1
-            cp%spectral_range(:) = 0.0_p
-            deallocate(cp%zeroes, stat=ierr)
-            call check_deallocate('qs%cheby_prop%zeros', ierr)
-            deallocate(cp%weights, stat=ierr)
-            call check_deallocate('qs%cheby_prop%weights', ierr)
-            allocate(cp%weights(1), stat=ierr)
-            call check_allocate('qs%cheby_prop%weights', 1, ierr)
-            cp%weights(1) = 1.0_p
-        end associate
-        
-        qs%tau = qmc_in%tau_save
-        qs%shift_damping = 0.050_p
-        qs%shift_harmonic_forcing = 0.0_p
-
-    end subroutine disable_chebyshev
-
 
 end module propagators

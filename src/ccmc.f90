@@ -370,7 +370,7 @@ contains
         type(logging_t) :: logging_info
         type(selection_data_t) :: selection_data
 
-        logical :: soft_exit, dump_restart_shift, restarting, restart_proj_est, reached_shoulder
+        logical :: soft_exit, dump_restart_shift, restarting, restart_proj_est
 
         real(p), allocatable :: cumulative_abs_real_pops(:)
         integer :: D0_proc, D0_pos, nD0_proc, min_cluster_size, max_cluster_size, iexcip_pos
@@ -597,9 +597,6 @@ contains
         if (blocking_in%blocking_on_the_fly) &
                     call init_blocking(qmc_in, blocking_in, bl, qs%shift_damping_status)
 
-        ! Used for turning off the Chebyshev propagator
-        reached_shoulder = .false.
-
         do ireport = 1, qmc_in%nreport
 
             ! Projected energy from last report loop to correct death
@@ -659,7 +656,7 @@ contains
                     ! a non-zero integer population.)
                     ! Unlike in FCIQMC, where we loop over each determinant and hence can individually decide whether or not to
                     ! stochastically attempt another attempt for a fractional population, in CCMC we select excitors based upon their
-                    ! population and the total number of attempts based upon the total population.  In the non-composite algorith, we
+                    ! population and the total number of attempts based upon the total population.  In the non-composite algorithm, we
                     ! also need to find the determinant of a given excip.  This is painful to do if we use fractional populations
                     ! (as we'd need to keep track of how many fractional populations had been rounded up in order to search the
                     ! cumulative list correctly).  Instead, we base the number of attempts and the probably of selecting a given excitor

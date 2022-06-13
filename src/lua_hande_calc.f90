@@ -1126,6 +1126,8 @@ contains
         !           chebyshev_order = order,
         !           disable_chebyshev_shoulder = true/false,
         !           disable_chebyshev_lag = lag_iter,
+        !           chebyshev_shift = float,
+        !           chebyshev_scale = float,
         !     },
         ! }
 
@@ -1234,28 +1236,22 @@ contains
             else
                 ! If passed a table, assume we are using Chebyshev
                 qmc_in%chebyshev = .true.
+                call aot_get_val(qmc_in%chebyshev_order, err, lua_state, chebyshev_table, 'chebyshev_order', default=5)
+                if (qmc_in%chebyshev_order <= 1) then
+                    call stop_all('read_qmc_in', 'Chebyshev order must be greater than 1 if using the Chebyshev projector')
+                end if
+                call aot_get_val(qmc_in%chebyshev_shift, err, lua_state, chebyshev_table, 'chebyshev_shift')
+                call aot_get_val(qmc_in%chebyshev_scale, err, lua_state, chebyshev_table, 'chebyshev_scale')
+                call aot_get_val(qmc_in%chebyshev_skip_gershgorin, err, lua_state, chebyshev_table, 'skip_gershgorin')
             end if
 
             if (qmc_in%chebyshev .and. qmc_in%tau_search) then
                 call warning('read_qmc_in', 'Both Chebyshev and tau_search is enabled. Although there is formally no timestep'//&
-                    'in the wall-Chebyshev projector, tau_search can be beneficial, as it is akin to auto_shift_damping.')
+                    ' in the wall-Chebyshev projector, tau_search can be beneficial, as it is akin to auto_shift_damping.')
             end if
 
-            call aot_get_val(qmc_in%chebyshev_order, err, lua_state, chebyshev_table, 'chebyshev_order', default=5)
-            if (qmc_in%chebyshev_order <= 1) then
-                call stop_all('read_qmc_in', 'Chebyshev order must be greater than 1 if using the Chebyshev projector')
-            end if
-
-            call warning('read_qmc_in', 'Wall-Chebyshev projector used, which is independent of tau. Setting tau to 1! '//&
-                'Original tau is saved in qmc_in%tau_save for later use.')
-            qmc_in%tau_save = qmc_in%tau
+            call warning('read_qmc_in', 'Wall-Chebyshev projector used, which is independent of tau. Setting tau to 1!')
             qmc_in%tau = 1
-
-            call aot_get_val(qmc_in%chebyshev_shift, err, lua_state, chebyshev_table, 'chebyshev_shift')
-            call aot_get_val(qmc_in%chebyshev_scale, err, lua_state, chebyshev_table, 'chebyshev_scale')
-
-            !call aot_get_val(qmc_in%disable_chebyshev_shoulder, err, lua_state, chebyshev_table, 'disable_chebyshev_shoulder')
-            !call aot_get_val(qmc_in%disable_chebyshev_lag, err, lua_state, chebyshev_table, 'disable_chebyshev_lag')
         end if
 
         if (aot_exists(lua_state, qmc_table, 'reference_target')) then
