@@ -357,12 +357,19 @@ type ccmc_in_t
     integer :: mr_acceptance_search
     ! Name of the file containing secondary references (only if mr_read_in is true).
     character(255) :: mr_secref_file
+    ! The bit string length used in the secondary reference file. 
+    ! This enables reading in references with more than 64 basis functions.
+    integer :: secref_bit_string_len
     ! CC level from every secondary reference.
     integer :: mr_excit_lvl = -1
     ! Number of frozen electrons to add to the secondary references.
     integer :: mr_n_frozen = 0
     ! Whether to read in a secondary reference file.
     logical :: mr_read_in = .false.
+    ! Whether to only include the secondary references of correct symmetry.
+    logical :: mr_secref_sym_only = .false.
+    ! The threshold of amplitude/pselect (like cluster_multispawn_threshold) for a cluster, below which the cluster is discarded.
+    real(p) :: discard_threshold = huge(1.0_p)
 end type ccmc_in_t
 
 type uccmc_in_t
@@ -375,7 +382,7 @@ type uccmc_in_t
     ! Trotter approximation?
     logical :: trot = .false.
     ! UCC ratio discard threshold
-    real(p) :: threshold = -1.0_p
+    real(p) :: threshold = huge(1.0_p)
 end type uccmc_in_t
 
 type restart_in_t
@@ -915,11 +922,11 @@ type qmc_state_t
     type(trial_t) :: trial
     type(restart_in_t) :: restart_in
     ! Flags for multireference CCMC calculations.
-    logical :: multiref = .false., mr_read_in = .false.
-    integer :: n_secondary_ref = 0, mr_n_frozen, mr_excit_lvl
+    logical :: multiref = .false.
     type(reference_t), allocatable :: secondary_refs(:)
     integer :: mr_acceptance_search
-    character(255) :: mr_secref_file
+    ! BK tree object for multi-reference searching
+    type(tree_t) :: secondary_ref_tree
     ! WARNING: par_info is the 'reference/master' (ie correct) version
     ! of parallel_t, in particular of proc_map_t.  However, copies of it
     ! are kept in spawn_t objects, and it is these copies which are used
@@ -936,8 +943,6 @@ type qmc_state_t
     ! String representing state of RNG. Should be set, used and deallocated as quickly as possible as it becomes invalid as soon as
     ! the next random number is drawn -- only present really for a convenient way of handling the RNG state during restarts.
     type(dSFMT_state_t) :: rng_state
-    ! BK tree object for multi-reference searching
-    type(tree_t) :: secondary_ref_tree
 end type qmc_state_t
 
 ! Copies of various settings that are required during annihilation.  This avoids having to pass through lots of different
@@ -1188,21 +1193,24 @@ contains
         call json_write_key(js, 'density_matrix_file', ccmc%density_matrix_file)
         call json_write_key(js, 'even_selection', ccmc%even_selection)
         if (ccmc%multiref) then
-            
-            call json_write_key(js, 'mr_read_in', ccmc%mr_read_in)            
+            call json_write_key(js, 'mr_read_in', ccmc%mr_read_in)
             call json_write_key(js, 'n_secondary_ref', ccmc%n_secondary_ref)
-            if (ccmc%n_secondary_ref.le.20 .and. .not.ccmc%mr_read_in) then
+            if (ccmc%n_secondary_ref .le. 20 .and. .not. ccmc%mr_read_in) then
                 do i=1, size(ccmc%secondary_refs)
                     write (string, '(A13,I0)') 'secondary_ref', i
                     call reference_t_json(js, ccmc%secondary_refs(i), key = trim(string))
                 end do
-            elseif (ccmc%mr_read_in) then
-                continue
+            else if (ccmc%mr_read_in) then
+                call json_write_key(js, 'sym_only', ccmc%mr_secref_sym_only)
             else
                 call warning('ccmc_in_t_json','There are more than 20 secondary references, &
                 &printing suppressed, consider using the mr_read_in functionality.')
             end if
+            call json_write_key(js, 'mr_secref_file', ccmc%mr_secref_file)
+            call json_write_key(js, 'secref_bit_string_len', ccmc%secref_bit_string_len)
             call json_write_key(js, 'mr_acceptance_search', ccmc%mr_acceptance_search)
+            call json_write_key(js, 'mr_excit_lvl', ccmc%mr_excit_lvl)
+            call json_write_key(js, 'mr_n_frozen', ccmc%mr_n_frozen)
         end if
         call json_write_key(js, 'multiref', ccmc%multiref, terminal=.true.)
         call json_object_end(js, terminal)
