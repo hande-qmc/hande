@@ -1741,8 +1741,8 @@ contains
                                                                 'full_non_composite', 'linked', 'vary_shift_reference', &
                                                                 'density_matrices', 'density_matrix_file', 'even_selection', &
                                                                 'multiref', 'n_secondary_ref', 'mr_acceptance_search', &
-                                                                'mr_excit_lvl','mr_secref_file','mr_read_in', 'mr_secref_sym_only', &
-                                                                'discard_threshold']
+                                                                'mr_excit_lvl','mr_secref_file','mr_read_in', &
+                                                                'mr_secref_sym_only', 'discard_threshold']
         character(23) :: string ! 32 bit integer has 10 digits, should be more than enough
         ! secondary_refX keywords are not hardcoded in, so we dynamically add them into the
         ! array of allowed keys 

@@ -1201,7 +1201,7 @@ contains
                     call reference_t_json(js, ccmc%secondary_refs(i), key = trim(string))
                 end do
             else if (ccmc%mr_read_in) then
-                call json_write_key(js, 'sym_only', ccmc%sym_only)
+                call json_write_key(js, 'sym_only', ccmc%mr_secref_sym_only)
             else
                 call warning('ccmc_in_t_json','There are more than 20 secondary references, &
                 &printing suppressed, consider using the mr_read_in functionality.')
