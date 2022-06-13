@@ -358,6 +358,7 @@ contains
         ! In:
         !    io: unit to write to.
         !    int_val: integer value column.
+        !    int_64_val: 64-bit integer value column, overrides int_val. 
         !    low_prec_val: low-precision real column.
         !    justify: 1: right justify, 2: no justification, otherwise: left justify.
 
