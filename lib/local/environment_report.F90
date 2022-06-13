@@ -174,7 +174,6 @@ contains
         !        Default: 6.
 
         use parallel, only: nthreads
-        use utils, only: int_fmt
         use const, only: dp
 
         real, intent(in) :: wall_time, cpu_time_used
