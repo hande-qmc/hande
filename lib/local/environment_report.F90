@@ -189,8 +189,8 @@ contains
 
         write (io_unit,'(1X,a19,1X,i2.2,"/",i2.2,"/",i4.4,1X,a2,1X,i2.2,2(":",i2.2))') &
                    "Finished running on", date_values(3:1:-1), "at", date_values(5:7)
-        write (io_unit,'(1X,a20,17X,f14.2)') "Wall time (seconds):", wall_time
-        write (io_unit,'(1X,a34,3X,f14.2)') "CPU time (per processor, seconds):", cpu_time_used
+        write (io_unit,'(1X,a20,18X,f14.2)') "Wall time (seconds):", wall_time
+        write (io_unit,'(1X,a35,3X,f14.2)') "CPU time (across threads, seconds):", cpu_time_used
 
         write (io_unit,'(1X,64("="),/)')
 
