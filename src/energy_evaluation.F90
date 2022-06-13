@@ -564,9 +564,10 @@ contains
         end associate
 
         ! average energy quantities over report loop.
-        qs%estimators%proj_energy = qs%estimators%proj_energy/qmc_in%ncycles
-        qs%estimators%D0_population = qs%estimators%D0_population/qmc_in%ncycles
-        qs%estimators%D0_noncomposite_population = qs%estimators%D0_noncomposite_population/qmc_in%ncycles
+        ! The number of cycles is multiplied by chebyshev order as an m-th order chebyshev propagator
+        ! creates m sub-loops per cycle.
+        qs%estimators%proj_energy = qs%estimators%proj_energy/(qmc_in%ncycles*qs%cheby_prop%order)
+        qs%estimators%D0_population = qs%estimators%D0_population/(qmc_in%ncycles*qs%cheby_prop%order)
         ! Similarly for the HFS estimator
         qs%estimators%D0_hf_population = qs%estimators%D0_hf_population/qmc_in%ncycles
         qs%estimators%proj_hf_O_hpsip = qs%estimators%proj_hf_O_hpsip/qmc_in%ncycles
@@ -575,7 +576,7 @@ contains
         qs%estimators%proj_energy_comp = qs%estimators%proj_energy_comp/qmc_in%ncycles
         qs%estimators%D0_population_comp = qs%estimators%D0_population_comp/qmc_in%ncycles
         ! average spawning rate over report loop and processor.
-        qs%spawn_store%rspawn = qs%spawn_store%rspawn/(qmc_in%ncycles*nprocs)
+        qs%spawn_store%rspawn = qs%spawn_store%rspawn/(qmc_in%ncycles*qs%cheby_prop%order*nprocs)
 
         if (doing_calc(hfs_fciqmc_calc)) then
             if (qs%vary_shift(1)) then
@@ -689,15 +690,23 @@ contains
         real(dp), intent(in) :: nparticles_old, nparticles
         integer, intent(in) :: nupdate_steps
 
+        real(p) :: tau_update
+        integer :: icycle, icheb
+
         ! dmqmc_factor is included to account for a factor of 1/2 introduced into tau in
         ! DMQMC calculations. In all other calculation types, it is set to 1, and so can be ignored.
+
+        associate(cp=>qs%cheby_prop)
         if (qs%target_particles .le. 0.00_p) then
-            loc_shift = loc_shift - real(log(nparticles/nparticles_old)*qs%shift_damping/(qs%dmqmc_factor*qs%tau*nupdate_steps) ,p)
+            loc_shift = loc_shift - real(log(nparticles/nparticles_old)*qs%shift_damping/ &
+                                         (qs%dmqmc_factor*qs%tau*nupdate_steps),p)
         else 
-            loc_shift = loc_shift - real(log(nparticles/nparticles_old)*qs%shift_damping/(qs%dmqmc_factor*qs%tau*nupdate_steps),p) & 
+            loc_shift = loc_shift - real(log(nparticles/nparticles_old)*qs%shift_damping/ &
+                                         (qs%dmqmc_factor*qs%tau*nupdate_steps),p) & 
                   - real(log(nparticles/qs%target_particles)*(qs%shift_harmonic_forcing)/ &
                   (qs%dmqmc_factor*qs%tau*nupdate_steps),p)
-        end if 
+        end if
+        end associate
     
     end subroutine update_shift
 

@@ -240,6 +240,15 @@ type qmc_in_t
     ! Set to 1 if not using quasiNewton.
     real(p) :: quasi_newton_pop_control = -1.0_p
 
+    ! The wall-Chebyshev propagator, see propagators.f90 for documentation
+    logical :: chebyshev = .false.
+    ! Default so the loop over the original qmc cycle code only gets executed once if not using Chebyshev
+    integer :: chebyshev_order = 1 
+    ! Fudge factors: E_max = (E_max + shift) * scale
+    real(p) :: chebyshev_shift = 0.0_p
+    real(p) :: chebyshev_scale = 1.1_p
+    ! Do we skip the Gershgorin estimate of upper spectral range and just use the highest diagonal (with fudge factors)?
+    logical :: chebyshev_skip_gershgorin = .false.
 end type qmc_in_t
 
 type fciqmc_in_t
@@ -874,7 +883,31 @@ type propagator_t
     real(p) :: quasi_newton_pop_control
 end type propagator_t
 
+type cheb_t
+    ! The wall-Chebyshev propagator, where instead of 
+    ! (linearly) approximating e^{-\tau H}, we directly approximate \lim_{\tau -> \inf} e^{-\tau H},
+    ! which is the "wall function", and we expand the wall function in Chebyshev polynomials.
+    ! The Chebyshev polynomials are amenable for use as projectors for the following reasons:
+    !   1. They are bound by [-1,1] in the (estimated) spectral range, becoming small near the upper spectral bound
+    !   2. They diverge to +\inf as E -> -\inf, meaning the lower spectral bound can be an estimate
+    !   3. Sums of up to m-th order Chebyshev polynomials can be written as products of m linear projectors, each involving
+    !       the m-th zero of the the original sum.
+    !   4. Most importantly they kill off non ground states (arbitrarily, by making m large) faster than the linear projector.
+    ! See 10.1021/acs.jctc.6b00639
+    logical :: using_chebyshev = .false.
+    integer :: order = 1 ! Default to linear
+    real(p) :: spectral_range(2) = (/0.0_p, 0.0_p/)
+    real(p), allocatable :: zeroes(:), weights(:)
+    ! Saves the current index to save on looping
+    integer :: icheb
+    logical :: disable_chebyshev_shoulder = .false.
+    integer :: disable_chebyshev_lag = 0
+    ! shoulder_iter + disable_chebyshev_lag
+    integer :: disable_chebyshev_iter = -1
+end type cheb_t
+
 type qmc_state_t
+    
     ! When performing dmqmc calculations, dmqmc_factor = 2.0. This factor is
     ! required because in DMQMC calculations, instead of spawning from one end with
     ! the full probability, we spawn from two different ends with half probability each.
@@ -943,6 +976,9 @@ type qmc_state_t
     ! String representing state of RNG. Should be set, used and deallocated as quickly as possible as it becomes invalid as soon as
     ! the next random number is drawn -- only present really for a convenient way of handling the RNG state during restarts.
     type(dSFMT_state_t) :: rng_state
+
+    ! Derived type object containing information on the wall-Chebyshev propagator
+    type(cheb_t) :: cheby_prop
 end type qmc_state_t
 
 ! Copies of various settings that are required during annihilation.  This avoids having to pass through lots of different
@@ -1060,11 +1096,17 @@ contains
         call json_write_key(js, 'ncycles', qmc%ncycles)
         call json_write_key(js, 'nreport', qmc%nreport)
         call json_write_key(js, 'power_pitzer_min_weight', qmc%power_pitzer_min_weight)
+        call json_write_key(js, 'chebyshev', qmc%chebyshev)
+        if (qmc%chebyshev) then
+            call json_write_key(js, 'chebyshev_order', qmc%chebyshev_order)
+            call json_write_key(js, 'chebyshev_shift', qmc%chebyshev_shift)
+            call json_write_key(js, 'chebyshev_scale', qmc%chebyshev_scale)
+            call json_write_key(js, 'skip_gershgorin', qmc%chebyshev_skip_gershgorin)
+        end if
         call json_write_key(js, 'quasi_newton', qmc%quasi_newton)
         call json_write_key(js, 'quasi_newton_threshold', qmc%quasi_newton_threshold)
         call json_write_key(js, 'quasi_newton_value', qmc%quasi_newton_value)
-        call json_write_key(js, 'quasi_newton_pop_control', qmc%quasi_newton_pop_control)
-        call json_write_key(js, 'use_mpi_barriers', qmc%use_mpi_barriers, .true.)
+        call json_write_key(js, 'quasi_newton_pop_control', qmc%quasi_newton_pop_control, .true.)
         call json_object_end(js, terminal)
 
     end subroutine qmc_in_t_json

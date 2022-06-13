@@ -1278,6 +1278,12 @@ contains
         !     use_mpi_barriers = true/false,
         !     vary_shift_from = shift or "proje",
         !     vary_shift = true/false,
+        !     chebyshev = {
+        !           chebyshev_order = order,
+        !           chebyshev_shift = float,
+        !           chebyshev_scale = float,
+        !           skip_gershgorin = true/false,
+        !     },
         ! }
 
         ! In/Out:
@@ -1305,16 +1311,17 @@ contains
         type(qmc_in_t), intent(out) :: qmc_in
         logical, intent(in), optional :: short
 
-        integer :: qmc_table, err
+        integer :: qmc_table, err, chebyshev_table
         character(len=30) :: str
         logical :: skip, no_renorm
 
-        character(32), parameter :: keys(35) = [character(32) :: 'tau', 'init_pop', 'mc_cycles', 'nreports', 'state_size', &
+        character(32), parameter :: keys(37) = [character(32) :: 'tau', 'init_pop', 'mc_cycles', 'nreports', 'state_size', &
                                                                  'spawned_state_size', 'rng_seed', 'target_population', &
                                                                  'real_amplitudes', 'spawn_cutoff', 'no_renorm', 'tau_search', &
                                                                  'real_amplitude_force_32', &
                                                                  'pattempt_single', 'pattempt_double', 'pattempt_update', &
                                                                  'pattempt_zero_accum_data', &
+                                                                 'shift_harmonic_forcing_two_stage', &
                                                                  'pattempt_parallel', 'initial_shift', 'shift_damping', &
                                                                  'shift_harmonic_forcing_two_stage', &
                                                                  'shift_harmonic_forcing', 'shift_harmonic_crit_damp', &
@@ -1322,7 +1329,7 @@ contains
                                                                  'vary_shift_from', 'excit_gen', 'power_pitzer_min_weight', &
                                                                  'reference_target', 'vary_shift', 'quasi_newton', &
                                                                  'quasi_newton_threshold', 'quasi_newton_value', &
-                                                                 'quasi_newton_pop_control']
+                                                                 'quasi_newton_pop_control', 'chebyshev']
 
         if (present(short)) then
             skip = short
@@ -1374,6 +1381,33 @@ contains
         call aot_get_val(qmc_in%quasi_newton_value, err, lua_state, qmc_table, 'quasi_newton_value')
         call aot_get_val(qmc_in%quasi_newton_pop_control, err, lua_state, qmc_table, 'quasi_newton_pop_control')
 
+        if (aot_exists(lua_state, qmc_table, 'chebyshev')) then
+            call aot_table_open(lua_state, qmc_table, chebyshev_table, 'chebyshev')
+            if (chebyshev_table == 0) then
+                ! Just passed a boolean.
+                call aot_get_val(qmc_in%chebyshev, err, lua_state, qmc_table, 'chebyshev')
+                ! Set the default here
+                if (qmc_in%chebyshev) qmc_in%chebyshev_order = 5
+            else
+                ! If passed a table, assume we are using Chebyshev
+                qmc_in%chebyshev = .true.
+                call aot_get_val(qmc_in%chebyshev_order, err, lua_state, chebyshev_table, 'chebyshev_order', default=5)
+                if (qmc_in%chebyshev_order <= 1) then
+                    call stop_all('read_qmc_in', 'Chebyshev order must be greater than 1 if using the Chebyshev projector')
+                end if
+                call aot_get_val(qmc_in%chebyshev_shift, err, lua_state, chebyshev_table, 'chebyshev_shift')
+                call aot_get_val(qmc_in%chebyshev_scale, err, lua_state, chebyshev_table, 'chebyshev_scale')
+                call aot_get_val(qmc_in%chebyshev_skip_gershgorin, err, lua_state, chebyshev_table, 'skip_gershgorin')
+            end if
+
+            if (qmc_in%chebyshev .and. qmc_in%tau_search) then
+                call warning('read_qmc_in', 'Both Chebyshev and tau_search is enabled. Although there is formally no timestep'//&
+                    ' in the wall-Chebyshev projector, tau_search can be beneficial, as it is akin to auto_shift_damping.')
+            end if
+
+            call warning('read_qmc_in', 'Wall-Chebyshev projector used, which is independent of tau. Setting tau to 1!')
+            qmc_in%tau = 1
+        end if
 
         if (aot_exists(lua_state, qmc_table, 'reference_target')) then
             qmc_in%target_reference = .true.
@@ -1444,6 +1478,7 @@ contains
                 call stop_all('read_qmc_in', 'Invalid excit_gen setting: '//trim(str))
             end select
         end if
+
 
         ! If user sets initial shift and vary_shift_from, assume they know what
         ! they're doing.  Otherwise, vary the shift from the initial shift

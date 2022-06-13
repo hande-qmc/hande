@@ -70,7 +70,7 @@ contains
             end if
 
             call annihilate_main_list_wrapper(sys, rng, reference, annihilation_flags, psip_list, spawn, &
-                    determ_flags=determ%flags)
+                                              determ_flags=determ%flags)
         else
             call annihilate_wrapper_spawn_t(spawn, annihilation_flags%initiator_approx, psip_list%descending)
             call annihilate_main_list_wrapper(sys, rng, reference, annihilation_flags, psip_list, spawn)
@@ -333,6 +333,7 @@ contains
         else
             spawn_start = 1
         end if
+
         istart = 1
         iend = psip_list%nstates
 
