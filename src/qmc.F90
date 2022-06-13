@@ -1271,41 +1271,46 @@ contains
 
     end subroutine init_reference_restart
 
-    subroutine init_secondary_references(sys, references_in, io_unit, qs)
+    subroutine init_secondary_references(sys, ccmc_in, io_unit, qs)
         ! Set the secondary reference determinant from input options
         ! and use it to set up the maximum considered excitation level
         ! for the calculation.
 
         ! In:
         !   sys: system being studied.
-        !   references_in: array of secondary references provided in input.
+        !   ccmc_in: the ccmc_in_t object containing the secondary references.
         !   io_unit: io unit to write any information to.
         ! In/Out:
         !   qs: qmc_state used in the calculation.
     
         use reference_determinant, only: reference_t
         use system, only: sys_t
-        use qmc_data, only: qmc_state_t 
+        use qmc_data, only: qmc_state_t, ccmc_in_t
         use excitations, only: get_excitation_level, det_string
         use search, only: tree_add
         use const
         use determinants, only: decode_det
-        use bit_utils, only: count_set_bits
+        use bit_utils, only: count_set_bits, bit_str_lshift_pad
+        use symmetry, only: symmetry_orb_list
+        use parallel, only: parent
 
         type(sys_t), intent(in) :: sys
-        type(reference_t), intent(in) :: references_in(:)
+        type(ccmc_in_t), intent(in) :: ccmc_in
         integer, intent(in) :: io_unit
         type(qmc_state_t), intent(inout) :: qs
 
-        integer :: i, current_max, total_max, ir, iel, n_rshift
+        integer :: i, current_max, total_max, ir, iel, n_rshift, isym, nsym_refs
         integer(i0) :: secref_bstring(sys%basis%bit_string_len), real_bstring(sys%basis%tot_string_len), core_bstring
         type(reference_t) :: read_in_ref
+        type(reference_t), allocatable :: sym_refs(:)
         
         total_max = 0
 
-        if (.not. qs%mr_read_in) then
-            do i = 1, size(references_in)
-               call init_reference(sys, references_in(i), io_unit, qs%secondary_refs(i))
+        if (.not. ccmc_in%mr_read_in) then
+            allocate(qs%secondary_refs(ccmc_in%n_secondary_ref))
+
+            do i = 1, size(ccmc_in%secondary_refs)
+               call init_reference(sys, ccmc_in%secondary_refs(i), io_unit, qs%secondary_refs(i))
                current_max = qs%ref%ex_level + get_excitation_level(det_string(qs%ref%f0,sys%basis), &
                                                                      det_string(qs%secondary_refs(i)%f0,sys%basis)) 
                if (current_max > total_max) total_max = current_max
@@ -1314,45 +1319,75 @@ contains
             qs%ref%max_ex_level = total_max
         else
             core_bstring = 0_i0
-            if (sys%CAS(1) == -1) then
-                ! -1 is the default (unset) value
-                do i = 0, qs%mr_n_frozen-1
-                    core_bstring = ibset(core_bstring, i)
-                end do
-            else
-                do i = 0, qs%mr_n_frozen-sys%cas(1)-1
-                    core_bstring = ibset(core_bstring, i)
-                end do
-            end if
-            
+            ! -1 is the default (unset) value
+            ! mr_n_frozen already takes the CAS into account in lua_hande_calc::read_ccmc_in
+            do i = 0, ccmc_in%mr_n_frozen-1
+                core_bstring = ibset(core_bstring, i)
+            end do
+
             allocate(read_in_ref%occ_list0(sys%nel))
-            open(newunit=ir, file=qs%mr_secref_file, status='old', form='formatted', action='read')
-            do i = 1, qs%n_secondary_ref
+            open(newunit=ir, file=ccmc_in%mr_secref_file, status='old', form='formatted', action='read')            
+
+            if (ccmc_in%mr_secref_sym_only) then
+                nsym_refs = 0
+
+                do i = 1, ccmc_in%n_secondary_ref
+                    secref_bstring(:) = 0_i0
+                    real_bstring(:) = 0_i0
+
+                    read(ir, *) secref_bstring(1:ccmc_in%secref_bit_string_len)
+                    ! left shift on a bit array and pad 1's to the right
+                    call bit_str_lshift_pad(secref_bstring, ccmc_in%mr_n_frozen, real_bstring)
+
+                    call decode_det(sys%basis, real_bstring(:), read_in_ref%occ_list0(:))
+
+                    isym = symmetry_orb_list(sys, read_in_ref%occ_list0(:))
+
+                    if (isym == sys%symmetry) nsym_refs = nsym_refs + 1
+                end do
+                ! Go back to the top of the file
+                rewind(ir)
+            end if
+
+            if (parent .and. ccmc_in%mr_secref_sym_only) write(io_unit, '(1X, A, I0)') &
+                '# Number of symmetry allowed secondary references initialised: ', nsym_refs
+
+            if (ccmc_in%mr_secref_sym_only) then
+                allocate(qs%secondary_refs(nsym_refs))
+            else
+                allocate(qs%secondary_refs(ccmc_in%n_secondary_ref))
+            end if
+
+            nsym_refs = 0
+            do i = 1, ccmc_in%n_secondary_ref
                 secref_bstring(:) = 0_i0
                 real_bstring(:) = 0_i0
 
-                ! [warning] - We are assuming that the secondary references are only ever within 64 bits (i.e., )
-                ! Here we pad the higher elements with 0's. If we ever need more than one 64-bit integer
-                ! to store a secondary reference, we need to take care of reading in variable number of columns.
-                read(ir, *) secref_bstring(1)
-
-                ! We need to move push mr_n_frozen bits of bitstrings around, proceed from the highest element 
-                ! (guaranteed no overflow). When bit_string_len == 1 the do loop is skipped.
-                n_rshift = i0_length - qs%mr_n_frozen
-                do iel = sys%basis%bit_string_len, 2, -1
-                    real_bstring(iel) = ior(ishft(secref_bstring(iel), qs%mr_n_frozen), &
-                                            ishft(secref_bstring(iel-1), -n_rshift))
-                end do
-                real_bstring(1) = ior(ishft(secref_bstring(1), qs%mr_n_frozen), core_bstring)
+                read(ir, *) secref_bstring(1:ccmc_in%secref_bit_string_len)
+                ! left shift on a bit array and pad 1's to the right
+                call bit_str_lshift_pad(secref_bstring, ccmc_in%mr_n_frozen, real_bstring)
 
                 call decode_det(sys%basis, real_bstring(:), read_in_ref%occ_list0(:))
 
-                read_in_ref%ex_level= qs%mr_excit_lvl
-                call init_reference(sys, read_in_ref, io_unit, qs%secondary_refs(i))
+                if (ccmc_in%mr_secref_sym_only) then
+                    isym = symmetry_orb_list(sys, read_in_ref%occ_list0(:))
+                    if (isym == sys%symmetry) then
+                        nsym_refs = nsym_refs + 1
+                        read_in_ref%ex_level= ccmc_in%mr_excit_lvl
+                        call init_reference(sys, read_in_ref, io_unit, qs%secondary_refs(nsym_refs))
 
-                current_max = qs%ref%ex_level + get_excitation_level(det_string(qs%ref%f0,sys%basis), &
-                                                                     det_string(qs%secondary_refs(i)%f0,sys%basis)) 
-               if (current_max > total_max) total_max = current_max
+                        current_max = qs%ref%ex_level + get_excitation_level(det_string(qs%ref%f0,sys%basis), &
+                                                        det_string(qs%secondary_refs(nsym_refs)%f0,sys%basis)) 
+                        if (current_max > total_max) total_max = current_max
+                    end if
+                else
+                    read_in_ref%ex_level= ccmc_in%mr_excit_lvl
+                    call init_reference(sys, read_in_ref, io_unit, qs%secondary_refs(i))
+
+                    current_max = qs%ref%ex_level + get_excitation_level(det_string(qs%ref%f0,sys%basis), &
+                                                                         det_string(qs%secondary_refs(i)%f0,sys%basis))
+                    if (current_max > total_max) total_max = current_max
+                end if
             end do
             close(ir)
 
@@ -1361,7 +1396,7 @@ contains
         end if
 
         ! Optionally build the BK tree, see search.F90::tree_add and tree_search for further comments
-        if (qs%mr_acceptance_search == 1) then
+        if (ccmc_in%mr_acceptance_search == 1) then
             ! We choose to include the (primary) reference as the node.
             ! This may help balance the topology of the tree, and on small-scale tests 
             ! does not appear to affect the performance of the search. Remove if found otherwise.

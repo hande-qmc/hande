@@ -381,8 +381,8 @@ contains
         character(36) :: uuid_restart
         type(ex_lvl_dist_t) :: ex_lvl_dist
 
-        real :: t1, t2
-
+        integer(i0) :: count_discard
+        integer(p) :: t1, t2, count_rate, count_max
         logical :: update_tau, error
 
         logical :: seen_D0, regenerate_info
@@ -437,15 +437,7 @@ contains
             ! Initialise multireference CCMC specific data.
             qs%multiref = .true.
             qs%mr_acceptance_search = ccmc_in%mr_acceptance_search
-            qs%n_secondary_ref = ccmc_in%n_secondary_ref
-            if(ccmc_in%mr_read_in) then
-                qs%mr_read_in = ccmc_in%mr_read_in
-                qs%mr_secref_file = ccmc_in%mr_secref_file
-                qs%mr_n_frozen = ccmc_in%mr_n_frozen
-                qs%mr_excit_lvl = ccmc_in%mr_excit_lvl
-            end if
-            allocate (qs%secondary_refs(qs%n_secondary_ref))
-            call init_secondary_references(sys, ccmc_in%secondary_refs, io_unit, qs)
+            call init_secondary_references(sys, ccmc_in, io_unit, qs)
         else 
             qs%ref%max_ex_level = qs%ref%ex_level
         end if
@@ -569,12 +561,13 @@ contains
 
         restart_proj_est = present(qmc_state_restart) .or. (restart_in%read_restart .and. restart_version_restart >= 2)
         if (.not.restart_proj_est) then
-            call initial_cc_projected_energy(sys, qs, qmc_in%seed+iproc, logging_info, cumulative_abs_real_pops, nparticles_old)
+            call initial_cc_projected_energy(sys, qs, qmc_in%seed+iproc, logging_info, cumulative_abs_real_pops, nparticles_old, &
+                                             ccmc_in)
         end if
         call initial_qmc_status(sys, qmc_in, qs, nparticles_old, doing_ccmc=.true., io_unit=io_unit)
 
         ! Initialise timer.
-        call cpu_time(t1)
+        call system_clock(t1, count_rate, count_max)
 
         ! The iteration on which to start performing semi-stochastic.
         semi_stoch_iter = qs%mc_cycles_done + semi_stoch_in%start_iter
@@ -602,6 +595,9 @@ contains
 
         if (blocking_in%blocking_on_the_fly) &
                     call init_blocking(qmc_in, blocking_in, bl, qs%shift_damping_status)
+
+        ! Counter for the number of discarded clusters, see ccmc_in%discard_threshold
+        count_discard = 0_i0
 
         do ireport = 1, qmc_in%nreport
 
@@ -726,7 +722,7 @@ contains
                 !$omp        max_cluster_size, contrib, D0_normalisation, D0_pos, rdm,    &
                 !$omp        qs, sys, bloom_stats, min_cluster_size, ref_det,             &
                 !$omp        selection_data, ex_lvl_dist, ccmc_in, nprocs, ms_stats, &
-                !$omp        ps_stats, qmc_in, load_bal_in, logging_info) &
+                !$omp        ps_stats, qmc_in, load_bal_in, logging_info, count_discard) &
                 !$omp reduction(+:D0_population_cycle,proj_energy_cycle,nattempts_spawn,ndeath,nparticles_change,ndeath_nc)
                 
                 ! Initialise private variables inside the parallel region
@@ -772,7 +768,8 @@ contains
                             call select_cluster(rng(it), sys, qs%psip_list, qs%ref%f0, qs%ref%max_ex_level, ccmc_in%linked, &
                                             selection_data%nstochastic_clusters, D0_normalisation, qmc_in%initiator_pop, &
                                             cumulative_abs_real_pops, tot_abs_real_pop, min_cluster_size, max_cluster_size, &
-                                            logging_info, contrib(it)%cdet, contrib(it)%cluster, qs%excit_gen_data)
+                                            logging_info, contrib(it)%cdet, contrib(it)%cluster, qs%excit_gen_data, &
+                                            ccmc_in%discard_threshold, count_discard)
                         end if
 
                         if (contrib(it)%cluster%excitation_level <= qs%ref%max_ex_level+2 .or. &
@@ -907,10 +904,13 @@ contains
                                  error=error, vary_shift_reference=ccmc_in%vary_shift_reference)
             if (error) exit
 
-            call cpu_time(t2)
+            call system_clock(t2)
+
+            if (t2 < t1) t2 = t2 + count_max
+
             if (parent) then
                 if (bloom_stats%nblooms_curr > 0) call bloom_stats_warning(bloom_stats, io_unit=io_unit)
-                call write_qmc_report(qmc_in, qs, ireport, nparticles_old, t2-t1, .false., .false., &
+                call write_qmc_report(qmc_in, qs, ireport, nparticles_old, real(t2-t1)/count_rate, .false., .false., &
                                         io_unit=io_unit, cmplx_est=sys%read_in%comp, rdm_energy=ccmc_in%density_matrices, &
                                         nattempts=.true.)
                 if (blocking_in%blocking_on_the_fly) then
@@ -973,6 +973,8 @@ contains
             call check_deallocate('rdm',ierr)
             call dealloc_det_info_t(ref_det)
         end if
+
+        if (ccmc_in%discard_threshold > 0 .and. parent) write(io_unit, '(1X,A,I0)') 'Number of discard events: ', count_discard
 
         call dealloc_contrib(contrib, ccmc_in%linked)
         do i = 0, nthreads-1

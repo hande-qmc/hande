@@ -231,16 +231,7 @@ contains
             ! Initialise multireference CCMC specific data.
             qs%multiref = .true.
             qs%mr_acceptance_search = ccmc_in%mr_acceptance_search
-            qs%n_secondary_ref = ccmc_in%n_secondary_ref
-            if(ccmc_in%mr_read_in) then
-                qs%mr_read_in = ccmc_in%mr_read_in
-                qs%mr_secref_file = ccmc_in%mr_secref_file
-                qs%mr_n_frozen = ccmc_in%mr_n_frozen
-                qs%mr_excit_lvl = ccmc_in%mr_excit_lvl
-            endif
-
-            allocate (qs%secondary_refs(qs%n_secondary_ref))
-            call init_secondary_references(sys, ccmc_in%secondary_refs, io_unit, qs)
+            call init_secondary_references(sys, ccmc_in, io_unit, qs)
         else 
             qs%ref%max_ex_level = qs%ref%ex_level
         end if
@@ -336,7 +327,8 @@ contains
 
         restart_proj_est = present(qmc_state_restart) .or. (restart_in%read_restart .and. restart_version_restart >= 2)
         if (.not.restart_proj_est) then
-            call initial_cc_projected_energy(sys, qs, qmc_in%seed+iproc, logging_info, cumulative_abs_real_pops, nparticles_old)
+            call initial_cc_projected_energy(sys, qs, qmc_in%seed+iproc, logging_info, cumulative_abs_real_pops, nparticles_old, &
+                                             ccmc_in)
         end if
 
         call initial_qmc_status(sys, qmc_in, qs, nparticles_old, doing_ccmc=.true., io_unit=io_unit)

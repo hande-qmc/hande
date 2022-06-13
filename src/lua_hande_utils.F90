@@ -226,7 +226,7 @@ contains
         if (parent) then
 
             write (6,'(1x,"Timing breakdown",/,1x,16("-"),/)')
-            write (6,'(1X,"Time for each calculation section (seconds):",/)')
+            write (6,'(1X,"Wall time for each calculation section (seconds):",/)')
 
             ! Traversal of timer table
             ! First pass: get max key length.  Second pass: output with nicely aligned columns.

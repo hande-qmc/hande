@@ -29,6 +29,8 @@ ccmc_opt = {
     mr_read_in = true,
     mr_excit_lvl = 2,
     mr_secref_file = 'secondary_references',
+    mr_secref_sym_only = true,
+    discard_threshold = 10,
 }
 
 psip_list = mp1_mc {
@@ -44,7 +46,7 @@ ccmc {
     ccmc = ccmc_opt,
     reference = {
         ex_level = 2,
-        },
+    },
 }
 
 -- INTDUMP generated with tools/fcidump/lz_fcidump.py, with clamped occupancy as:
