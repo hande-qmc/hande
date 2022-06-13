@@ -170,7 +170,7 @@ test-gcc-mpi-64-dbg:
     tags: 
         - hande-testing
     before_script:
-        - module load anaconda/python3/5.3.1 
+        - module load anaconda/python3/5.3.1
         - module load mpi/openmpi/64/gnu/3.1.2
         - module load mkl
         - module load cmake
