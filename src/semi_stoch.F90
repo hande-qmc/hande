@@ -721,7 +721,7 @@ contains
 
         call stop_all("create_dense_determ_hamil", &
                       "This subroutine has not been implemented. &
-                      Please, check back in future releases.")
+                      &Please, check back in future releases.")
 
     end subroutine create_dense_determ_hamil
 
@@ -1002,7 +1002,7 @@ contains
 
         call stop_all("dense_determ_proj_combined_annihil", &
                       "This subroutine has not been implemented. &
-                      Please, check back in future releases.")
+                      &Please, check back in future releases.")
 
     end subroutine dense_determ_proj_combined_annihil
 

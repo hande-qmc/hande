@@ -164,25 +164,14 @@ contains
 
         real(p), allocatable :: rdm(:,:)
 
-        integer :: iunit, restart_version_restart
-        integer :: date_values(8)
+        integer :: restart_version_restart
         character(:), allocatable :: err_msg
  
         real(p), allocatable :: time_avg_psip_list_sq(:,:), time_avg_psip_list_pops(:), time_avg_psip_list_ci_pops(:)
-        integer(i0), allocatable :: time_avg_psip_list_states(:,:), time_avg_psip_list_ci_states(:,:)
-        integer :: nstates_sq, nstates_ci
-        integer :: semi_stoch_it, pos, j, k
-        logical :: hit
-        integer(i0), allocatable :: state(:)
-        real(p) :: population
-        real(p) :: real_population, var_energy
-        logical :: old_vary
-        integer :: avg_start
-        real(p) :: p_ref, pcumul
-        real(p) :: p_avg, p_complement_avg
-        integer :: count_select
-        logical :: variational
-        real(p) :: cluster_pop
+        integer(i0), allocatable :: time_avg_psip_list_states(:,:), time_avg_psip_list_ci_states(:,:), state(:)
+        integer :: nstates_sq, nstates_ci, semi_stoch_it, pos, j, k, avg_start
+        logical :: hit, old_vary, variational
+        real(p) :: population, cluster_pop, real_population, var_energy
 
         variational = .false.
         if (uccmc_in%variational_energy) variational = .true.
@@ -190,7 +179,6 @@ contains
         ! to start taking averages of the wavefunction.
         old_vary = .false.
         avg_start = 0
-        count_select = 0
 
         if (parent) then
             write (io_unit,'(1X,"Trotterized UCCMC")')
@@ -206,7 +194,7 @@ contains
             else
                 call check_qmc_opts(qmc_in, sys, .not.present(qmc_state_restart), restarting)
             end if
-            call check_uccmc_opts(sys, ccmc_in, uccmc_in, qmc_in)
+            call check_uccmc_opts(sys, ccmc_in, uccmc_in)
         end if
         ! Initialise data.
         call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, io_unit, annihilation_flags, qs, &
@@ -225,7 +213,7 @@ contains
              population = 0
              call allocate_time_average_lists(qs%psip_list, time_avg_psip_list_ci_states, time_avg_psip_list_ci_pops, nstates_ci)
              time_avg_psip_list_ci_states(:,1) = qs%psip_list%states(:,1)
-             time_avg_psip_list_ci_pops(1) = (real(qs%psip_list%pops(1,1))/qs%psip_list%pop_real_factor)
+             time_avg_psip_list_ci_pops(1) = (real(qs%psip_list%pops(1,1),p)/qs%psip_list%pop_real_factor)
              nstates_ci = 1
              ![todo] deal with restarting
         end if
@@ -235,7 +223,7 @@ contains
             allocate(time_avg_psip_list_sq(sys%basis%tot_string_len + 1 ,size(qs%psip_list%states(1,:))))
             time_avg_psip_list_sq(:sys%basis%tot_string_len,:qs%psip_list%nstates) = qs%psip_list%states(:,:qs%psip_list%nstates)
             time_avg_psip_list_sq(sys%basis%tot_string_len+1,:qs%psip_list%nstates) = &
-                (real(qs%psip_list%pops(1,:qs%psip_list%nstates))/qs%psip_list%pop_real_factor)**2
+                (real(qs%psip_list%pops(1,:qs%psip_list%nstates),p)/qs%psip_list%pop_real_factor)**2
             nstates_sq = 1
         end if
         
@@ -372,12 +360,12 @@ contains
                 end if
                 if (all(qs%vary_shift) .and. (.not. old_vary) .and. uccmc_in%average_wfn) then
                     time_avg_psip_list_pops(:qs%psip_list%nstates) = &
-                        real(qs%psip_list%pops(1,:qs%psip_list%nstates))/qs%psip_list%pop_real_factor
+                        real(qs%psip_list%pops(1,:qs%psip_list%nstates),p)/qs%psip_list%pop_real_factor
                     time_avg_psip_list_states(:,:qs%psip_list%nstates) = qs%psip_list%states(:,:qs%psip_list%nstates)
                     time_avg_psip_list_sq(:sys%basis%tot_string_len,:qs%psip_list%nstates) &
                         = qs%psip_list%states(:,:qs%psip_list%nstates)
                     time_avg_psip_list_sq(sys%basis%tot_string_len+1,:qs%psip_list%nstates) &
-                        = (real(qs%psip_list%pops(1,:qs%psip_list%nstates))/qs%psip_list%pop_real_factor)**2
+                        = (real(qs%psip_list%pops(1,:qs%psip_list%nstates),p)/qs%psip_list%pop_real_factor)**2
                     nstates_sq = qs%psip_list%nstates
                 end if
                   
@@ -409,12 +397,6 @@ contains
                 call init_mc_cycle(qs%psip_list, qs%spawn_store%spawn, qs%estimators(1)%nattempts, ndeath, &
                                    min_attempts=nint(abs(D0_normalisation), kind=int_64), &
                                    complx=sys%read_in%comp)
-
-                nparticles_change = 0.0_p
-                ! We need to count spawning attempts differently as there may be multiple spawns
-                ! per cluster
-
-                nattempts_spawn=0
 
                 call update_bloom_threshold_prop(bloom_stats, nparticles_old(1))
 
@@ -448,6 +430,16 @@ contains
                                             ccmc_in%full_nc, .false.)
                 call zero_ps_stats(ps_stats, qs%excit_gen_data%p_single_double%rep_accum%overflow_loc)
 
+                ! Initialise reduction variables outside the parallel region. (ndeath was initialised in init_mc_cycle above)
+                ! We need to count spawning attempts differently as there may be multiple spawns
+                ! per cluster
+                nattempts_spawn = 0
+                proj_energy_cycle = cmplx(0.0, 0.0, p)
+                D0_population_cycle = cmplx(0.0, 0.0, p)
+                D0_population_noncomp_cycle = 0.0_p
+                ndeath_nc = 0
+                nparticles_change = 0.0_p
+
                 ! OpenMP chunk size determined completely empirically from a single
                 ! test.  Please feel free to improve...
                 ! NOTE: we can't refer to procedure pointers in shared blocks so
@@ -455,33 +447,29 @@ contains
                 ! default(none) on when making changes and ensure that the only
                 ! errors relate to the procedure pointers...
 
-                proj_energy_cycle = cmplx(0.0, 0.0, p)
-                D0_population_cycle = cmplx(0.0, 0.0, p)
-                D0_population_noncomp_cycle = 0.0_p
                 !$omp parallel default(none) &
-                !$omp private(it, iexcip_pos, i, seen_D0, hit, pos, population, real_population,k, cluster_pop, &
-                !$omp state,annihilation_flags) &
-                !$omp shared(rng, cumulative_abs_real_pops, tot_abs_real_pop,  &
-                !$omp        max_cluster_size, contrib, D0_normalisation, D0_pos, rdm,    &
-                !$omp        qs, sys, bloom_stats, min_cluster_size, ref_det,             &
-                !$omp         selection_data,      &
-                !$omp        uccmc_in, ccmc_in, nprocs, ms_stats, ps_stats, qmc_in, load_bal_in, &
-                !$omp        pcumul, nstates_ci, &
-                !$omp        logging_info, &
-                !$omp        time_avg_psip_list_ci_states, time_avg_psip_list_ci_pops, &
+                !$omp private(it, iexcip_pos, i, seen_D0, hit, pos, population, real_population, k, cluster_pop, &
+                !$omp         state,annihilation_flags) &
+                !$omp shared(rng, cumulative_abs_real_pops, tot_abs_real_pop, &
+                !$omp        max_cluster_size, contrib, D0_normalisation, D0_pos, rdm, &
+                !$omp        qs, sys, bloom_stats, min_cluster_size, ref_det, &
+                !$omp        selection_data, uccmc_in, ccmc_in, nprocs, ms_stats, ps_stats, qmc_in, load_bal_in, &
+                !$omp        nstates_ci, logging_info, time_avg_psip_list_ci_states, time_avg_psip_list_ci_pops, &
                 !$omp        time_avg_psip_list_states, time_avg_psip_list_pops) &
                 !$omp reduction(+:D0_population_cycle,proj_energy_cycle,D0_population_noncomp_cycle, &
-                !$omp nattempts_spawn,ndeath,nparticles_change,ndeath_nc)
+                !$omp             nattempts_spawn,ndeath,nparticles_change,ndeath_nc)
 
+                ! Initialise private variables inside the parallel region
                 it = get_thread_id()
                 iexcip_pos = 0
                 seen_D0 = .false.
-                pcumul = (tot_abs_real_pop**(max_cluster_size+1)-1) /(tot_abs_real_pop-1)
                 cluster_pop = 1
+
                 do i = 1, qs%psip_list%nstates
-                if (i /= D0_pos) &
-                    cluster_pop = cluster_pop * cos((real(qs%psip_list%pops(1, i))/real(qs%psip_list%pop_real_factor))&
-                                                    /real(D0_normalisation,p))                     
+                    if (i /= D0_pos) then
+                        cluster_pop = cluster_pop * cos((real(qs%psip_list%pops(1, i))/real(qs%psip_list%pop_real_factor))&
+                                                        /real(D0_normalisation,p))           
+                    end if          
                 end do
 
                 !$omp do schedule(dynamic,200) 
@@ -489,9 +477,8 @@ contains
                     if (iattempt <= selection_data%nsingle_excitors) then
                     ! For OpenMP scalability, have this test inside a single loop rather
                     ! than attempt to parallelise over three separate loops.
-                   
-                        ! As noncomposite clusters can't be above truncation level or linked-only all can accumulate +
-                        ! propagate. Only need to check not selecting the reference as we treat it separately.
+                    ! As noncomposite clusters can't be above truncation level or linked-only all can accumulate +
+                    ! propagate. Only need to check not selecting the reference as we treat it separately.
                         if (iattempt /= D0_pos) then
                             ! Deterministically select each excip as a non-composite cluster.
                             call select_nc_cluster_trot(sys, qs%psip_list, qs%ref%f0, &
@@ -514,8 +501,7 @@ contains
                             call do_nc_ccmc_propagation(rng(it), sys, qs, ccmc_in, logging_info, bloom_stats, &
                                                                 contrib(it), nattempts_spawn, ps_stats(it), uccmc_in)
                         end if
-                else
-
+                    else
                         call select_ucc_trot_cluster(rng(it), sys, qs%psip_list, qs%ref%f0, qs%ref%max_ex_level, &
                                             selection_data%nstochastic_clusters, &
                                             D0_normalisation, qmc_in%initiator_pop, D0_pos, cumulative_abs_real_pops,&
@@ -550,6 +536,9 @@ contains
                 end do
                 !$omp end do
 
+                ! See comments below 'if (.not. seen_D0) then' on why this loop needs to be separate from above.
+                ! If noncomposite is turned off, this loop will be 'do i = nclusters+1, nclusters', which will be a null 
+                ! loop and ignored (as strides at +1 by default)
                 !$omp do schedule(dynamic,200) 
                 do iattempt = 1, selection_data%nD0_select
                         if (.not. seen_D0) then
@@ -562,7 +551,7 @@ contains
                                                      contrib(it)%cluster, qs%excit_gen_data)
                         end if
                         if (uccmc_in%variational_energy .and. all(qs%vary_shift) .and. &
-                            contrib(it)%cluster%excitation_level <= qs%ref%ex_level)  then
+                            contrib(it)%cluster%excitation_level <= qs%ref%ex_level) then
                             call add_ci_contribution(contrib(it)%cluster, contrib(it)%cdet, &
                             time_avg_psip_list_ci_states, time_avg_psip_list_ci_pops, nstates_ci)
                         end if
@@ -579,7 +568,6 @@ contains
                 end do
                 !$omp end do
 
-                ndeath_nc=0
                 if (ccmc_in%full_nc .and. qs%psip_list%nstates > 0) then
                     ! Do death exactly and directly for non-composite clusters
                     !$omp do schedule(dynamic,200) private(dfock) 
@@ -607,7 +595,7 @@ contains
                     !$omp end do
                 end if
                 !$omp end parallel
-                count_select = 0
+
                 ! Add the accumulated ps_stats data to qs%excit_gen_data%p_single_double.
 
                 if (qs%excit_gen_data%p_single_double%vary_psingles) then
@@ -618,10 +606,9 @@ contains
                 qs%estimators%D0_population_comp = qs%estimators%D0_population_comp + D0_population_cycle
                 qs%estimators%proj_energy_comp = qs%estimators%proj_energy_comp + proj_energy_cycle
                 do j = 1, qs%psip_list%nstates
-                    if (j/=D0_pos) then
-                        D0_population_noncomp_cycle = &
-                            D0_population_noncomp_cycle/cos((qs%psip_list%pops(1,&
-                                j)/real(qs%psip_list%pop_real_factor))/D0_normalisation)
+                    if (j /= D0_pos) then
+                        D0_population_noncomp_cycle = D0_population_noncomp_cycle / &
+                    cos(real(qs%psip_list%pops(1,j),p)/(real(qs%psip_list%pop_real_factor,p)*real(D0_normalisation,p)))
                     end if
                 end do
                 qs%estimators%D0_noncomposite_population = qs%estimators%D0_noncomposite_population + D0_population_noncomp_cycle
@@ -643,7 +630,7 @@ contains
                 if (debug) call write_logging_calc_ccmc(logging_info, iter, nspawn_events, ndeath + ndeath_nc, &
                                                         selection_data%nD0_select, &
                                                         selection_data%nclusters, selection_data%nstochastic_clusters, &
-                                                       selection_data%nsingle_excitors)
+                                                        selection_data%nsingle_excitors)
 
                 !Take updated time average of CI wavefunction.
                 if(uccmc_in%variational_energy .and. all(qs%vary_shift)) then
@@ -738,7 +725,7 @@ contains
         if(uccmc_in%variational_energy) then
             call var_energy_uccmc(sys, time_avg_psip_list_ci_states, time_avg_psip_list_ci_pops, nstates_ci, var_energy, &
                                   real(D0_normalisation,p))
-            print*, 'Variational energy: ', var_energy
+            if (parent) write (io_unit, '(1X,A,ES17.10)') 'Variational energy: ', var_energy
         end if 
         
         if (debug) call end_logging(logging_info)
@@ -869,7 +856,7 @@ contains
         real(dp) :: rand
         real(p) :: psize, tot_excip_local
         complex(p) :: cluster_population, excitor_pop
-        integer :: i, pos, prev_pos, ierr, current_excit
+        integer :: i, prev_pos, current_excit
         real(p) :: pop(max_size), ref_real, pop_real
         integer :: poses(max_size)
         logical :: hit, allowed
@@ -1388,19 +1375,19 @@ contains
 
     end subroutine select_nc_cluster_trot
 
-! [review] - Brian: document this
     function get_cluster_population(sys, psip_list, D0_pos, iattempt, ref_real, f0) result(cluster_population)
+
         ! Function to obtain the effective cluster population of a non-composite cluster in tUCCMC.
         ! The excitor the cluster corresponds to contributes sin(Ni/N0). Every other excitor that
         ! could be applied (but is not) corresponds cos(Ni/N0).
 
         ! In:
-        ! sys: sys_t object for the system studied.
-        ! psip_list: particle_t object encoding the current wavefunction.
-        ! D0_pos: position of D0 in psip_list.
-        ! iattempt: current excitor considered.
-        ! ref_real: real population on the reference.
-        ! f0: bit string of the reference determinant.
+        !   sys: sys_t object for the system studied.
+        !   psip_list: particle_t object encoding the current wavefunction.
+        !   D0_pos: position of D0 in psip_list.
+        !   iattempt: current excitor considered.
+        !   ref_real: real population on the reference.
+        !   f0: bit string of the reference determinant.
 
         use qmc_data, only: particle_t
         use system, only: sys_t
@@ -1441,7 +1428,7 @@ contains
         end do
     end function get_cluster_population
 
-    subroutine stochastic_trot_uccmc_death_nc(rng, linked_ccmc,  sys, qs, isD0, dfock, Hii, proj_energy, population, &
+    subroutine stochastic_trot_uccmc_death_nc(rng, linked_ccmc, sys, qs, isD0, dfock, Hii, proj_energy, population, &
                                         trot_population, tot_population, ndeath, logging_info)
 
         ! Based on stochastic_ccmc_death_nc, accounting for different cluster population definition in tUCCMC.
@@ -1466,6 +1453,7 @@ contains
         ! particles on the reference).
 
         ! In:
+        !    sys: sys_t object for the system studied.
         !    linked_ccmc: if true then only sample linked clusters.
         !    qs: qmc_state_t object. The shift and timestep are used.
         !    isD0: true if the current excip is the null (reference) excitor
@@ -1555,7 +1543,9 @@ contains
         type(sys_t), intent(in) :: sys
  
         f0(sys%basis%bit_string_len + 2) = latest_unset(f0(:sys%basis%bit_string_len), &
-                                                               f0(:sys%basis%bit_string_len), sys%nel, sys%basis) 
+                                                               f0(:sys%basis%bit_string_len), sys%basis) 
         f0(sys%basis%bit_string_len + 1) = sys%nel
+
     end subroutine add_trot_info_reference
-end module
+    
+end module trotterized_uccmc

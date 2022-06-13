@@ -1774,8 +1774,6 @@ contains
         integer :: row_col_excit_level
 
         logical :: complx_set
-        ! Importance sampling (in the FCIQMC-sense) isn't used in DMQMC...
-        real(p) :: trial_wfn_dat(0)
 
         if (present(complx)) complx_set = complx
         row_col_excit_level = get_excitation_level(ref_f0,cdet%f2)
@@ -1861,9 +1859,9 @@ contains
             HI_energy(1) = HI_energy(1) + exp(-tdiff*diff_ijab)*hmatel%r*pop(1)
         else
             HI_energy(1) = HI_energy(1) + real(exp(-tdiff*diff_ijab)*hmatel%c, p)*pop(1) - &
-                                        &aimag(exp(-tdiff*diff_ijab)*hmatel%c)*pop(2)
+                                         aimag(exp(-tdiff*diff_ijab)*hmatel%c)*pop(2)
             HI_energy(2) = HI_energy(2) + real(exp(-tdiff*diff_ijab)*hmatel%c, p)*pop(2) + &
-                                        &aimag(exp(-tdiff*diff_ijab)*hmatel%c)*pop(1)
+                                         aimag(exp(-tdiff*diff_ijab)*hmatel%c)*pop(1)
         end if
 
     end subroutine update_dmqmc_HI_energy

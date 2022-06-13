@@ -149,7 +149,7 @@ contains
 
         if (sys%nvirt_alpha == 0 .or. sys%nvirt_beta == 0) then
             call stop_all('find_chem_pot', 'Completely filled spin channels are not &
-                                            supported, please increase the basis set.')
+                                           &supported, please increase the basis set.')
         end if
 
         ! The alpha and beta channels have their chemical

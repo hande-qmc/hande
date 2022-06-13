@@ -410,7 +410,7 @@ contains
         end if
         if (sys%system == ueg .and. dmqmc_in%fermi_temperature .and. sys%Ms /= 0 .and. sys%Ms /= sys%nel) then
             call stop_all(this, 'The fermi energy, and therefore fermi_temperature &
-                                 is incorrect for the spin polarization. Please implement.')
+                                 &is incorrect for the spin polarization. Please implement.')
         end if
 
         if (dmqmc_in%target_beta < depsilon .and. dmqmc_in%grand_canonical_initialisation) then
@@ -458,7 +458,7 @@ contains
 
     end subroutine check_dmqmc_opts
 
-    subroutine check_uccmc_opts(sys, ccmc_in, uccmc_in, qmc_in)
+    subroutine check_uccmc_opts(sys, ccmc_in, uccmc_in)
 
         ! Check the UCCMC input options
 
@@ -466,10 +466,9 @@ contains
         !   sys: system being studied.
         !   ccmc_in: CCMC options
         !   uccmc_in: UCCMC options
-        !   qmc_in: QMC options
 
 
-        use qmc_data, only: ccmc_in_t, uccmc_in_t, qmc_in_t
+        use qmc_data, only: ccmc_in_t, uccmc_in_t
         use qmc_data, only: excit_gen_no_renorm, excit_gen_renorm
         use system, only: sys_t, read_in
         use errors, only: stop_all
@@ -477,7 +476,6 @@ contains
         type(sys_t), intent(in) :: sys
         type(ccmc_in_t), intent(in) :: ccmc_in
         type(uccmc_in_t), intent(in) :: uccmc_in
-        type(qmc_in_t), intent(in) :: qmc_in
 
         character(*), parameter :: this = 'check_uccmc_opts'
 

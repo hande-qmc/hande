@@ -15,6 +15,7 @@ Coupled Cluster Monte Carlo
         output = { ... },
         blocking = { ... },
         qmc_state = qmc_state,
+        psip_list = psip_list,
     }
 
 Returns:
@@ -97,6 +98,20 @@ Options
 
         This destroys the qmc_state object and so it cannot be re-used in subsequent
         QMC calculations.
+``psip_list``
+    type: particle_t object.
+
+    Optional.
+
+    Output wavefunction of a previous calculation to initialise the current CCMC calculation. 
+    Currently only the :ref:`mp1` calculation can generate a psip_list.
+
+    .. warning::
+
+        The contents of the psip_list directly writes over the initial CCMC wavefunction, so 
+        make sure the settings that were used to generate it are identical with those provided 
+        for the CCMC table, otherwise undefined behaviour may result. The easiest way to ensure this 
+        is outlined in :ref:`mp1`.
 
 .. _ccmc_table:
 
@@ -264,7 +279,9 @@ ccmc options
     type: string.
 
     The name of the file with the list of secondary references. Can be generated with ``tools/ccmc/generate_mr_input_file.py``, to see the available options, run
-    .. code_block:: bash
+
+    .. code-block:: bash
+
         $ generate_mr_input_file.py -h
 
     When the ``compress`` flag is specified, only necessary references (those that are neccessary 

@@ -107,13 +107,13 @@ contains
         if (allocated(fci_in%subsys_info)) then
             if (nprocs > 1) then
                 if (parent) call warning('diagonalise','RDM eigenvalue calculation is &
-                                                        only implemented in serial. Skipping.',3)
+                                                        &only implemented in serial. Skipping.',3)
             else if (sys%system /= heisenberg) then
                 if (parent) call warning('diagonalise','RDM calculations are only implemented &
-                                                        for Heisenberg systems. Skipping.',3)
+                                                        &for Heisenberg systems. Skipping.',3)
             else if (fci_in%hamiltonian_diagonal_only) then
                 if (parent) call warning('diagonalise','RDM calculations are not calculable with &
-                                                        the Hamiltonian diagonal. Skipping.',3)
+                                                        &the Hamiltonian diagonal. Skipping.',3)
             else
                 write(iunit,'(1x,a46)') "Performing reduced density matrix calculation."
                 call setup_rdm_arrays(sys, .false., fci_in%subsys_info, rdm)

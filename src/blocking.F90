@@ -516,14 +516,12 @@ contains
 
     end subroutine change_start
 
-    subroutine err_comparison(bl, ireport)
+    subroutine err_comparison(bl)
 
         ! Compares the fractional error weighted by 1/sqrt(number of data) at
         ! each of the different possible start points and returns the optimal
         ! start position.
 
-        ! In:
-        !   ireport: Number of reports.
         ! In/Out:
         !   bl: Information needed to peform blocking on the fly. start_point
         !       that is the most optimal is returned.
@@ -532,7 +530,6 @@ contains
         use const, only: p
 
         type(blocking_t), intent(inout) :: bl
-        integer, intent(in) :: ireport
         integer :: i, j
         integer ::  minimum(3)=0
 
@@ -632,7 +629,7 @@ contains
         end if
 
         if (mod(bl%n_reports_blocked,bl%save_fq) == 0 .and. bl%n_reports_blocked > 0) then
-            call err_comparison(bl, ireport)
+            call err_comparison(bl)
         end if
 
     end subroutine do_blocking

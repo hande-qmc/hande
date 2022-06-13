@@ -813,7 +813,7 @@ type estimators_t
     !   <D_0|H|D_0> + \sum_{i/=0} <D_0|H|D_i> N_i/N_0
     ! and so proj_energy must be 'normalised' and averaged over the report loops
     ! accordingly.
-    ! See comment for developers above for D0_population which holds similary for proj_energy.
+    ! See comment for developers above for D0_population which holds similarly for proj_energy.
     real(p) :: proj_energy = 0.0_p
     ! The instantaneous projected energy of the previous iteration is required for
     ! various purposes.
@@ -1206,9 +1206,15 @@ contains
                 call warning('ccmc_in_t_json','There are more than 20 secondary references, &
                 &printing suppressed, consider using the mr_read_in functionality.')
             end if
+            select case (ccmc%mr_acceptance_search)
+            case (0)
+                call json_write_key(js, 'mr_acceptance_search', 'linear')
+            case (1)
+                call json_write_key(js, 'mr_acceptance_search', 'bk_tree')
+            end select
+
             call json_write_key(js, 'mr_secref_file', ccmc%mr_secref_file)
             call json_write_key(js, 'secref_bit_string_len', ccmc%secref_bit_string_len)
-            call json_write_key(js, 'mr_acceptance_search', ccmc%mr_acceptance_search)
             call json_write_key(js, 'mr_excit_lvl', ccmc%mr_excit_lvl)
             call json_write_key(js, 'mr_n_frozen', ccmc%mr_n_frozen)
         end if

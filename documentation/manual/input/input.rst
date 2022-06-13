@@ -51,6 +51,7 @@ section.
    calcs/uccmc
    calcs/dmqmc
    calcs/simple_fciqmc
+   calcs/mp1
    calcs/common
 
 Utilities
