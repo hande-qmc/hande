@@ -291,17 +291,30 @@ ccmc options
 ``mr_excit_lvl``
     type: integer.
 
+    Required if ``mr_read_in`` is true.
+
     The excitation level allowable from every secondary reference.
 
     .. note::
 
         This essentially disables the ability to set excitation levels separately for each secondary reference.
 
-``sym_only``
+``mr_secref_sym_only``
     type: boolean.
+
+    Optional. Default: false.
 
     Whether to include only secondary references that belong to the symmetry sector specified in ``sys``.
 
     .. note::
 
         This is only compatible with ``mr_read_in`` being set to true.
+
+``discard_threshold``
+    type: float.
+
+    Optional. Default: :math:`2^{31}-1`.
+
+    The threshold of :math:`A_C/p_C`, where :math:`A_C` is the cluster amplitude
+    and :math:`p_C` is the probability of selecting the cluster (exactly like ``cluster_multispawn_threshold``), 
+    beyond which a cluster is discarded. This should be bigger than ``cluster_multispawn_threshold`` if both are specified. 

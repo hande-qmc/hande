@@ -367,9 +367,9 @@ type ccmc_in_t
     ! Whether to read in a secondary reference file.
     logical :: mr_read_in = .false.
     ! Whether to only include the secondary references of correct symmetry.
-    logical :: sym_only = .false.
-    ! The threshold of pselect/amplitude for a cluster, below which the cluster is discarded.
-    real(p) :: discard_threshold = -1.0_p
+    logical :: mr_secref_sym_only = .false.
+    ! The threshold of amplitude/pselect (like cluster_multispawn_threshold) for a cluster, below which the cluster is discarded.
+    real(p) :: discard_threshold = huge(1.0_p)
 end type ccmc_in_t
 
 type uccmc_in_t
@@ -382,7 +382,7 @@ type uccmc_in_t
     ! Trotter approximation?
     logical :: trot = .false.
     ! UCC ratio discard threshold
-    real(p) :: threshold = -1.0_p
+    real(p) :: threshold = huge(1.0_p)
 end type uccmc_in_t
 
 type restart_in_t

@@ -1328,7 +1328,7 @@ contains
             allocate(read_in_ref%occ_list0(sys%nel))
             open(newunit=ir, file=ccmc_in%mr_secref_file, status='old', form='formatted', action='read')            
 
-            if (ccmc_in%sym_only) then
+            if (ccmc_in%mr_secref_sym_only) then
                 nsym_refs = 0
 
                 do i = 1, ccmc_in%n_secondary_ref
@@ -1349,10 +1349,10 @@ contains
                 rewind(ir)
             end if
 
-            if (parent .and. ccmc_in%sym_only) write(io_unit, '(1X, A, I0)') &
+            if (parent .and. ccmc_in%mr_secref_sym_only) write(io_unit, '(1X, A, I0)') &
                 '# Number of symmetry allowed secondary references initialised: ', nsym_refs
 
-            if (ccmc_in%sym_only) then
+            if (ccmc_in%mr_secref_sym_only) then
                 allocate(qs%secondary_refs(nsym_refs))
             else
                 allocate(qs%secondary_refs(ccmc_in%n_secondary_ref))
@@ -1369,7 +1369,7 @@ contains
 
                 call decode_det(sys%basis, real_bstring(:), read_in_ref%occ_list0(:))
 
-                if (ccmc_in%sym_only) then
+                if (ccmc_in%mr_secref_sym_only) then
                     isym = symmetry_orb_list(sys, read_in_ref%occ_list0(:))
                     if (isym == sys%symmetry) then
                         nsym_refs = nsym_refs + 1

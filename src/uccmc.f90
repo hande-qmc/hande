@@ -1083,7 +1083,7 @@ contains
                 ! Normalisation factor for cluster%amplitudes...
                 cluster%amplitude = cluster_population/(normalisation**(cluster%nexcitors-1))
                 
-                if (cluster%pselect/abs(cluster%amplitude) < threshold) then
+                if (abs(cluster%amplitude)/cluster%pselect > threshold) then
                     allowed = .false.
                     cluster%excitation_level = huge(0)
                     !$omp atomic update
@@ -1097,7 +1097,7 @@ contains
             end if
         end select
 
-        if(cluster%nexcitors>0)  then
+        if (cluster%nexcitors > 0)  then
             deallocate(deexcitation, stat=ierr)
             call check_deallocate('deexcitation',ierr)
         end if 

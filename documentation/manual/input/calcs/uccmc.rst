@@ -106,7 +106,8 @@ uccmc options
 ``threshold``
     type: float.
 
-    Optional. Default: -1.0.
+    Optional. Default: :math:`2^{31}-1`.
 
-    Threshold in the ratio of probability selection and cluster amplitude below which selections are discarded.
-    Can be used to stabilise UCCMC calculations.
+    The threshold of :math:`A_C/p_C`, where :math:`A_C` is the cluster amplitude
+    and :math:`p_C` is the probability of selecting the cluster (exactly like ``cluster_multispawn_threshold``), 
+    beyond which a cluster is discarded. This should be bigger than ``cluster_multispawn_threshold`` if both are specified. 

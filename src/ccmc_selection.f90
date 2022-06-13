@@ -369,7 +369,7 @@ contains
                 cluster%amplitude = cluster_population/(normalisation**(cluster%nexcitors-1))
 
                 ! If the ratio of pselect/amplitude is too small, discard
-                if (discard_threshold > 0.0_p .and. cluster%pselect/abs(cluster%amplitude) < discard_threshold) then
+                if (discard_threshold > 0.0_p .and. abs(cluster%amplitude)/cluster%pselect > discard_threshold) then
                     allowed = .false.
                     cluster%excitation_level = huge(0)
                     !$omp atomic update
