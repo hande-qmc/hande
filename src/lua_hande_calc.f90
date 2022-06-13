@@ -1124,10 +1124,9 @@ contains
         !     vary_shift = true/false,
         !     chebyshev = {
         !           chebyshev_order = order,
-        !           disable_chebyshev_shoulder = true/false,
-        !           disable_chebyshev_lag = lag_iter,
         !           chebyshev_shift = float,
         !           chebyshev_scale = float,
+        !           skip_gershgorin = true/false,
         !     },
         ! }
 
