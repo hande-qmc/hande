@@ -18,7 +18,8 @@ ccmc {
         chebyshev = {
             chebyshev_order = 5,
             skip_gershgorin = true,
-            chebyshev_scale = 1.2,
+            chebyshev_shift = 0.5,
+            chebyshev_scale = 1.05,
         },
         shift_damping = 0.05,
         shift_harmonic_crit_damp = true,
