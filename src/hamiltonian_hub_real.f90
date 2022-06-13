@@ -94,7 +94,7 @@ contains
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f(sys%basis%tot_string_len)
         integer :: root_det(sys%nel)
-        integer :: i
+        integer :: i, j
 
         ! < D | H | D > = \sum_i < i | h(i) | i > + \sum_i \sum_{j>i} < ij || ij >
         hmatel = 0.0_p
@@ -104,12 +104,14 @@ contains
         ! which case it has a kinetic interaction with its self-image.
         ! This only arises if there is at least one crystal cell vector
         ! which is a unit cell vector.
-        if (sys%real_lattice%t_self_images) then
-            call decode_det(sys%basis, f, root_det)
-            do i = 1, sys%nel
-                hmatel = hmatel + get_one_e_int_real(sys, root_det(i), root_det(i))
-            end do
-        end if
+        do i = 1, sys%lattice%ndim
+            if (sys%real_lattice%t_self_images(i)) then
+                call decode_det(sys%basis, f, root_det)
+                do j = 1, sys%nel
+                    hmatel = hmatel + get_one_e_int_real(sys, root_det(j), root_det(j))
+                end do
+            end if
+        end do
 
         ! Two electron operator
         hmatel = hmatel + get_coulomb_matel_real(sys, f)

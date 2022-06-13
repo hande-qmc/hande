@@ -163,7 +163,7 @@ type sys_real_lattice_t
     ! cell.  If so then the an orbital can incur a kinetic interaction with itself.
     ! This is the only way that the integral < i | T | i >, where i is a basis
     ! function centred on a lattice site, can be non-zero.
-    logical :: t_self_images
+    logical, allocatable :: t_self_images(:)
 
     ! True if we are actually only modelling a finite system (e.g. a H_2 molecule)
     ! False if we are modelling an infinite lattice

@@ -40,8 +40,10 @@ contains
         sys%sym_max_tot = 1
 
         associate(sl=>sys%lattice, sr=>sys%real_lattice)
+            allocate(sr%t_self_images(sl%ndim), stat=ierr)
+            call check_allocate('sr%t_self_images',sl%ndim,ierr)
 
-            sr%t_self_images = any(abs(sl%box_length-1.0_p) < depsilon)
+            sr%t_self_images = abs(sl%box_length-1.0_p) < depsilon
 
             allocate(sr%tmat(sys%basis%bit_string_len,sys%basis%nbasis), stat=ierr)
             call check_allocate('sr%tmat',sys%basis%bit_string_len*sys%basis%nbasis,ierr)
