@@ -6,6 +6,17 @@ module ueg_types
 
 implicit none
 
+! These options define the cubic lattice symmetry for the 3D UEG,
+! and are defined relative to the real space lattice symmetry.
+enum, bind(c)
+    ! Simple cubic
+    enumerator :: simple = 1
+    ! Body-centered cubic
+    enumerator :: body_centered
+    ! Face-centered cubic
+    enumerator :: face_centered
+end enum
+
 type ueg_basis_t
 
     ! basis_fns stores the basis functions as a list ordered by the kinetic energy

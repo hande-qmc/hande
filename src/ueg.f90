@@ -56,8 +56,6 @@ contains
 
         integer :: ierr, i, N_kx, k_min(sys%lattice%ndim)
 
-        sys%ueg%basis%kmax = ceiling(sqrt(2*sys%ueg%ecutoff))
-
         N_kx = 2*sys%ueg%basis%kmax+1
 
         allocate(sys%ueg%basis%offset_inds(sys%lattice%ndim), stat=ierr)
@@ -126,7 +124,7 @@ contains
                    ! thus providing lower and upper bounds for a).
                    do a = 1, sys%basis%nbasis-1, 2 ! only bother with alpha orbitals
                        kija = ktest - sys%basis%basis_fns(a)%l
-                       if (real(dot_product(kija,kija),p)/2 - sys%ueg%ecutoff < 1.e-8) then
+                       if (sys%ueg%int_fact*real(dot_product(kija,kija),p)/2 - sys%ueg%ecutoff < 1.e-8) then
                            ! There exists an allowed b in the basis!
                            ternary_conserve(0,k1,k2,k3) = ternary_conserve(0,k1,k2,k3) + 1
                            bit_pos = sys%basis%bit_lookup(1, a)
@@ -206,18 +204,20 @@ contains
 
                 ! Coulomb
                 if (bg%basis_fns(i)%ms == bg%basis_fns(a)%ms .and.  bg%basis_fns(j)%ms == bg%basis_fns(b)%ms) &
-                    intgrl = intgrl + sys%ueg%coulomb_int(sys%lattice%box_length(1), bg, i, a)
+                    intgrl = intgrl + sys%ueg%coulomb_int(sys%lattice%box_length(1), sys%ueg%int_fact, &
+                                                          bg, i, a)
 
                 ! Exchange
                 if (bg%basis_fns(i)%ms == bg%basis_fns(b)%ms .and.  bg%basis_fns(j)%ms == bg%basis_fns(a)%ms) &
-                    intgrl = intgrl - sys%ueg%coulomb_int(sys%lattice%box_length(1), bg, i, b)
+                    intgrl = intgrl - sys%ueg%coulomb_int(sys%lattice%box_length(1), sys%ueg%int_fact, &
+                                                          bg, i, b)
 
             end if
         end associate
 
     end function get_two_e_int_ueg
 
-    pure function coulomb_int_ueg_2d(cell_param, basis_set, i, a) result(intgrl)
+    pure function coulomb_int_ueg_2d(cell_param, int_fact, basis_set, i, a) result(intgrl)
 
         ! In:
         !    cell_param: the length of one side of the simulation cell.
@@ -235,7 +235,7 @@ contains
         use basis, only: basis_t
 
         real(p) :: intgrl
-        real(p), intent(in) :: cell_param
+        real(p), intent(in) :: cell_param, int_fact
         type(basis_t), intent(in) :: basis_set
         integer, intent(in) :: i, a
         integer :: q(2)
@@ -249,10 +249,13 @@ contains
 
     end function coulomb_int_ueg_2d
 
-    pure function coulomb_int_ueg_3d(cell_param, basis_set, i, a) result(intgrl)
+    pure function coulomb_int_ueg_3d(cell_param, int_fact, basis_set, i, a) result(intgrl)
 
         ! In:
         !    cell_param: the length of one side of the simulation cell.
+        !    int_fact: A scale factor which adjusts the |q|
+        !        for the body-centered and face-centered cells so their
+        !        volume is appropriate. Set to 1.0 for simple cubic.
         !    basis_set: basis set of system being studied.
         !    i: index of spin-orbital basis function.
         !    a: index of spin-orbital basis function.
@@ -267,7 +270,7 @@ contains
         use basis, only: basis_t
 
         real(p) :: intgrl
-        real(p), intent(in) :: cell_param
+        real(p), intent(in) :: cell_param, int_fact
         type(basis_t), intent(in) :: basis_set
         integer, intent(in) :: i, a
         integer :: q(3)
@@ -277,7 +280,7 @@ contains
         ! the integral hence becomes 1/(\pi.L.q^2), where q = k_i - k_a.
 
         q = basis_set%basis_fns(i)%l - basis_set%basis_fns(a)%l
-        intgrl = 1.0_p/(pi*cell_param*dot_product(q,q))
+        intgrl = 1.0_p/(pi*cell_param*dot_product(q,q)*int_fact)
 
     end function coulomb_int_ueg_3d
 

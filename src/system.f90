@@ -19,7 +19,7 @@ module system
 use const
 use basis_types, only: basis_t
 use molecular_integral_types
-use ueg_types, only: ueg_basis_t
+use ueg_types, only: ueg_basis_t, simple, body_centered, face_centered
 use symmetry_types, only: pg_sym_t, mom_sym_t
 use parallel, only: default_max_broadcast_chunk
 
@@ -31,10 +31,10 @@ abstract interface
     ! UEG-specific integral procedure pointers.
     ! The integral routines are different for 2D and UEG.  Abstract them using
     ! procedure pointers.
-    pure function i_int_ueg(cell_param, b, i, a) result(intgrl)
+    pure function i_int_ueg(cell_param, int_fact, b, i, a) result(intgrl)
         import :: p, basis_t
         real(p) :: intgrl
-        real(p), intent(in) :: cell_param
+        real(p), intent(in) :: cell_param, int_fact
         type(basis_t), intent(in) :: b
         integer, intent(in) :: i, a
     end function i_int_ueg
@@ -268,6 +268,30 @@ type sys_ueg_t
     ! determinant count, instead only report the reference symmetry.
     ! Note this will only be checked when use_mom_vec = true.
     logical :: trunc_table = .false.
+
+    ! Cubic lattice information, only used for 3D. Can be one of
+    ! simple, body-centered, or face-centered defined relative to the
+    ! real space lattice symmetries.
+    integer :: cub_latt = simple
+
+    ! A scale factor required for the body-centered and face-centered
+    ! cubic symmetries. This ensures that the appropriate relationships
+    ! hold between the real (a_i) and reciprocal (b_i) space lattice vectors:
+    !    1) b_1 = 2 \pi / V = a_2 \cross a_3
+    !       b_2 = 2 \pi / V = a_3 \cross a_1
+    !       b_3 = 2 \pi / V = a_1 \cross a_2
+    !    2) V = a_1 \dot (a_2 \cross a_3)
+    !         = a_2 \dot (a_3 \cross a_1)
+    !         = a_3 \dot (a_1 \cross a_2)
+    ! This works out to be:
+    !    Simple:
+    !        1
+    !    Body-centered:
+    !        (1/2)^(2/3)
+    !    Face-centered:
+    !        (1/2)^(4/3)
+    ! and is set in `lua_hande_systems.f90` during read in.
+    real(p) :: int_fact = 1.0_p
 
 end type sys_ueg_t
 
@@ -793,6 +817,18 @@ contains
 
         if (sys%system == ueg) then
             call json_object_init(js, 'ueg')
+            if (sys%lattice%ndim == 3) then
+                select case(sys%ueg%cub_latt)
+                case(simple)
+                    call json_write_key(js, 'cubic_lattice', 'simple')
+                case(body_centered)
+                    call json_write_key(js, 'cubic_lattice', 'body_centered')
+                case(face_centered)
+                    call json_write_key(js, 'cubic_lattice', 'face_centered')
+                case default
+                    call json_write_key(js, 'cubic_lattice', sys%ueg%cub_latt)
+                end select
+            end if
             call json_write_key(js, 'r_s', sys%ueg%r_s)
             call json_write_key(js, 'ecutoff', sys%ueg%ecutoff)
             call json_write_key(js, 'k_fermi', sys%ueg%kf)
