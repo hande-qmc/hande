@@ -365,7 +365,7 @@ type ccmc_in_t
     ! Acceptance algorithm for mrcc excitations.
     integer :: mr_acceptance_search
     ! Name of the file containing secondary references (only if mr_read_in is true).
-    character(255) :: mr_secref_file
+    character(255) :: mr_secref_file = 'secref'
     ! The bit string length used in the secondary reference file. 
     ! This enables reading in references with more than 64 basis functions.
     integer :: secref_bit_string_len
@@ -1234,19 +1234,20 @@ contains
         call json_write_key(js, 'density_matrices', ccmc%density_matrices)
         call json_write_key(js, 'density_matrix_file', ccmc%density_matrix_file)
         call json_write_key(js, 'even_selection', ccmc%even_selection)
+        call json_write_key(js, 'multiref', ccmc%multiref)
         if (ccmc%multiref) then
-            call json_write_key(js, 'mr_read_in', ccmc%mr_read_in)
             call json_write_key(js, 'n_secondary_ref', ccmc%n_secondary_ref)
-            if (ccmc%n_secondary_ref .le. 20 .and. .not. ccmc%mr_read_in) then
+            call json_write_key(js, 'mr_read_in', ccmc%mr_read_in)
+            if (.not. ccmc%mr_read_in) then
                 do i=1, size(ccmc%secondary_refs)
                     write (string, '(A13,I0)') 'secondary_ref', i
-                    call reference_t_json(js, ccmc%secondary_refs(i), key = trim(string))
+                    call reference_t_json(js, ccmc%secondary_refs(i), key=trim(string))
                 end do
-            else if (ccmc%mr_read_in) then
-                call json_write_key(js, 'sym_only', ccmc%mr_secref_sym_only)
             else
-                call warning('ccmc_in_t_json','There are more than 20 secondary references, &
-                &printing suppressed, consider using the mr_read_in functionality.')
+                call json_write_key(js, 'sym_only', ccmc%mr_secref_sym_only)
+                call json_write_key(js, 'mr_secref_file', ccmc%mr_secref_file)
+                call json_write_key(js, 'secref_bit_string_len', ccmc%secref_bit_string_len)
+                call json_write_key(js, 'mr_n_frozen', ccmc%mr_n_frozen)
             end if
             select case (ccmc%mr_acceptance_search)
             case (0)
@@ -1254,13 +1255,10 @@ contains
             case (1)
                 call json_write_key(js, 'mr_acceptance_search', 'bk_tree')
             end select
-
-            call json_write_key(js, 'mr_secref_file', ccmc%mr_secref_file)
-            call json_write_key(js, 'secref_bit_string_len', ccmc%secref_bit_string_len)
+            
             call json_write_key(js, 'mr_excit_lvl', ccmc%mr_excit_lvl)
-            call json_write_key(js, 'mr_n_frozen', ccmc%mr_n_frozen)
         end if
-        call json_write_key(js, 'multiref', ccmc%multiref, terminal=.true.)
+        call json_write_key(js, 'discard_threshold', ccmc%discard_threshold, terminal=.true.)
         call json_object_end(js, terminal)
 
     end subroutine ccmc_in_t_json
