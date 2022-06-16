@@ -7,6 +7,7 @@ fciqmc {
     sys = sys,
     qmc = {
         tau = 0.001,
+        rng_seed = 2004313765,
         real_amplitudes = true,
         init_pop = 200,
         mc_cycles = 1,
