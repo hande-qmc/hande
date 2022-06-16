@@ -164,6 +164,21 @@ type sys_real_lattice_t
     ! This is the only way that the integral < i | T | i >, where i is a basis
     ! function centred on a lattice site, can be non-zero.
     logical, allocatable :: t_self_images(:)
+    ! For the lattice [[1,1], [1,-1]] (2-site), like
+    !     a b a b
+    !     b A B a
+    !     a b a b
+    ! each A is surrounded by 4 B, and vice versa, so there should be 4 t contributions.
+    ! In general, the question can be posed as 'for each site i, how many of i's neighbours are their own self images'
+    ! The answer is two times the number of side lengths equal to sqrt(2), this is true for any number of dimensions.
+    ! Consider another lattice [[2,2],[1,-1]] (4-site):
+    !  d A B c
+    !  C D a b
+    !  b c d a
+    ! for example, the D site has two neighbours that are A's, and so on. 
+    ! The sqrt(2) comes from the factor that the Hubbard model is a nearest-neighbour model, so the question above
+    ! can only be satisfied when a lattice vector has a norm that equals to sqrt(2) (related by two hoppings 90deg from e/o).
+    integer :: second_images = -1
 
     ! True if we are actually only modelling a finite system (e.g. a H_2 molecule)
     ! False if we are modelling an infinite lattice

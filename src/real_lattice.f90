@@ -44,6 +44,8 @@ contains
             call check_allocate('sr%t_self_images',sl%ndim,ierr)
 
             sr%t_self_images = abs(sl%box_length-1.0_p) < depsilon
+            sr%second_images = count(abs(sl%box_length-sqrt(2.0_p)) < depsilon)
+            if (sr%second_images == 0) sr%second_images = 1
 
             allocate(sr%tmat(sys%basis%bit_string_len,sys%basis%nbasis), stat=ierr)
             call check_allocate('sr%tmat',sys%basis%bit_string_len*sys%basis%nbasis,ierr)

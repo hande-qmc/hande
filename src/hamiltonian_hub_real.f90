@@ -143,13 +143,15 @@ contains
         ! < D | H | D_i^a > = < i | h(a) | a > + \sum_j < ij || aj >
 
         ! One electron operator
-         hmatel = get_one_e_int_real(sys, i, a)
+        hmatel = get_one_e_int_real(sys, i, a)
 
         ! Two electron operator
         ! < D | U | D_i^a > = 0 within the real space formulation of the
         ! Hubbard model.
 
         if (perm) hmatel = -hmatel
+
+        hmatel = hmatel*sys%real_lattice%second_images
 
     end function slater_condon1_hub_real
 
