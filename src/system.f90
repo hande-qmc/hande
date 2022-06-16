@@ -142,7 +142,7 @@ type sys_real_lattice_t
     ! i both directly and via periodic boundary conditions).
     ! For the triangular lattice there are 3*ndim bonds and ndim must equal 2,
     ! so each site is connected to 6 other sites.
-    integer, allocatable :: connected_sites(:,:) ! (0:2ndim, nbasis) or (0:3dim, nbasis)
+    integer, allocatable :: connected_sites(:,:) ! (0:2*ndim, nbasis) or (0:3*ndim, nbasis)
 
     ! next_nearest_orbs(i,j) gives the number of paths by which sites i and j are
     ! are next nearest neighbors. For example, on a square lattice in the
@@ -736,10 +736,11 @@ contains
                 call json_object_init(js, 'connected_sites')
                 do i = 1, sys%basis%nbasis
                     write (isite,'(i0)') i
-                    call json_write_key(js, trim(isite), sys%real_lattice%connected_sites(1:,i), i==sys%basis%nbasis)
+                    call json_write_key(js, trim(isite), sys%real_lattice%connected_sites(0:,i), i==sys%basis%nbasis)
                 end do
                 call json_object_end(js)
-                call json_write_key(js, 'self_image', sys%real_lattice%t_self_images)
+                call json_write_key(js, 't_self_images', sys%real_lattice%t_self_images)
+                call json_write_key(js, 'second_images', sys%real_lattice%second_images)
                 call json_write_key(js, 'finite_cluster', sys%real_lattice%finite_cluster, terminal=.true.)
             end if
             call json_object_end(js)

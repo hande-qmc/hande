@@ -194,6 +194,8 @@ contains
             hmatel = -sys%hubbard%t
         end if
 
+        hmatel = hmatel*sys%real_lattice%second_images
+
     end subroutine slater_condon1_hub_real_excit
 
 end module hamiltonian_hub_real
