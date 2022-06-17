@@ -255,20 +255,22 @@ contains
         real(p) :: one_e_int
         type(sys_t), intent(in) :: sys
         Integer, intent(in) ::  i,j
-        integer :: ind, pos
+        integer :: ind_i, ind_j, pos_i, pos_j
 
         one_e_int = 0.0_p
 
         ! Need to check if i and j are on sites which are nearest neighbours
         ! either directly or due to periodic boundary conditions.
-        pos = sys%basis%bit_lookup(1,j)
-        ind = sys%basis%bit_lookup(2,j)
+        pos_j = sys%basis%bit_lookup(1,j)
+        ind_j = sys%basis%bit_lookup(2,j)
+        pos_i = sys%basis%bit_lookup(1,i)
+        ind_i = sys%basis%bit_lookup(2,i)
         ! Test if i <-> j.  If so there's a kinetic interaction.
-        if (btest(sys%real_lattice%tmat(ind,i),pos)) one_e_int = one_e_int - sys%hubbard%t
-        pos = sys%basis%bit_lookup(1,i)
-        ind = sys%basis%bit_lookup(2,i)
+        if (btest(sys%real_lattice%tmat(ind_j,i),pos_j) .or. &
+            btest(sys%real_lattice%tmat(ind_i,j),pos_i)) one_e_int = one_e_int - 2*sys%hubbard%t
+        
         ! Test if j <-> i.  If so there's a kinetic interaction.
-        if (btest(sys%real_lattice%tmat(ind,j),pos)) one_e_int = one_e_int - sys%hubbard%t
+        !if (btest(sys%real_lattice%tmat(ind,j),pos)) one_e_int = one_e_int - sys%hubbard%t
 
     end function get_one_e_int_real
 
