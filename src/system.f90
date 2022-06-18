@@ -733,6 +733,18 @@ contains
             if (sys%system /= hub_k) then
                 call json_write_key(js, 'triangular_lattice', sys%lattice%triangular_lattice)
                 call json_write_key(js, 'bipartite_lattice', sys%lattice%bipartite_lattice)
+                call json_object_init(js, 'tmat')
+                do i = 1, sys%basis%nbasis
+                    write (isite,'(i0)') i
+                    call json_write_key(js, trim(isite), sys%real_lattice%tmat(:,i), i==sys%basis%nbasis)
+                end do
+                call json_object_end(js)
+                call json_object_init(js, 'connected_orbs')
+                do i = 1, sys%basis%nbasis
+                    write (isite,'(i0)') i
+                    call json_write_key(js, trim(isite), sys%real_lattice%connected_orbs(:,i), i==sys%basis%nbasis)
+                end do
+                call json_object_end(js)
                 call json_object_init(js, 'connected_sites')
                 do i = 1, sys%basis%nbasis
                     write (isite,'(i0)') i

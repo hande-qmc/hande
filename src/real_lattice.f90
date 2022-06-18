@@ -45,7 +45,6 @@ contains
 
             sr%t_self_images = abs(sl%box_length-1.0_p) < depsilon
             sr%second_images = count(abs(sl%box_length-sqrt(2.0_p)) < depsilon)
-            if (sr%second_images == 0) sr%second_images = 1
 
             allocate(sr%tmat(sys%basis%bit_string_len,sys%basis%nbasis), stat=ierr)
             call check_allocate('sr%tmat',sys%basis%bit_string_len*sys%basis%nbasis,ierr)
@@ -261,16 +260,20 @@ contains
 
         ! Need to check if i and j are on sites which are nearest neighbours
         ! either directly or due to periodic boundary conditions.
+        ! One of the tests pick up a direct contribution, and the other picks up a PBC contribution.
+        ! Test if i <-> j.  If so there's a kinetic interaction.
         pos_j = sys%basis%bit_lookup(1,j)
         ind_j = sys%basis%bit_lookup(2,j)
+        if (btest(sys%real_lattice%tmat(ind_j,i),pos_j)) one_e_int = one_e_int - sys%hubbard%t
+        ! Test if j <-> i.  If so there's a kinetic interaction.
         pos_i = sys%basis%bit_lookup(1,i)
         ind_i = sys%basis%bit_lookup(2,i)
-        ! Test if i <-> j.  If so there's a kinetic interaction.
-        if (btest(sys%real_lattice%tmat(ind_j,i),pos_j) .or. &
-            btest(sys%real_lattice%tmat(ind_i,j),pos_i)) one_e_int = one_e_int - 2*sys%hubbard%t
-        
-        ! Test if j <-> i.  If so there's a kinetic interaction.
-        !if (btest(sys%real_lattice%tmat(ind,j),pos)) one_e_int = one_e_int - sys%hubbard%t
+        if (btest(sys%real_lattice%tmat(ind_i,j),pos_i)) one_e_int = one_e_int - sys%hubbard%t
+
+        ! If i and j *only* interact through PBC, additional second_images lots of contribution must be added
+        if (btest(sys%real_lattice%tmat(ind_j,i),pos_j) .neqv. btest(sys%real_lattice%tmat(ind_i,j),pos_i)) then
+            one_e_int = one_e_int - sys%real_lattice%second_images*sys%hubbard%t
+        end if
 
     end function get_one_e_int_real
 
