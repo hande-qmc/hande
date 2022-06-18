@@ -197,8 +197,7 @@ contains
         if (nthreads > 1) then
             logi = ceiling(log10(abs(real(nthreads,dp))+1))
             nspace = 5 - logi
-            write(fmt_str, '(A,I0,A,I0,A)') '(1X,a17,I',logi,'a19,',nspace,'X,f14.2)'
-
+            write(fmt_str, '(A,I0,A,I0,A)') '(1X,a17,I',logi,',a19,',nspace,'X,f14.2)'
             write (io_unit, fmt_str) "CPU time (sum of ", nthreads," threads, seconds):", cpu_time_used
         else
             write (io_unit,'(1X,a34,7X,f14.2)') "CPU time (per processor, seconds):", cpu_time_used
