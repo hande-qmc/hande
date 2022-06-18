@@ -271,9 +271,15 @@ contains
         if (btest(sys%real_lattice%tmat(ind_i,j),pos_i)) one_e_int = one_e_int - sys%hubbard%t
 
         ! If i and j *only* interact through PBC, additional second_images lots of contribution must be added
+        ! This is done since tmat does not have complete information on whether for two sites that interact through 
+        ! the PBC, they also interact with each other's self-image. (see system.f90 comments at second_images)
         if (btest(sys%real_lattice%tmat(ind_j,i),pos_j) .neqv. btest(sys%real_lattice%tmat(ind_i,j),pos_i)) then
             one_e_int = one_e_int - sys%real_lattice%second_images*sys%hubbard%t
         end if
+
+        ! The only other edge case is [[1,1],[1,-1]], which has two sites that both interact through real cell and PBC
+        ! This is the only edge case of this sort. The i/=j makes sure the diagonal element is computed correctly.
+        if (sys%real_lattice%second_images == 2 .and. i /= j) one_e_int = -4*sys%hubbard%t
 
     end function get_one_e_int_real
 
