@@ -1417,6 +1417,34 @@ contains
             ! In serial these arrays are of equal size.
             all_determ_pops = determ_pops
 #endif
+            ! In the array indices return a list of indices of the determ_size
+            ! populations in all_determ_pops which are largest.
+            call find_indices_of_most_populated_dets(ndets_tot, determ_size, all_determ_pops, indices)
+
+            ! Zero before we fill in below.
+            determ_size_this_proc = 0
+
+            do i = 1, determ_size
+                ! In determ_pops populations corresponding to determinants on
+                ! processor 0 are all stored first, then processor 1, etc...
+                ! We can use this to find which processor a particular determinant
+                ! belongs to.
+                on_this_proc = indices(i) > displs(iproc) .and. indices(i) < displs(iproc+1) + 1
+                if (on_this_proc) then
+                    ! Find the index of this determinant in determ_dets, which only
+                    ! contains determinants on this processor.
+                    ind_local = indices(i) - displs(iproc)
+                    call add_det_to_determ_space(determ_size_this_proc, dets_this_proc, spawn, &
+                                                 determ_dets(:,ind_local), .false.)
+                end if
+            end do
+
+            deallocate(determ_pops, stat=ierr)
+            call check_deallocate('determ_pops', ierr)
+            deallocate(all_determ_pops, stat=ierr)
+            call check_deallocate('all_determ_pops', ierr)
+            deallocate(indices, stat=ierr)
+            call check_deallocate('indices', ierr)
         else
             if (highest_dets%using_target) then
                 ndets = highest_dets%target_ndets
@@ -1424,60 +1452,26 @@ contains
                 ndets = highest_dets%ndets
             end if
             determ_size = ndets
-            ndets_tot = ndets
-            ! Dummpy displs.
-            displs(0) = 0
-            displs(1) = ndets
 
             allocate(determ_dets(size(dets_this_proc, dim=1), ndets), stat=ierr)
             call check_allocate('determ_dets', size(dets_this_proc, dim=1)*ndets, ierr)
-            allocate(determ_pops(ndets), stat=ierr)
-            call check_allocate('determ_pops', ndets, ierr)
-            allocate(all_determ_pops(ndets), stat=ierr)
-            call check_allocate('all_determ_pops', ndets, ierr)
-            allocate(indices(ndets), stat=ierr)
-            call check_allocate('indices', ndets, ierr)
 
             if (highest_dets%using_target) then
                 determ_dets(:,1:ndets) = highest_dets%det_list_main(3:,highest_dets%ndets-ndets+1:highest_dets%ndets)
-                ! first element is the absolute population
-                all_determ_pops(1:ndets) = highest_dets%det_list_main(1,highest_dets%ndets-ndets+1:highest_dets%ndets)
             else if (highest_dets%using_weightage) then
                 determ_dets(:,1:ndets) = highest_dets%det_list_main(1:sys%basis%bit_string_len,1:ndets)
-                all_determ_pops(1:ndets) = abs(highest_dets%det_list_main(sys%basis%bit_string_len+1,1:ndets))
             end if
+
+            ! Zero before we fill in below.
+            determ_size_this_proc = 0
+
+            do i = 1, determ_size
+                call add_det_to_determ_space(determ_size_this_proc, dets_this_proc, spawn, determ_dets(:,i), .false.)
+            end do
         end if
-
-        ! In the array indices return a list of indices of the determ_size
-        ! populations in all_determ_pops which are largest.
-        call find_indices_of_most_populated_dets(ndets_tot, determ_size, all_determ_pops, indices)
-
-        ! Zero before we fill in below.
-        determ_size_this_proc = 0
-
-        do i = 1, determ_size
-            ! In determ_pops populations corresponding to determinants on
-            ! processor 0 are all stored first, then processor 1, etc...
-            ! We can use this to find which processor a particular determinant
-            ! belongs to.
-            on_this_proc = indices(i) > displs(iproc) .and. indices(i) < displs(iproc+1) + 1
-            if (on_this_proc) then
-                ! Find the index of this determinant in determ_dets, which only
-                ! contains determinants on this processor.
-                ind_local = indices(i) - displs(iproc)
-                call add_det_to_determ_space(determ_size_this_proc, dets_this_proc, spawn, &
-                                             determ_dets(:,ind_local), .false.)
-            end if
-        end do
 
         deallocate(determ_dets, stat=ierr)
         call check_deallocate('determ_dets', ierr)
-        deallocate(determ_pops, stat=ierr)
-        call check_deallocate('determ_pops', ierr)
-        deallocate(all_determ_pops, stat=ierr)
-        call check_deallocate('all_determ_pops', ierr)
-        deallocate(indices, stat=ierr)
-        call check_deallocate('indices', ierr)
 
     end subroutine create_high_pop_space
 
