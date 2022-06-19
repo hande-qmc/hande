@@ -242,6 +242,15 @@ type qmc_in_t
     ! Set to 1 if not using quasiNewton.
     real(p) :: quasi_newton_pop_control = -1.0_p
 
+    ! The wall-Chebyshev propagator, see propagators.f90 for documentation
+    logical :: chebyshev = .false.
+    ! Default so the loop over the original qmc cycle code only gets executed once if not using Chebyshev
+    integer :: chebyshev_order = 1 
+    ! Fudge factors: E_max = (E_max + shift) * scale
+    real(p) :: chebyshev_shift = 0.0_p
+    real(p) :: chebyshev_scale = 1.1_p
+    ! Do we skip the Gershgorin estimate of upper spectral range and just use the highest diagonal (with fudge factors)?
+    logical :: chebyshev_skip_gershgorin = .false.
 end type qmc_in_t
 
 type fciqmc_in_t
@@ -288,6 +297,10 @@ type fciqmc_in_t
 
     ! Filename to write density matrix to
     character(255) :: density_matrix_file = 'RDM'
+
+    ! Controls the report when we begin accumulating reduced
+    ! density matrix statistics
+    integer :: density_matrix_report = 3000
 
     ! Are we performing FCIQMC-tailored multi-reference CCMC? 
     ! This means accumulating a list of highly occupied determinants, with the parameters that follow
@@ -379,14 +392,34 @@ type ccmc_in_t
     ! Acceptance algorithm for mrcc excitations.
     integer :: mr_acceptance_search
     ! Name of the file containing secondary references (only if mr_read_in is true).
-    character(255) :: mr_secref_file
+    character(255) :: mr_secref_file = 'secref'
+    ! The bit string length used in the secondary reference file. 
+    ! This enables reading in references with more than 64 basis functions.
+    integer :: secref_bit_string_len
     ! CC level from every secondary reference.
     integer :: mr_excit_lvl = -1
     ! Number of frozen electrons to add to the secondary references.
     integer :: mr_n_frozen = 0
     ! Whether to read in a secondary reference file.
     logical :: mr_read_in = .false.
+    ! Whether to only include the secondary references of correct symmetry.
+    logical :: mr_secref_sym_only = .false.
+    ! The threshold of amplitude/pselect (like cluster_multispawn_threshold) for a cluster, below which the cluster is discarded.
+    real(p) :: discard_threshold = huge(1.0_p)
 end type ccmc_in_t
+
+type uccmc_in_t
+    ! Polynomial truncation in UCCMC
+    integer :: pow_trunc = 12
+    ! Compute variational UCC energy?
+    logical :: variational_energy = .false.
+    ! Compute average UCC wavefunction?
+    logical :: average_wfn = .false.
+    ! Trotter approximation?
+    logical :: trot = .false.
+    ! UCC ratio discard threshold
+    real(p) :: threshold = huge(1.0_p)
+end type uccmc_in_t
 
 type restart_in_t
     ! Restart calculation from file.
@@ -671,6 +704,8 @@ type particle_t
     logical :: warn = .true.
     ! Number of memory warnings
     integer :: warning_count = 0
+    ! Ascending/descending psip_list order
+    logical :: descending = .false.
 end type particle_t
 
 type spawned_particle_t
@@ -802,6 +837,9 @@ type estimators_t
     real(p) :: D0_population = 0.0_p
     ! Population of walkers on reference determinant/trace of density matrix at previous timestep.
     real(p) :: D0_population_old = 0.0_p
+    ! For UCCMC need to store true D0_population (which acts as the intermediate normalisation factor), 
+    ! as well as total D0 contribution to wfn. To simplify compatibility, the latter will be stored in D0_population
+    real(p) :: D0_noncomposite_population = 0.0_p
     ! projected energy
     ! This stores during an FCIQMC report loop
     !   \sum_{i/=0} <D_0|H|D_i> N_i
@@ -811,7 +849,7 @@ type estimators_t
     !   <D_0|H|D_0> + \sum_{i/=0} <D_0|H|D_i> N_i/N_0
     ! and so proj_energy must be 'normalised' and averaged over the report loops
     ! accordingly.
-    ! See comment for developers above for D0_population which holds similary for proj_energy.
+    ! See comment for developers above for D0_population which holds similarly for proj_energy.
     real(p) :: proj_energy = 0.0_p
     ! The instantaneous projected energy of the previous iteration is required for
     ! various purposes.
@@ -915,7 +953,31 @@ type highest_dets_t
     real(dp), allocatable :: nw_cumul_proc(:)
 end type highest_dets_t
 
+type cheb_t
+    ! The wall-Chebyshev propagator, where instead of 
+    ! (linearly) approximating e^{-\tau H}, we directly approximate \lim_{\tau -> \inf} e^{-\tau H},
+    ! which is the "wall function", and we expand the wall function in Chebyshev polynomials.
+    ! The Chebyshev polynomials are amenable for use as projectors for the following reasons:
+    !   1. They are bound by [-1,1] in the (estimated) spectral range, becoming small near the upper spectral bound
+    !   2. They diverge to +\inf as E -> -\inf, meaning the lower spectral bound can be an estimate
+    !   3. Sums of up to m-th order Chebyshev polynomials can be written as products of m linear projectors, each involving
+    !       the m-th zero of the the original sum.
+    !   4. Most importantly they kill off non ground states (arbitrarily, by making m large) faster than the linear projector.
+    ! See 10.1021/acs.jctc.6b00639
+    logical :: using_chebyshev = .false.
+    integer :: order = 1 ! Default to linear
+    real(p) :: spectral_range(2) = (/0.0_p, 0.0_p/)
+    real(p), allocatable :: zeroes(:), weights(:)
+    ! Saves the current index to save on looping
+    integer :: icheb
+    logical :: disable_chebyshev_shoulder = .false.
+    integer :: disable_chebyshev_lag = 0
+    ! shoulder_iter + disable_chebyshev_lag
+    integer :: disable_chebyshev_iter = -1
+end type cheb_t
+
 type qmc_state_t
+    
     ! When performing dmqmc calculations, dmqmc_factor = 2.0. This factor is
     ! required because in DMQMC calculations, instead of spawning from one end with
     ! the full probability, we spawn from two different ends with half probability each.
@@ -963,11 +1025,11 @@ type qmc_state_t
     type(trial_t) :: trial
     type(restart_in_t) :: restart_in
     ! Flags for multireference CCMC calculations.
-    logical :: multiref = .false., mr_read_in = .false.
-    integer :: n_secondary_ref = 0, mr_n_frozen, mr_excit_lvl
+    logical :: multiref = .false.
     type(reference_t), allocatable :: secondary_refs(:)
     integer :: mr_acceptance_search
-    character(255) :: mr_secref_file
+    ! BK tree object for multi-reference searching
+    type(tree_t) :: secondary_ref_tree
     ! WARNING: par_info is the 'reference/master' (ie correct) version
     ! of parallel_t, in particular of proc_map_t.  However, copies of it
     ! are kept in spawn_t objects, and it is these copies which are used
@@ -984,14 +1046,15 @@ type qmc_state_t
     ! String representing state of RNG. Should be set, used and deallocated as quickly as possible as it becomes invalid as soon as
     ! the next random number is drawn -- only present really for a convenient way of handling the RNG state during restarts.
     type(dSFMT_state_t) :: rng_state
-    ! BK tree object for multi-reference searching
-    type(tree_t) :: secondary_ref_tree
 
     ! Are we averaging the wavefunction currently, e.g. for a FCIQMC-tailored CCMC or to establish a deterministic space? 
     ! This means accumulating a list of highly occupied determinants (see below)
     logical :: averaging = .false.
     ! Contains a list of (cumulatively) highest occupied determinants, and parameters about this list.
     type(highest_dets_t) :: highest_dets
+
+    ! Derived type object containing information on the wall-Chebyshev propagator
+    type(cheb_t) :: cheby_prop
 end type qmc_state_t
 
 ! Copies of various settings that are required during annihilation.  This avoids having to pass through lots of different
@@ -1025,6 +1088,7 @@ contains
         type(estimators_t), intent(inout) :: estimators
 
         estimators%D0_population = 0.0_p
+        estimators%D0_noncomposite_population = 0.0_p
         estimators%proj_energy = 0.0_p
         estimators%D0_population_comp = cmplx(0.0, 0.0, p)
         estimators%proj_energy_comp = cmplx(0.0, 0.0, p)
@@ -1110,11 +1174,17 @@ contains
         call json_write_key(js, 'ncycles', qmc%ncycles)
         call json_write_key(js, 'nreport', qmc%nreport)
         call json_write_key(js, 'power_pitzer_min_weight', qmc%power_pitzer_min_weight)
+        call json_write_key(js, 'chebyshev', qmc%chebyshev)
+        if (qmc%chebyshev) then
+            call json_write_key(js, 'chebyshev_order', qmc%chebyshev_order)
+            call json_write_key(js, 'chebyshev_shift', qmc%chebyshev_shift)
+            call json_write_key(js, 'chebyshev_scale', qmc%chebyshev_scale)
+            call json_write_key(js, 'skip_gershgorin', qmc%chebyshev_skip_gershgorin)
+        end if
         call json_write_key(js, 'quasi_newton', qmc%quasi_newton)
         call json_write_key(js, 'quasi_newton_threshold', qmc%quasi_newton_threshold)
         call json_write_key(js, 'quasi_newton_value', qmc%quasi_newton_value)
-        call json_write_key(js, 'quasi_newton_pop_control', qmc%quasi_newton_pop_control)
-        call json_write_key(js, 'use_mpi_barriers', qmc%use_mpi_barriers, .true.)
+        call json_write_key(js, 'quasi_newton_pop_control', qmc%quasi_newton_pop_control, .true.)
         call json_object_end(js, terminal)
 
     end subroutine qmc_in_t_json
@@ -1249,27 +1319,60 @@ contains
         call json_write_key(js, 'density_matrices', ccmc%density_matrices)
         call json_write_key(js, 'density_matrix_file', ccmc%density_matrix_file)
         call json_write_key(js, 'even_selection', ccmc%even_selection)
+        call json_write_key(js, 'multiref', ccmc%multiref)
         if (ccmc%multiref) then
-            
-            call json_write_key(js, 'mr_read_in', ccmc%mr_read_in)            
             call json_write_key(js, 'n_secondary_ref', ccmc%n_secondary_ref)
-            if (ccmc%n_secondary_ref.le.20 .and. .not.ccmc%mr_read_in) then
+            call json_write_key(js, 'mr_read_in', ccmc%mr_read_in)
+            if (.not. ccmc%mr_read_in) then
                 do i=1, size(ccmc%secondary_refs)
                     write (string, '(A13,I0)') 'secondary_ref', i
-                    call reference_t_json(js, ccmc%secondary_refs(i), key = trim(string))
+                    call reference_t_json(js, ccmc%secondary_refs(i), key=trim(string))
                 end do
-            elseif (ccmc%mr_read_in) then
-                continue
             else
-                call warning('ccmc_in_t_json','There are more than 20 secondary references, &
-                &printing suppressed, consider using the mr_read_in functionality.')
+                call json_write_key(js, 'sym_only', ccmc%mr_secref_sym_only)
+                call json_write_key(js, 'mr_secref_file', ccmc%mr_secref_file)
+                call json_write_key(js, 'secref_bit_string_len', ccmc%secref_bit_string_len)
+                call json_write_key(js, 'mr_n_frozen', ccmc%mr_n_frozen)
             end if
-            call json_write_key(js, 'mr_acceptance_search', ccmc%mr_acceptance_search)
+            select case (ccmc%mr_acceptance_search)
+            case (0)
+                call json_write_key(js, 'mr_acceptance_search', 'linear')
+            case (1)
+                call json_write_key(js, 'mr_acceptance_search', 'bk_tree')
+            end select
+            
+            call json_write_key(js, 'mr_excit_lvl', ccmc%mr_excit_lvl)
         end if
-        call json_write_key(js, 'multiref', ccmc%multiref, terminal=.true.)
+        call json_write_key(js, 'discard_threshold', ccmc%discard_threshold, terminal=.true.)
         call json_object_end(js, terminal)
 
     end subroutine ccmc_in_t_json
+
+    subroutine uccmc_in_t_json(js, uccmc, terminal)
+
+        ! Serialise a uccmc_in_t object in JSON format.
+
+        ! In/Out:
+        !   js: json_out_t controlling the output unit and handling JSON internal state.  Unchanged on output.
+        ! In:
+        !   uccmc: uccmc_in_t object containing uccmc input values (including any defaults set).
+        !   terminal (optional): if true, this is the last entry in the enclosing JSON object.  Default: false.
+
+        use json_out
+
+        type(json_out_t), intent(inout) :: js
+        type(uccmc_in_t), intent(in) :: uccmc
+        logical, intent(in), optional :: terminal
+
+        call json_object_init(js, 'uccmc')
+        call json_write_key(js, 'pow_trunc', uccmc%pow_trunc)
+        call json_write_key(js, 'variational_energy', uccmc%variational_energy)
+        call json_write_key(js, 'average_wfn', uccmc%average_wfn)
+        call json_write_key(js, 'trotterized', uccmc%trot)
+        call json_write_key(js, 'threshold', uccmc%threshold,terminal=.true.)
+        call json_object_end(js, terminal)
+
+    end subroutine uccmc_in_t_json
 
     subroutine restart_in_t_json(js, restart, uuid_restart, terminal)
 

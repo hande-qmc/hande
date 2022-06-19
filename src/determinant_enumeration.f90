@@ -23,7 +23,7 @@ contains
 
         ! On initialisation the number of determinants in each symmetry block
         ! for the specified spin polarisation is counted and store in
-        ! the module-level variable sym_space_size.  Subseuent calls store
+        ! the module-level variable sym_space_size.  Subsequent calls store
         ! determinants of the desired symmetry in the module-level variable
         ! dets_list array.
 
@@ -489,8 +489,8 @@ contains
             call check_allocate('dets', sys%basis%tot_string_len*ndets, ierr)
 
             ! Prepare determinant lists
-            call qsort(dets_lo)
-            call qsort(dets_hi)
+            call qsort(dets_lo, .false.)
+            call qsort(dets_hi, .false.)
 
             i = 1
             j = 1

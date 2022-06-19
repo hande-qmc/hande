@@ -329,10 +329,12 @@ contains
             determ%indices = 0
         end if
 
+        ! Make compatible with even selection in CCMC
         do i = 1, determ%sizes(iproc)
             call reset_extra_info_bit_string(sys%basis, dets_this_proc(:,i))
         end do
-        call qsort(dets_this_proc, determ%sizes(iproc)) 
+
+        call qsort(dets_this_proc, .false., determ%sizes(iproc)) 
 
         ! If we're reusing the deterministic space then we don't need to
         ! allocate the dets array. It's already allocated to the correct size.
@@ -738,7 +740,7 @@ contains
 
         call stop_all("create_dense_determ_hamil", &
                       "This subroutine has not been implemented. &
-                      Please, check back in future releases.")
+                      &Please, check back in future releases.")
 
     end subroutine create_dense_determ_hamil
 
@@ -783,7 +785,7 @@ contains
         istart = 1
         iend = psip_list%nstates
         do i = 1, determ%sizes(iproc)
-            call binary_search(psip_list%states, dets_this_proc(:,i), istart, iend, hit, pos)
+            call binary_search(psip_list%states, dets_this_proc(:,i), istart, iend, hit, pos, .false.)
             if (.not. hit) then
                 ! This deterministic state is not in states. Move all
                 ! determinants with index pos or greater down one and insert
@@ -912,7 +914,7 @@ contains
 
             iend = istart + determ%sizes(iproc) - 1
 
-            call binary_search(determ%dets, contrib%cdet%f, istart, iend, hit, pos) 
+            call binary_search(determ%dets, contrib%cdet%f, istart, iend, hit, pos, .false.) 
 
             ! With OpenMP the noncomposite loop iterations are not absolutely guaranteed to come first, 
             ! so make sure we don't accidentally overwrite. Also no need to reweight by pgen as they're all 1.0_p for nc clusters.
@@ -969,7 +971,7 @@ contains
 
             iend = istart + determ%sizes(iproc) - 1
 
-            call binary_search(determ%dets, contrib%cdet%f, istart, iend, hit, pos)
+            call binary_search(determ%dets, contrib%cdet%f, istart, iend, hit, pos, .false.)
             ! It's possible multiple threads will be writing to pos at the same time, hence the atomic
             !$omp atomic
             determ%vector(1,pos-istart+1) = determ%vector(1,pos-istart+1) + &
@@ -1132,7 +1134,7 @@ contains
 
         call stop_all("dense_determ_proj_combined_annihil", &
                       "This subroutine has not been implemented. &
-                      Please, check back in future releases.")
+                      &Please, check back in future releases.")
 
     end subroutine dense_determ_proj_combined_annihil
 

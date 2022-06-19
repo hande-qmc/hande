@@ -110,6 +110,7 @@ target_sources(hande-static
     particle_t_utils.f90
     pg_symmetry.f90
     proc_pointers.f90
+    propagators.f90
     qmc.F90
     qmc_common.F90
     qmc_data.f90
@@ -132,6 +133,9 @@ target_sources(hande-static
     symmetry.f90
     symmetry_types.f90
     system.f90
+    trotterized_uccmc.F90
+    uccmc.f90
+    uccmc_utils.f90
     ueg.f90
     ueg_types.f90
   )

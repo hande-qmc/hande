@@ -651,7 +651,7 @@ contains
 
 ! --- Output routines ---
 
-    subroutine initial_qmc_status(sys, qmc_in, qs, ntot_particles, doing_ccmc, io_unit)
+    subroutine initial_qmc_status(sys, qmc_in, qs, ntot_particles, doing_ccmc, io_unit, rdm_energy)
 
         ! Calculate the projected energy based upon the initial walker
         ! distribution (either via a restart or as set during initialisation)
@@ -666,6 +666,7 @@ contains
         !    qs: qmc_state_t object.
         ! In (optional):
         !    io_unit: io unit to write any reporting to.
+        !    rdm_energy: Print energy calculated from RDM.
 
         use parallel, only: parent
         use qmc_io, only: write_qmc_report
@@ -678,7 +679,8 @@ contains
         real(dp), intent(in) :: ntot_particles(qs%psip_list%nspaces)
         logical, intent(in) :: doing_ccmc
         integer, optional, intent(in) :: io_unit
-        
+        logical, optional, intent(in) :: rdm_energy
+
         if (parent) then
             if (doing_ccmc) then
                 qs%estimators%nattempts = nint(qs%estimators%D0_population)
@@ -686,7 +688,7 @@ contains
                                         nattempts=.true., io_unit=io_unit)
             else
                 call write_qmc_report(qmc_in, qs, 0, ntot_particles, 0.0, .true., .false., cmplx_est=sys%read_in%comp, &
-                    io_unit=io_unit)
+                    io_unit=io_unit, rdm_energy=rdm_energy)
             end if
         end if
 
@@ -794,7 +796,8 @@ contains
 
     end subroutine initial_ci_projected_energy
 
-    subroutine initial_cc_projected_energy(sys, qs, rng_seed, logging_info, cumulative_abs_real_pops, ntot_particles, determ)
+    subroutine initial_cc_projected_energy(sys, qs, rng_seed, logging_info, cumulative_abs_real_pops, ntot_particles, &
+                                           determ, ccmc_in)
 
         ! Calculate the projected energy based upon the initial walker
         ! distribution for a CC wavefunction ansatz.
@@ -826,7 +829,7 @@ contains
         use hamiltonian_data, only: hmatel_t
         use logging, only: logging_t
         use proc_pointers, only: update_proj_energy_ptr
-        use qmc_data, only: qmc_state_t, zero_estimators_t, semi_stoch_t
+        use qmc_data, only: qmc_state_t, zero_estimators_t, semi_stoch_t, ccmc_in_t
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
@@ -836,6 +839,7 @@ contains
         real(p), intent(inout), allocatable :: cumulative_abs_real_pops(:)
         real(dp), intent(out) :: ntot_particles(qs%psip_list%nspaces)
         type(semi_stoch_t), intent(in) :: determ
+        type(ccmc_in_t), intent(in) :: ccmc_in
 
         type(det_info_t) :: cdet
         type(cluster_t) :: cluster
@@ -847,6 +851,7 @@ contains
         integer(int_64) :: iattempt, nattempts
         integer :: D0_pos, D0_proc, nD0_proc
         complex(p) :: D0_normalisation
+        integer(i0) :: count_discard
 #ifdef PARALLEL
         integer :: ierr
         real(p) :: proj_energy_sum(qs%psip_list%nspaces)
@@ -858,6 +863,8 @@ contains
         call zero_estimators_t(qs%estimators)
 
         call dSFMT_init(rng_seed, 50000, rng)
+
+        count_discard = 0_i0
         
         D0_pos = 1
         call get_D0_info(qs, sys%read_in%comp, D0_proc, D0_pos, nD0_proc, D0_normalisation)
@@ -881,7 +888,7 @@ contains
                 ! excitors involving the same orbitals so we need only look for unlinked clusters.
                 call select_cluster(rng, sys, qs%psip_list, qs%ref%f0, 2, .false., nattempts, D0_normalisation, 0.0_p, &
                                 cumulative_abs_real_pops, tot_abs_real_pop, 2, 2, logging_info, cdet, cluster, qs%excit_gen_data, &
-                                determ, determ_parent)
+                                determ, determ_parent, ccmc_in%discard_threshold, count_discard)
             end if
             if (cluster%excitation_level /= huge(0)) then
 
@@ -964,7 +971,7 @@ contains
         !    min_attempts: if present, set nattempts to be at least this value.
         !    complx: true if using real and imaginary psips.
 
-        use calc, only: doing_calc, ct_fciqmc_calc, ccmc_calc, dmqmc_calc
+        use calc, only: doing_calc, ct_fciqmc_calc, ccmc_calc, dmqmc_calc, uccmc_calc, trot_uccmc_calc
         use const, only: int_64, int_p
         use qmc_data, only: particle_t
         use spawn_data, only: spawn_t
@@ -990,7 +997,7 @@ contains
         ! Number of spawning attempts that will be made.
         ! For FCIQMC, this is used for accounting later, not for controlling the
         ! spawning.
-        if (doing_calc(ct_fciqmc_calc) .or. doing_calc(ccmc_calc)) then
+        if (doing_calc(ct_fciqmc_calc) .or. doing_calc(ccmc_calc) .or. doing_calc(uccmc_calc) .or. doing_calc(trot_uccmc_calc)) then
             ! ct algorithm: kinda poorly defined.
             ! ccmc: number of excitor clusters we'll randomly generate and
             ! attempt to spawn from.

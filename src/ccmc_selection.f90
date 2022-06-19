@@ -92,7 +92,7 @@ contains
 
     subroutine select_cluster(rng, sys, psip_list, f0, ex_level, linked_ccmc, nattempts, normalisation, &
                               initiator_pop, cumulative_excip_pop, tot_excip_pop, min_size, max_size, &
-                              logging_info, cdet, cluster, excit_gen_data, determ, determ_parent)
+                              logging_info, cdet, cluster, excit_gen_data, determ, determ_parent, discard_threshold, count_discard)
 
         ! Select a random cluster of excitors from the excitors on the
         ! processor.  A cluster of excitors is itself an excitor.  For clarity
@@ -179,6 +179,8 @@ contains
         type(excit_gen_data_t), intent(in) :: excit_gen_data
         type(semi_stoch_t), intent(in) :: determ
         logical, intent(out) :: determ_parent
+        real(p), intent(in) :: discard_threshold
+        integer(i0), intent(inout) :: count_discard
 
         real(dp) :: rand
         real(p) :: psize
@@ -386,6 +388,15 @@ contains
                 if (determ%doing_semi_stoch) then
                     determ_parent = check_if_determ(determ%hash_table, determ%dets, cdet%f)
                     cdet%determ = determ_parent
+                end if
+
+                ! If the ratio of amplitude/pselect is too big, discard
+                if (abs(cluster%amplitude)/cluster%pselect > discard_threshold) then
+                    allowed = .false.
+                    cluster%excitation_level = huge(0)
+                    !$omp atomic update
+                    count_discard = count_discard + 1
+                    !$omp end atomic
                 end if
             else
                 ! Simply set excitation level to a too high (fake) level to avoid
@@ -954,6 +965,11 @@ contains
                     selection_data%nstochastic_clusters = 0_int_64
                 end if
             end if
+            ![todo, for review] should this be nattempts = selection_data%nsingle_excitors + selection_data%nD0_select + selection_data%nstochastic_clusters?
+            ! Or are the singles considered to be selected proportionally to their population?
+            ! Changing would probably break many tests, since this gets printed.
+            ! [review] Brian: purely from a dimensionality point of view, nsingle_excitors would just be the number of states 
+            ! (line 907 above), whereas all the other quantities here are populations. I might be missing your point though.
             nattempts = nint(tot_abs_pop, kind=int_64) + selection_data%nD0_select + selection_data%nstochastic_clusters
         else
             min_cluster_size = 0

@@ -79,7 +79,7 @@ contains
     end subroutine linear_search_i0_list
 
 
-    pure subroutine binary_search_i0_list(list, item, istart, iend, hit, pos)
+    pure subroutine binary_search_i0_list(list, item, istart, iend, hit, pos, reverse)
 
         ! Find where an item resides in a list of such items.
         ! Only elements between istart and iend are examined (use the
@@ -105,6 +105,7 @@ contains
         integer, intent(in) :: istart, iend
         logical, intent(out) :: hit
         integer, intent(out) :: pos
+        logical, intent(in) :: reverse
 
         integer :: hi, lo, compare
 
@@ -133,7 +134,7 @@ contains
                 ! search algorithm.
                 pos = (hi+lo)/2
 
-                compare = bit_str_cmp(list(:,pos), item)
+                compare = bit_str_cmp_internal(list(:,pos), item, reverse)
                 select case(compare)
                 case(0)
                     ! hit!
@@ -164,7 +165,7 @@ contains
             ! element which doesn't exist yet) the binary search can find either
             ! the element before or after where item should be placed.
             if (hi == lo) then
-                compare = bit_str_cmp(list(:,hi), item)
+                compare = bit_str_cmp_internal(list(:,hi), item, reverse)
                 select case(compare)
                 case(0)
                     ! hit!
@@ -182,6 +183,24 @@ contains
             end if
 
         end if
+    
+        contains
+        
+        pure function bit_str_cmp_internal(b1, b2, reverse) result (cmp)
+
+            use bit_utils, only: bit_str_cmp
+
+            integer(i0), intent(in) :: b1(:), b2(:)
+            logical, intent(in) :: reverse
+            integer :: cmp
+
+            if (reverse) then
+                cmp = -bit_str_cmp(b1, b2)
+            else
+                cmp = bit_str_cmp(b1, b2)
+            end if
+
+        end function bit_str_cmp_internal
 
     end subroutine binary_search_i0_list
 

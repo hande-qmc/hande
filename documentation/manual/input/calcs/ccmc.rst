@@ -16,6 +16,7 @@ Coupled Cluster Monte Carlo
         blocking = { ... },
         semi_stoch = { ... },
         qmc_state = qmc_state,
+        psip_list = psip_list,
     }
 
 Returns:
@@ -107,6 +108,20 @@ Options
 
         This destroys the qmc_state object and so it cannot be re-used in subsequent
         QMC calculations.
+``psip_list``
+    type: particle_t object.
+
+    Optional.
+
+    Output wavefunction of a previous calculation to initialise the current CCMC calculation. 
+    Currently only the :ref:`mp1` calculation can generate a psip_list.
+
+    .. warning::
+
+        The contents of the psip_list directly writes over the initial CCMC wavefunction, so 
+        make sure the settings that were used to generate it are identical with those provided 
+        for the CCMC table, otherwise undefined behaviour may result. The easiest way to ensure this 
+        is outlined in :ref:`mp1`.
 
 .. _ccmc_table:
 
@@ -274,7 +289,9 @@ ccmc options
     type: string.
 
     The name of the file with the list of secondary references. Can be generated with ``tools/ccmc/generate_mr_input_file.py``, to see the available options, run
-    .. code_block:: bash
+
+    .. code-block:: bash
+
         $ generate_mr_input_file.py -h
 
     When the ``compress`` flag is specified, only necessary references (those that are neccessary 
@@ -301,8 +318,30 @@ ccmc options
 ``mr_excit_lvl``
     type: integer.
 
+    Required if ``mr_read_in`` is true.
+
     The excitation level allowable from every secondary reference.
 
     .. note::
 
         This essentially disables the ability to set excitation levels separately for each secondary reference.
+
+``mr_secref_sym_only``
+    type: boolean.
+
+    Optional. Default: false.
+
+    Whether to include only secondary references that belong to the symmetry sector specified in ``sys``.
+
+    .. note::
+
+        This is only compatible with ``mr_read_in`` being set to true.
+
+``discard_threshold``
+    type: float.
+
+    Optional. Default: :math:`2^{31}-1`.
+
+    The threshold of :math:`A_C/p_C`, where :math:`A_C` is the cluster amplitude
+    and :math:`p_C` is the probability of selecting the cluster (exactly like ``cluster_multispawn_threshold``), 
+    beyond which a cluster is discarded. This should be bigger than ``cluster_multispawn_threshold`` if both are specified. 

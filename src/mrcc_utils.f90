@@ -164,14 +164,14 @@ contains
 
             ! Only use the absolute population to sort (nsort=1)
             hd%ndets_new = target_ndets
-            call qsort(hd%det_list_new, head=hd%ndets_new, nsort=1)
+            call qsort(hd%det_list_new, .false., head=hd%ndets_new, nsort=1)
             
         else if (hd%using_weightage) then
             call truncate_wfn(psip_list, psip_list%nstates, norm, hd%wfn_weightage, &
                               sys%basis%bit_string_len, hd%ndets_new, hd%det_list_new)
 
             ! Sort this (hopefully short) list by determinants before merging with main list
-            call qsort(hd%det_list_new, hd%ndets_new, sys%basis%bit_string_len)
+            call qsort(hd%det_list_new, .false., hd%ndets_new, sys%basis%bit_string_len)
         end if
 
     end subroutine get_highest_occupied_dets
@@ -221,7 +221,7 @@ contains
                                 hd%det_list_main(:, 1) = hd%det_list_new(:, i)
                             end if
                         end if
-                        call qsort(hd%det_list_main, head=hd%ndets, nsort=1)
+                        call qsort(hd%det_list_main, .false., head=hd%ndets, nsort=1)
                     end if
                 end do
             else if (hd%using_weightage) then
@@ -231,7 +231,7 @@ contains
                 iend = hd%ndets
                 do i = 1, hd%ndets_new
                     f = int(hd%det_list_new(:sys%basis%bit_string_len,i), i0)
-                    call binary_search(hd%det_list_main(:sys%basis%bit_string_len,:), f, istart, iend, hit, pos)
+                    call binary_search(hd%det_list_main(:sys%basis%bit_string_len,:), f, istart, iend, hit, pos, .false.)
                     if (hit) then
                         ! Merge populations
                         hd%det_list_main(sys%basis%bit_string_len+1, pos) = hd%det_list_main(sys%basis%bit_string_len+1, pos) + &
@@ -255,7 +255,7 @@ contains
 
                     do i = hd%ndets_new, 1, -1
                         f = int(hd%det_list_new(:sys%basis%bit_string_len,i), i0)
-                        call binary_search(hd%det_list_main(:sys%basis%bit_string_len,:), f, istart, iend, hit, pos)
+                        call binary_search(hd%det_list_main(:sys%basis%bit_string_len,:), f, istart, iend, hit, pos, .false.)
                         ! f should be in slot pos. Move all determinants above it.
                         do j = iend, pos, -1
                             ! i is the number of determinants that will be inserted below j.
@@ -365,7 +365,8 @@ contains
                         ! Triplet Ms = +-1 states are already eigenfunctions of S^2 so do not need augmenting
                         ! Higher spin multiplicities are not supported yet.
                         call get_spin_flipped_bstring(hd%det_list_main(:sys%basis%bit_string_len,i), bs_flipped, sys)
-                        call binary_search(hd%det_list_main(:sys%basis%bit_string_len,:), bs_flipped, 1, hd%ndets, hit, pos)
+                        call binary_search(hd%det_list_main(:sys%basis%bit_string_len,:), &
+                                           bs_flipped, 1, hd%ndets, hit, pos, .false.)
                         if (.not. hit) then
                             write(det_unit, '(I0, 1X, I0)') bs_flipped
                         end if

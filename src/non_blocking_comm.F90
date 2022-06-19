@@ -187,7 +187,7 @@ contains
         ! Need to receive walkers sent from final iteration and merge into main list.
         call receive_spawned_walkers(spawn, request_s)
         if (.not. dump_restart_file) then
-            call annihilate_wrapper_non_blocking_spawn(spawn, annihilation_flags%initiator_approx)
+            call annihilate_wrapper_non_blocking_spawn(spawn, annihilation_flags%initiator_approx, qs%psip_list%descending)
             call annihilate_main_list_wrapper(sys, rng, qs%ref, annihilation_flags, qs%psip_list, spawn)
             ! Receive final send of report loop quantities.
         end if

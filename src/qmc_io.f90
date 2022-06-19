@@ -31,7 +31,7 @@ contains
         !       (for CCMC).
         !    io_unit: io unit to write to.
 
-        use calc, only: doing_calc, hfs_fciqmc_calc
+        use calc, only: doing_calc, hfs_fciqmc_calc, uccmc_calc, trot_uccmc_calc
 
         integer, intent(in) :: ntypes
         logical, optional, intent(in) :: cmplx_est, rdm_energy, nattempts, semi_stoch_sep_stats
@@ -62,6 +62,8 @@ contains
             write (iunit,'(1X,"D{\sum H_0j N_j}: deterministic contribution to E_proj.")')
             write (iunit,'(1X,"S{\sum H_0j N_j}: stochastic contribution to E_proj.")')
         end if
+        if (doing_calc(uccmc_calc) .or. doing_calc(trot_uccmc_calc)) & 
+            write (iunit,'(1X,"N_j UCCMC: true UCC population of Hamiltonian particles on determinant D_j.")')
         if (doing_calc(hfs_fciqmc_calc)) then
             write (iunit,'(1X,"O_0j: <D_0|O|D_j>, operator matrix element.")')
             write (iunit,'(1X,a67)') "N'_j: population of Hellmann--Feynman particles on determinant D_j."
@@ -131,6 +133,8 @@ contains
                 call write_column_title(iunit, 'Shift')
                 call write_column_title(iunit, '\sum H_0j N_j')
                 call write_column_title(iunit, 'N_0')
+                if(doing_calc(uccmc_calc) .or. doing_calc(trot_uccmc_calc)) & 
+                call write_column_title(iunit, 'N_0 UCCMC')
                 if (doing_calc(hfs_fciqmc_calc)) then
                     call write_column_title(iunit, 'HF shift')
                     call write_column_title(iunit, '\sum O_0j N_j')
@@ -148,7 +152,7 @@ contains
         call write_column_title(iunit, '# states', int_val=.true., justify=1)
         call write_column_title(iunit, '# spawn_events', int_val=.true., justify=1)
         if (present(nattempts)) then
-            if (nattempts) call write_column_title(iunit, '# attempts', int_val=.true., justify=1)
+            if (nattempts) call write_column_title(iunit, '# attempts', int_64_val=.true., justify=1)
         end if
         call write_column_title(iunit, 'R_spawn', low_prec_val=.true.)
         call write_column_title(iunit, '  time', low_prec_val=.true., justify=2)
@@ -373,13 +377,14 @@ contains
 
     end subroutine write_dmqmc_report_header
 
-    subroutine write_column_title(io, key, int_val, low_prec_val, justify, sep)
+    subroutine write_column_title(io, key, int_val, int_64_val, low_prec_val, justify, sep)
 
         ! Write column headers using the same column width as write_qmc_var.
 
         ! In:
         !    io: unit to write to.
         !    int_val: integer value column.
+        !    int_64_val: 64-bit integer value column, overrides int_val. 
         !    low_prec_val: low-precision real column.
         !    justify: 1: right justify, 2: no justification, otherwise: left justify.
 
@@ -387,19 +392,21 @@ contains
 
         integer, intent(in) :: io
         character(*), intent(in) :: key
-        logical, intent(in), optional :: int_val, low_prec_val
+        logical, intent(in), optional :: int_val, int_64_val, low_prec_val
         integer, intent(in), optional :: justify
         character(1), intent(in), optional :: sep
-        logical :: int_val_loc, low_prec_val_loc
+        logical :: int_val_loc, int_64_val_loc, low_prec_val_loc
         character(20) :: key_str
         integer :: justify_loc, str_len
         character(1) :: sep_loc
 
         int_val_loc = .false.
+        int_64_val_loc = .false.
         low_prec_val_loc = .false.
         justify_loc = 0
         sep_loc = ' '
         if (present(int_val)) int_val_loc = int_val
+        if (present(int_64_val)) int_64_val_loc = int_64_val
         if (present(low_prec_val)) low_prec_val_loc = low_prec_val
         if (present(justify)) justify_loc = justify
         if (present(sep)) sep_loc = sep
@@ -408,6 +415,9 @@ contains
         str_len = len(key_str)
         if (int_val_loc) then
             str_len = 14
+        end if
+        if (int_64_val_loc) then
+            str_len = 20
         end if
         if (low_prec_val_loc) str_len = 8
         select case(justify_loc)
@@ -447,7 +457,7 @@ contains
         !    semi_stoch_sep_stats: True if doing semi-stochastic and report 
         !       deterministic and stochastic contributions to E_proj separately.
 
-        use calc, only: doing_calc
+        use calc, only: doing_calc, uccmc_calc, trot_uccmc_calc
         use qmc_data, only: qmc_in_t, qmc_state_t
 
         type(qmc_in_t), intent(in) :: qmc_in
@@ -516,6 +526,9 @@ contains
                 call write_qmc_var(iunit, qs%shift(i))
                 call write_qmc_var(iunit, qs%estimators(i)%proj_energy)
                 call write_qmc_var(iunit, qs%estimators(i)%D0_population)
+                if (doing_calc(uccmc_calc) .or. doing_calc(trot_uccmc_calc)) then
+                    call write_qmc_var(iunit, qs%estimators(i)%D0_noncomposite_population)
+                end if
                 call write_qmc_var(iunit, ntot_particles(i))
             end do
         end if
@@ -787,7 +800,7 @@ contains
 
         sep_loc = ' '
         if (present(sep)) sep_loc = sep
-        write (io, '(i14,a1,1X)', advance='no') val, sep_loc
+        write (io, '(i20,a1,1X)', advance='no') val, sep_loc
 
     end subroutine write_qmc_var_int_64
 

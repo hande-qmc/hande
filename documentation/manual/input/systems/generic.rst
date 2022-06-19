@@ -131,17 +131,29 @@ For cylindrically symmetrical systems, the :math:`L_z` (z-component of orbital a
 operator commutes with the Hamiltonian, and this can be a convenient symmetry to conserve.
 :math:`L_z` is measured in units of :math:`\hbar`.  Normal FCIDUMP files do not contain orbitals
 which are eigenfunctions of the :math:`L_z` operator, so they must be transformed using
-post-processing.  The TransLz  script from the `NECI <https://github.com/ghb24/NECI_STABLE>`_
-project can be used for this purpose. The FCIDUMP file header format has been modified to include
-additional parameters: SYML, and SYMLZ which have a list of values, one for each orbital.
-
-SYML gives the magnitude of L for the orbital if known (or -20 if not) but is not used.
+post-processing. 
 
 SYMLZ give the eigenvalue of :math:`L_z` (the :math:`m_l` value).  Orbitals with defined values of 
 :math:`L_z` are likely to be complex-valued, but luckily the integrals involving them are not, so
 althoughthe FCIDUMP file must be translated, it still retains the same format (see comments in
 ``src/read_in.F90``, ``src/molecular_integrals.F90`` and :ref:`fcidump_format` for details if you wish to create
 FCIDUMP files by other means).  
+
+The FCIDUMP file header format has been modified to include
+additional parameters: SYML, and SYMLZ which have a list of values, one for each orbital.
+
+SYML gives the magnitude of L for the orbital if known (or -20 if not) but is not used.
+
+.. note::
+
+    There is a tool provided in ``tools/fcidump/lz_fcidump.py`` that can generate :math:`L_z`-transformed FCIDUMPs 
+    from PySCF calculations. To run this script, you need to:
+
+    - compile the ``lz_transform.f90`` Fortran script,
+    - have PySCF, 
+    - install a Python package called ``f90nml``.
+
+    See the comments within the Python script for further help. 
 
 .. warning::
 
