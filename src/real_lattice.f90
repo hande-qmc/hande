@@ -40,8 +40,11 @@ contains
         sys%sym_max_tot = 1
 
         associate(sl=>sys%lattice, sr=>sys%real_lattice)
+            allocate(sr%t_self_images(sl%ndim), stat=ierr)
+            call check_allocate('sr%t_self_images',sl%ndim,ierr)
 
-            sr%t_self_images = any(abs(sl%box_length-1.0_p) < depsilon)
+            sr%t_self_images = abs(sl%box_length-1.0_p) < depsilon
+            sr%second_images = count(abs(sl%box_length-sqrt(2.0_p)) < depsilon)
 
             allocate(sr%tmat(sys%basis%bit_string_len,sys%basis%nbasis), stat=ierr)
             call check_allocate('sr%tmat',sys%basis%bit_string_len*sys%basis%nbasis,ierr)
@@ -251,20 +254,32 @@ contains
         real(p) :: one_e_int
         type(sys_t), intent(in) :: sys
         Integer, intent(in) ::  i,j
-        integer :: ind, pos
+        integer :: ind_i, ind_j, pos_i, pos_j
 
         one_e_int = 0.0_p
 
         ! Need to check if i and j are on sites which are nearest neighbours
         ! either directly or due to periodic boundary conditions.
-        pos = sys%basis%bit_lookup(1,j)
-        ind = sys%basis%bit_lookup(2,j)
+        ! One of the tests pick up a direct contribution, and the other picks up a PBC contribution.
         ! Test if i <-> j.  If so there's a kinetic interaction.
-        if (btest(sys%real_lattice%tmat(ind,i),pos)) one_e_int = one_e_int - sys%hubbard%t
-        pos = sys%basis%bit_lookup(1,i)
-        ind = sys%basis%bit_lookup(2,i)
+        pos_j = sys%basis%bit_lookup(1,j)
+        ind_j = sys%basis%bit_lookup(2,j)
+        if (btest(sys%real_lattice%tmat(ind_j,i),pos_j)) one_e_int = one_e_int - sys%hubbard%t
         ! Test if j <-> i.  If so there's a kinetic interaction.
-        if (btest(sys%real_lattice%tmat(ind,j),pos)) one_e_int = one_e_int - sys%hubbard%t
+        pos_i = sys%basis%bit_lookup(1,i)
+        ind_i = sys%basis%bit_lookup(2,i)
+        if (btest(sys%real_lattice%tmat(ind_i,j),pos_i)) one_e_int = one_e_int - sys%hubbard%t
+
+        ! If i and j *only* interact through PBC, additional second_images lots of contribution must be added
+        ! This is done since tmat does not have complete information on whether for two sites that interact through 
+        ! the PBC, they also interact with each other's self-image. (see system.f90 comments at second_images)
+        if (btest(sys%real_lattice%tmat(ind_j,i),pos_j) .neqv. btest(sys%real_lattice%tmat(ind_i,j),pos_i)) then
+            one_e_int = one_e_int - sys%real_lattice%second_images*sys%hubbard%t
+        end if
+
+        ! The only other edge case is [[1,1],[1,-1]], which has two sites that both interact through real cell and PBC
+        ! This is the only edge case of this sort. The i/=j makes sure the diagonal element is computed correctly.
+        if (sys%real_lattice%second_images == 2 .and. i /= j) one_e_int = -4*sys%hubbard%t
 
     end function get_one_e_int_real
 

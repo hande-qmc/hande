@@ -1,0 +1,13 @@
+hubbardr = hubbard_real {
+    lattice = {{1,0},{0,1}},
+    electrons = 1,
+    ms = 1,
+    U = 0,
+    t = 1,
+    verbose = true,
+}
+
+fci {
+    sys = hubbardr,
+}
+
