@@ -1,0 +1,49 @@
+Release notes for v1.6
+====================== 
+
+Added
+-----
+
+* DMQMC
+    - Piecewise IP-DMQMC, where IP-DMQMC is used to sample the density matrix for a given target beta, and thereafter the Bloch equation is used to sample a temperature range from the target beta to a user defined final beta (see W. Z. Van Benschoten and J. J. Shepherd. Piecewise Interaction Picture Density Matrix Quantum Monte Carlo. *J. Chem. Phys.* **156**, 184107 (2022). https://doi.org/10.1063/5.0094290)
+    - Asymmetric propagation using the Bloch equation in DMQMC.
+    - Symmetric propagation for systems defined by an FCIDUMP in IP-DMQMC.
+    - A population scaling factor for the initial distribution of particles on the density matrix in DMQMC.
+* Ability to generate and print out only the diagonal FCI matrix elements.
+* FCIQMC RDM’s and simple analysis scripts for the associated RDM files and energy estimates.
+* Statehistogram code, analysis scripts and unit tests of analysis scripts for FCIQMC and DMQMC.
+* Harmonic population control.
+* Wall-Chebyshev propagator for FCIQMC/CCMC.
+* Utility script that generates :math:`L_z`-transformed FCIDUMPs for :math:`D_{\infty h}` and spherically symmetric systems.
+* Davidson algorithm for FCI.
+* Unitary CCMC (UCCMC) algorithm and Trotterized Unitary CCMC algorithm (tUCCMC) (see M.-A. Filip and A. J. W. Thom. A stochastic approach to unitary coupled cluster. *J. Chem. Phys.* **153**, 214106 (2020). https://doi.org/10.1063/5.0026141)
+* CCMC
+    - Deterministic MP1 initialisation of CCMC calculations.
+    - Metric-tree based multi-reference CCMC acceptance algorithm.
+    - Reading in of multi-reference CCMC secondary references.
+    - Symmetry screening of multi-reference CCMC secondary references.
+    - Discard threshold for (U)CCMC for discarding clusters with large amplitude/:math:`p_{gen}` ratios. This has been empirically shown to alleviate blooms and have small effect on the final energy, and is in principle extrapolatable to the exact energy.
+
+
+Changed
+-------
+
+* New options for analysis of DMQMC data with pyHANDE.
+* Several grand canonical initialization amendments:
+    - More robust population counting to reduce the severity of over/under initialization of the initial particle population for certain systems.
+    - Arbitrary spin configurations (Previously only :math:`M_s=0` or :math:`M_s=N_{el}` were possible)
+    - Reference configuration checks to ensure the lowest energy configuration is used in the normalization procedure.
+* Canonical estimates can now handle arbitrary spin configurations due to the changes mentioned for grand canonical initialization.
+* Language changes for defining the propagators symmetry in DMQMC methods.
+
+Removed
+-------
+
+
+Bug Fixes
+----------
+
+* Various intent(inout) compatibility issues with new compilers.
+* Fix time reporting for OpenMP, now wall clock time instead of CPU time are reported per report loop. Language changes in final timings report to make clear whether wall clock or CPU times are reported.
+* Fix an CCMC OpenMP bug where reference populations are sometimes undersampled.
+* Fix edge cases in the real-space Hubbard model where self-interactions in more than one dimension were not correctly accounted for; and where nearest-neighbour interactions through the PBC are undercounted.
