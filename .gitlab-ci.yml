@@ -30,7 +30,7 @@ build-lua-hdf5:
         - wget -q -O - https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.10/hdf5-1.10.4/src/hdf5-1.10.4.tar.gz | tar xvzf -
         - cd hdf5-1.10.4
         - ./configure --prefix=/home/gitlab-runner/builds/oQzesuVK/0/ch/thom/hande-testing/local/hdf5-gnu --enable-fortran --enable-fortran2003 --enable-cxx &> /dev/null
-        - make &> /dev/null
+        - make -j 6 &> /dev/null
         - make install &> /dev/null
         - cd .. && rm -r hdf5-1.10.4
         - wget -q -O - https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.10/hdf5-1.10.4/src/hdf5-1.10.4.tar.gz | tar xvzf -
@@ -39,7 +39,7 @@ build-lua-hdf5:
         - export CC=icc
         - export CXX=icpc
         - ./configure --prefix=/home/gitlab-runner/builds/oQzesuVK/0/ch/thom/hande-testing/local/hdf5-intel --enable-fortran --enable-fortran2003 --enable-cxx  &> /dev/null
-        - make &> /dev/null
+        - make -j 6 &> /dev/null
         - make install &> /dev/null
         - cd ..
         - git clone https://github.com/jsspencer/testcode.git
@@ -48,6 +48,7 @@ build-lua-hdf5:
             - local
             - testcode
         expire_in: 1 week
+    resource_group: main_pipeline
 
 test-gcc:
     stage: BUILD AND TEST GCC
@@ -70,6 +71,7 @@ test-gcc:
             - test_suite/**/test.err*
             - test_suite/**/test.out*
         expire_in: 1 week
+    resource_group: main_pipeline
 
 test-gcc-mpi:
     stage: BUILD AND TEST GCC MPI
@@ -94,6 +96,7 @@ test-gcc-mpi:
             - test_suite/**/test.err*
             - test_suite/**/test.out*
         expire_in: 1 week
+    resource_group: main_pipeline
 
 test-gcc-mpi-64:
     stage: BUILD AND TEST GCC MPI POP64
@@ -118,6 +121,7 @@ test-gcc-mpi-64:
             - test_suite/**/test.err*
             - test_suite/**/test.out*
         expire_in: 1 week
+    resource_group: main_pipeline
 
 test-gcc-dbg:
     stage: BUILD AND TEST GCC dbg
@@ -140,6 +144,7 @@ test-gcc-dbg:
             - test_suite/**/test.err*
             - test_suite/**/test.out*
         expire_in: 1 week
+    resource_group: main_pipeline
 
 test-gcc-mpi-dbg:
     stage: BUILD AND TEST GCC MPI dbg
@@ -164,6 +169,7 @@ test-gcc-mpi-dbg:
             - test_suite/**/test.err*
             - test_suite/**/test.out*
         expire_in: 1 week
+    resource_group: main_pipeline
 
 test-gcc-mpi-64-dbg:
     stage: BUILD AND TEST GCC MPI POP64 dbg
@@ -188,6 +194,7 @@ test-gcc-mpi-64-dbg:
             - test_suite/**/test.err*
             - test_suite/**/test.out*
         expire_in: 1 week
+    resource_group: main_pipeline
 
 test-intel:
     stage: BUILD AND TEST INTEL
@@ -211,6 +218,7 @@ test-intel:
             - test_suite/**/test.err*
             - test_suite/**/test.out*
         expire_in: 1 week
+    resource_group: main_pipeline
 
 test-intel-dbg:
     stage: BUILD AND TEST INTEL dbg
@@ -234,6 +242,7 @@ test-intel-dbg:
             - test_suite/**/test.err*
             - test_suite/**/test.out*
         expire_in: 1 week
+    resource_group: main_pipeline
 
 test-intel-mpi-pop64:
     stage: BUILD AND TEST INTEL MPI POP64
@@ -259,6 +268,7 @@ test-intel-mpi-pop64:
             - test_suite/**/test.err*
             - test_suite/**/test.out*
         expire_in: 1 week
+    resource_group: main_pipeline
 
 test-intel-mpi-pop64-dbg:
     stage: BUILD AND TEST INTEL MPI POP64 dbg
@@ -284,6 +294,7 @@ test-intel-mpi-pop64-dbg:
             - test_suite/**/test.err*
             - test_suite/**/test.out*
         expire_in: 1 week
+    resource_group: main_pipeline
         
 test-intel-mpi:
     stage: BUILD AND TEST INTEL MPI
@@ -309,6 +320,7 @@ test-intel-mpi:
             - test_suite/**/test.err*
             - test_suite/**/test.out*
         expire_in: 1 week
+    resource_group: main_pipeline
 
 test-intel-mpi-dbg:
     stage: BUILD AND TEST INTEL MPI dbg
@@ -334,6 +346,7 @@ test-intel-mpi-dbg:
             - test_suite/**/test.err*
             - test_suite/**/test.out*
         expire_in: 1 week
+    resource_group: main_pipeline
 
 test-intel-quick:
     stage: BUILD AND TEST INTEL QUICK
@@ -359,6 +372,7 @@ test-intel-quick:
             - test_suite/**/test.err*
             - test_suite/**/test.out*
         expire_in: 1 week
+    resource_group: main_pipeline
 
 test-gcc-quick:
     stage: BUILD AND TEST GCC QUICK
@@ -383,6 +397,7 @@ test-gcc-quick:
             - test_suite/**/test.err*
             - test_suite/**/test.out*
         expire_in: 1 week
+    resource_group: main_pipeline
 
 test-pyhande:
     stage: TEST PYHANDE
@@ -397,4 +412,5 @@ test-pyhande:
         - pytest
     except:
         - schedules
+    resource_group: pyhande
 
