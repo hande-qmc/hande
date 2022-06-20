@@ -146,8 +146,9 @@ davidson options
 ----------------
 
 .. note::
-Davidson diagonalisation currently only supports real Hamiltonians on a single node. 
-Although multi-threaded BLAS/LAPACK libraries (MKL, OpenBLAS, etc.) are supported. 
+
+    Davidson diagonalisation currently only supports real Hamiltonians on a single node. 
+    Although multi-threaded BLAS/LAPACK libraries (MKL, OpenBLAS, etc.) are supported. 
 
 The ``davidson`` table can take the following options (specifying the table automatically enables Davidson diagonalisation):
 

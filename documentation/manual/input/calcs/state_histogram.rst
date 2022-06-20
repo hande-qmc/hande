@@ -20,7 +20,7 @@ density matrix site.
 ``report_frequency``
     type: integer.
 
-    Optional. Default: :ref:`nreports`
+    Optional. Default: :ref:`nreports<qmc_table>`
 
     The frequency in report cycles to calculate and report the state histograms.
     A histogram is always reported at the beginning and end of a calculation

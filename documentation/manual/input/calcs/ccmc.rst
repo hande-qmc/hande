@@ -231,7 +231,7 @@ ccmc options
 
     Optional. Default: false.
 
-    If true, perform a coupled cluster calculation using multiple references.[Filip19]_ n_secondary_ref 
+    If true, perform a coupled cluster calculation using multiple references [Filip19]_. n_secondary_ref 
     and secondary_refX must then be defined.
 
 ``n_secondary_ref``
