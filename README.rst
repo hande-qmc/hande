@@ -11,6 +11,10 @@ chemistry code.  For a description of its main features see  `J. Chem. Theory Co
 .. image:: https://gitlab.developers.cam.ac.uk/ch/thom/hande-public-testing/badges/master/pipeline.svg
     :target: https://gitlab.developers.cam.ac.uk/ch/thom/hande-public-testing/-/commits/master
 
+Mailing List
+------------
+There is a HANDE users mailing list where you can ask questions and get announcements of releases. See https://groups.google.com/g/hande-user where you can view any posts and sign up.
+
 Documentation
 -------------
 
