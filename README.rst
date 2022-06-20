@@ -5,9 +5,6 @@ HANDE
 used both as a standalone program or (optionally) as a library from an existing quantum
 chemistry code.  For a description of its main features see  `J. Chem. Theory Comput. 2019, 15, 3, 1728-1742 <http://dx.doi.org/10.1021/acs.jctc.8b01217>`_.
 
-.. image:: https://circleci.com/gh/hande-qmc/hande/tree/master.svg?style=svg
-    :target: https://circleci.com/gh/hande-qmc/hande/tree/master
-    
 .. image:: https://gitlab.developers.cam.ac.uk/ch/thom/hande-public-testing/badges/master/pipeline.svg
     :target: https://gitlab.developers.cam.ac.uk/ch/thom/hande-public-testing/-/commits/master
 
