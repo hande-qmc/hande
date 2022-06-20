@@ -35,10 +35,12 @@ HANDE development team
 | Hayley Petras, University of Iowa.
 | Christopher Bradley, Imperial College London.
 | Tiger Zhang, University of Cambridge.
+| William Van Benschoten, University of Iowa.
+| Brian Zhao, University of Cambridge.
 
 Some past HANDE developers
 --------------------------
-| James Spencer, Imperial College London.
+| James Spencer (Former Lead Developer), Imperial College London.
 | Will Vigor, Imperial College London.
 | Ruth Franklin, University of Cambridge.
 
