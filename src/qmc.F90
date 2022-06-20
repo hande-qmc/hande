@@ -1,5 +1,4 @@
 module qmc
-
 ! Launcher and initialisation routines for the various QMC algorithms.
 
 implicit none
