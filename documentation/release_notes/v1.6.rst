@@ -38,7 +38,7 @@ Changed
 
 Removed
 -------
-
+* Docker images for HANDE. Now HANDE is only available from this GitHub repo.
 
 Bug Fixes
 ----------
