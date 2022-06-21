@@ -38,7 +38,8 @@ Changed
 
 Removed
 -------
-* Docker images for HANDE. Now HANDE is only available from this GitHub repo.
+
+* Disable automatic building of Docker images. From version 1.6, HANDE will only be available from this GitHub repo.
 
 Bug Fixes
 ----------
