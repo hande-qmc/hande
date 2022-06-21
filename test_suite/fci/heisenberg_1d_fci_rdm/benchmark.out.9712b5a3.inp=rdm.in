@@ -1,0 +1,217 @@
+
+   HANDE
+
+ ================================================================
+Version information
+-------------------
+Version       | v1.5-509-gcf07666
+Commit hash   | cf076667d9f540506f71c35bc4a3f4eb8557039d
+Commit author | Brian Zhao
+Commit date   | Mon Jun 20 18:11:28 2022 +0100
+Branch        | main
+
+Configuration and build information
+-----------------------------------
+Who compiled             | maf63
+Compilation hostname     | serenity
+Operating system         | Linux-5.4.0-110-generic
+CMake version            | 3.16.3
+CMake generator          | Unix Makefiles
+Build type               | debug
+Configuration time       | 2022-06-20 17:24:01 [UTC]
+Python version           | 3.7.0
+Fortran compiler         | /usr/local/shared/ubuntu-20.04/x86_64/openmpi-4.1.2-gnu/bin/mpif90
+C compiler               | /usr/local/shared/ubuntu-20.04/x86_64/openmpi-4.1.2-gnu/bin/mpicc
+DET_SIZE set to          | 64
+POP_SIZE set to          | 64
+dSFMT Mersenne exponent  | 19937
+MPI parallelization      | ON
+MPI launcher             | /usr/local/shared/ubuntu-20.04/x86_64/openmpi-4.1.2-gnu/bin/mpiexec
+OpenMP parallelization   | OFF
+Lua version              | 5.3.5
+HDF5 library version     | 1.10.4
+
+Further components
+------------------
+DISABLE_HDF5 not defined.  HDF5 enabled.
+DISABLE_UUID not defined.  UUID enabled.
+PARALLEL defined.  MPI parallelization enabled.
+DISABLE_MPI3 not defined.  MPI-3 functionality enabled.
+PARALLEL defined. DISABLE_MPI3 and ENABLE_SHMEM_POSIX not defined. MPI-3 in use.
+DISABLE_SCALAPACK defined.  ScaLAPACK disabled.
+SINGLE_PRECISION not defined.  Double precision used throughout.
+USE_POPCNT not defined. Internal POPCNT procedure used.
+
+Runtime information
+-------------------
+Hostname:
+    serenity
+Current working dir:
+    /home/maf63/hande-release/test_suite/fci/heisenberg_1d_fci_rdm
+Started running on 20/06/2022 at 21:52:27
+ Calculation UUID: 78c1e833-1ad6-4554-9ded-e0ad91ad212b.
+ ================================================================
+
+ Input options
+ -------------
+
+sys = heisenberg {
+    lattice = { {4} },
+    ms = 0,
+    J = -0.25,
+}
+
+fci {
+    sys = sys,
+    fci = {
+        rdm = {1, 2},
+    },
+}
+
+ -------------
+
+ Basis functions
+ ---------------
+
+ Site positions given in terms of the primitive lattice vectors.
+
+ index   site       
+     1   ( -1)
+     2   (  0)
+     3   (  1)
+     4   (  2)
+
+ Number of alpha spins: 2
+ Number of basis functions: 4
+
+ Bit-length of integers used to store determinant bit-strings: 64
+ Number of integers used to store determinant bit-strings: 1
+
+ FCI
+ ---
+
+ -- Start JSON block --
+ {
+     "system": {
+         "nbasis": 4,   
+         "nel": 2,   
+         "nvirt": 2,   
+         "Ms": 0,   
+         "nalpha": 0,   
+         "nbeta": 0,   
+         "nvirt_alpha": 0,   
+         "nvirt_beta": 0,   
+         "nsym": 1,   
+         "sym0": 1,   
+         "sym_max": 1,   
+         "nsym_tot": 1,   
+         "sym0_tot": 1,   
+         "sym_max_tot": 1,   
+         "symmetry": 1,   
+         "tot_sym": false,   
+         "aufbau_sym": true,   
+         "max_number_excitations": 2,   
+         "lattice": {
+             "ndim": 1,   
+             "nsites": 4,   
+             "lattice": [[ 4]],
+             "triangular_lattice": false,   
+             "bipartite_lattice": true,   
+             "tmat": {
+                 "1": [ 2],
+                 "2": [ 4],
+                 "3": [ 8],
+                 "4": [ 1]
+             },
+             "connected_orbs": {
+                 "1": [ 10],
+                 "2": [ 5],
+                 "3": [ 10],
+                 "4": [ 5]
+             },
+             "connected_sites": {
+                 "1": [ 2, 2, 4],
+                 "2": [ 2, 1, 3],
+                 "3": [ 2, 2, 4],
+                 "4": [ 2, 1, 3]
+             },
+             "t_self_images": [false],
+             "second_images": 0,   
+             "finite_cluster": false    
+         },
+         "heisenberg": {
+             "J": -0.25000000,   
+             "magnetic_field": 0.00000000,   
+             "staggered_magnetic_field": 0.00000000,   
+             "nbonds": 4    
+         }
+     },
+     "fci_in": {
+         "write_hamiltonian": false,   
+         "hamiltonian_file":  "HAMIL",   
+         "write_determinants": false,   
+         "determinant_file":  "DETS",   
+         "print_fci_wfn": 0,   
+         "print_fci_wfn_file":  "FCI_WFN",   
+         "analyse_fci_wfn": 0,   
+         "subsys": {
+             "1": [ 1, 2]
+         },
+         "block_size": 64,   
+         "ndavidson_eigv": 4,   
+         "ndavidson_trialvec": 8,   
+         "davidson_maxsize": 50,   
+         "davidson_tol": 0.00000010,   
+         "hamiltonian_diagonal_only": false,   
+     },
+     "reference": {
+         "ex_level": 2    
+     }
+ }
+ -- End JSON block --
+
+ The table below gives the number of determinants for each symmetry with Ms=0.
+
+ Symmetry index      # dets
+         1                6
+
+ Performing exact diagonalisation...
+
+ LAPACK diagonalisation results
+ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+  State     Energy
+      1    -0.500000000000
+      2    -0.250000000000
+      3    -0.000000000000
+      4     0.000000000000
+      5     0.000000000000
+      6     0.250000000000
+
+ Performing reduced density matrix calculation.
+ Setting up reduced density matrix...
+ Diagonalising reduced density matrix...
+
+ RDM eigenvalues
+ ^^^^^^^^^^^^^^^
+
+  State     RDM eigenvalue
+      1     0.083333333333
+      2     0.083333333333
+      3     0.083333333333
+      4     0.750000000000
+
+ Timing breakdown
+ ----------------
+
+ Wall time for each calculation section (seconds):
+
+ Heisenberg model initialisation: .00
+ FCI calculation                : .01
+
+ ================================================================
+ Finished running on 20/06/2022 at 21:52:27
+ Wall time (seconds):                               0.00
+ CPU time (per processor, seconds):                 0.01
+ ================================================================
+
