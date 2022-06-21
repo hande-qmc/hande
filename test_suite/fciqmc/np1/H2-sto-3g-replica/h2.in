@@ -1,0 +1,26 @@
+fciqmc {
+    sys = read_in {
+        int_file = "FCIDUMP",
+        electrons = 2,
+        ms = 0,
+        sym = 0,
+    },
+    qmc = {
+        rng_seed = 5007,
+        tau = 0.003,
+        init_pop = 10,
+        mc_cycles = 10,
+        nreports = 1e4,
+        target_population = 1e2,
+        state_size = -10,
+        spawned_state_size = -20,
+        vary_shift_from = 'proje',
+    },
+    reference = {
+        det = { 1, 2, },
+    },
+    fciqmc = {
+        replica_tricks = true,
+        density_matrices = true,
+    },
+}

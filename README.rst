@@ -5,11 +5,12 @@ HANDE
 used both as a standalone program or (optionally) as a library from an existing quantum
 chemistry code.  For a description of its main features see  `J. Chem. Theory Comput. 2019, 15, 3, 1728-1742 <http://dx.doi.org/10.1021/acs.jctc.8b01217>`_.
 
-.. image:: https://circleci.com/gh/hande-qmc/hande/tree/master.svg?style=svg
-    :target: https://circleci.com/gh/hande-qmc/hande/tree/master
-    
-.. image:: https://gitlab.developers.cam.ac.uk/ch/thom/hande-public-testing/badges/master/pipeline.svg
-    :target: https://gitlab.developers.cam.ac.uk/ch/thom/hande-public-testing/-/commits/master
+.. image:: https://gitlab.developers.cam.ac.uk/ch/thom/hande-public-testing/badges/main/pipeline.svg
+    :target: https://gitlab.developers.cam.ac.uk/ch/thom/hande-public-testing/-/commits/main
+
+Mailing List
+------------
+There is a HANDE users mailing list where you can ask questions and get announcements of releases. See https://groups.google.com/g/hande-user where you can view any posts and sign up.
 
 Documentation
 -------------
@@ -28,17 +29,19 @@ HANDE development team
 | Fionn Malone, Lawrence Livermore National Laboratory.
 | Matthew Foulkes, Imperial College London.
 | Charlie Scott, University of Cambridge.
-| Verena Neufeld, University of Cambridge.
+| Verena Neufeld, University of Cambridge (now Columbia University).
 | James Shepherd, University of Iowa.
 | Roberto Di Remigio, University of Tromsø and Virginia Tech.
 | Maria-Andreea Filip, University of Cambridge.
 | Hayley Petras, University of Iowa.
 | Christopher Bradley, Imperial College London.
 | Tiger Zhang, University of Cambridge.
+| William Van Benschoten, University of Iowa.
+| Brian Zhao, University of Cambridge.
 
 Some past HANDE developers
 --------------------------
-| James Spencer, Imperial College London.
+| James Spencer (Former Lead Developer), Imperial College London.
 | Will Vigor, Imperial College London.
 | Ruth Franklin, University of Cambridge.
 

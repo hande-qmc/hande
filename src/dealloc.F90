@@ -104,6 +104,7 @@ contains
 
         type(sys_real_lattice_t), intent(inout) :: real_lattice
 
+        if (allocated(real_lattice%t_self_images)) deallocate(real_lattice%t_self_images)
         if (allocated(real_lattice%tmat)) deallocate(real_lattice%tmat)
         if (allocated(real_lattice%connected_orbs)) deallocate(real_lattice%connected_orbs)
         if (allocated(real_lattice%connected_sites)) deallocate(real_lattice%connected_sites)

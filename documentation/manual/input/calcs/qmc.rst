@@ -100,11 +100,11 @@ algorithms and control the core settings in the algorithms.
 
     .. math::
 
-        S(t) = S(t-A\tau) - \frac{\xi}{A\tau} log\left( \frac{N_p(t)} {N_p(t-A\tau)} \right)
+        S(\tau) = S(\tau-A\delta\tau) - \frac{\zeta}{A\delta\tau} \ln\left( \frac{N_{\text{w}}(\tau)} {N_{\text{w}}(\tau-A\delta\tau)} \right)
 
-    where :math:`S` is the shift, :math:`t` the current imaginary time, :math:`\tau` the
-    timestep, :math:`A` ``mc_cycles``, :math:`\xi` ``shift_damping``, and :math:`N_p` the
-    number of particles.
+    where :math:`S` is the shift, :math:`\tau` the current imaginary time, :math:`\delta\tau` the
+    timestep, :math:`A` ``mc_cycles``, :math:`\zeta` ``shift_damping``, and :math:`N_{\text{w}}` the
+    number of particles (walkers).
 ``reference_target``
     type: float.
 
@@ -365,9 +365,9 @@ algorithms and control the core settings in the algorithms.
         minimum value for these is 0.0001. If that is too high, consider setting them manually by
         specifying both (only one is not sufficient) in the input file.
 ``pattempt_zero_accum_data``
-    type: boolean
+    type: boolean.
 
-    Optional. Default: False.
+    Optional. Default: false.
 
     If true and restarting a calculation, accumulated data needed to update ``pattempt_single``
     and ``pattempt_double`` is reset (set to zero, overflow boolean is set to false).
@@ -394,10 +394,42 @@ algorithms and control the core settings in the algorithms.
 
     Optional.  Default: 0.05.
 
-    The shift damping factor, :math:`\xi`. This can be optimised using the
+    The shift damping factor, :math:`\zeta`. This can be optimised using the
     ``auto_shift_damping`` keyword (see :ref:`blocking_table`).
     On restarting the final value in the previous calculation will replace
     the usual default value if ``shift_damping`` is not specified.
+
+``shift_harmonic_forcing``
+    type: float.
+
+    Optional. Default: 0.0.
+
+    The restoring force factor :math:`\xi` in the improved shift update procedure from [Yang20]_: 
+
+    .. math::
+
+        S(\tau) = S(\tau-A\delta\tau) - \frac{\zeta}{A\delta\tau} \ln\left( \frac{N_{\text{w}}(\tau)} {N_{\text{w}}(\tau-A\delta\tau)} \right) - \frac{\xi}{A\delta\tau}\ln\left(\frac{N_{\text{w}}(\tau)}{N_{\text{t}}} \right)
+
+    where :math:`N_{\text{t}}` is the target population.
+
+``shift_harmonic_crit_damp``
+    type: boolean.
+
+    Optional. Default: false.
+
+    If true, the shift_harmonic_forcing term will be set equal to the square 
+    of the ``shift_damping`` term divided by 4 to obtain critial damping. 
+    If true, ``shift_harmonic_forcing`` will be ignored.
+
+``shift_harmonic_forcing_two_stage``
+    type: boolean.
+
+    Optional. Default: false.
+
+    A non-zero ``shift_harmonic_forcing`` factor allows the shift to be varied from the start 
+    of the calculation. However this would mean the target population is reached more slowly 
+    as more death events occur. If false, shift is varied from the start of the calculation, 
+    otherwise shift is only varied (with harmonic forcing turned on) when target population is reached.
 
 ``vary_shift_from``
     type: float or string.
@@ -551,3 +583,87 @@ algorithms and control the core settings in the algorithms.
     .. note::
 
         The shift will still be varied when ``target_population``, if set, is reached.
+
+    .. warning::
+
+        If reading in from a restart file and ``vary_shift = false``, the shift will be set to
+        ``initial_shift`` for the first iteration, which defaults to zero. 
+        Leave it unset if this is not intended.
+
+``shift_harmonic_forcing``
+    type: float.
+
+    Optional.  Default: 0.00
+
+    If present, this sets the restoring force factor value in the harmonic population 
+    control algorithm. This differs from the canonical two-step population control by
+    an additional term based on the target population, as follows
+
+    .. math::
+
+        S(t) = S(t-A\tau) - \frac{\xi}{A\tau} log\left( \frac{N_p(t)} {N_p(t-A\tau)} \right)
+            - \frac{\zeta}{A\tau} log\left( \frac{N_p(t)} {N_t} \right)
+
+    where where :math:`S` is the shift, :math:`t` the current imaginary time, :math:`\tau` the
+    timestep, :math:`A` ``mc_cycles``, :math:`\xi` ``shift_damping``, :math:`\zeta` 
+    is the restoring force factor described here, :math:`N_p` the number of particles and
+    :math:`N_t` is the target population. 
+
+    For more details see M. Yang, E. Pahl and J. Brand, J. Chem. Phys. 153, 174103 (2020) 
+    (DOI:10.1063/5.0023088). 
+
+    .. note::
+  
+        The original population control algorithm is obtained if set equal to zero.
+    
+    .. note::
+
+        When used, the shift will vary throughout the entire simulation, even if the 
+        target population has not been reached. 
+        
+    .. note::
+
+        The harmonic population control algorithm will not work with target populations
+        less than or equal to zero. 
+
+``shift_harmonic_crit_damp``
+    type: boolean.
+
+    Optional.  Default: false.
+
+    If set to true, the value of ``shift_harmonic_forcing`` will be set to the square
+    of ``shift_damping`` divided by four to obtain critical damping.  
+
+``chebyshev``
+    type: lua table or boolean.
+
+    Optional.  Default: false.
+
+    Input options (or switch) relating to the wall-Chebyshev projector ([Zhang16]_). If set to ``true``, 
+    then the default options of ``chebyshev_order = 5``, ``chebyshev_shift = 0.0``, ``chebyshev_scale = 1.1``, ``skip_gershgorin = false`` 
+    are used.
+
+    ``chebyshev_order``
+        type: integer.
+
+        Optional.  Default: 5.
+
+        The order of the Chebyshev expansion of the wall function. The theoretical speed up compared to the linear 
+        projector with the largest allowable :math:`\delta\tau` is :math:`(m+1)/3`. 
+
+    ``chebyshev_shift``, ``chebyshev_scale``
+        type: float. 
+
+        Optional.  Default: 0.0 and 1.1.
+
+        For the estimated highest eigenvalue of the Hamiltonian, :math:`E_{N-1}`, 
+        :math:`E_{N-1} = (E_{N-1} + a)*b`, where :math:`a` is the shift and :math:`b` is the scale. 
+
+    ``skip_gershgorin``
+        type: boolean. 
+
+        Optional.  Default: false.
+
+        As the estimation of the highest eigenvalue by the Gershgorin circle theorem requires summing entries in the highest 
+        row of the Hamiltonian, this could be time consuming. If ``true``, then only the highest diagonal element is used as the 
+        estimate, which can then be modified with the shift and scale parameters above. 

@@ -86,9 +86,9 @@ contains
         integer, intent(in) :: ncycles
         integer, intent(in) :: rng_seed
 
-        real(dp) :: p_single(sys%basis%nbasis/2)
+        real(dp) :: p_single(sys%basis%nbasis)
         integer :: occ_list(sys%nel), iorb, ireport
-        real(p) :: energy(hf_part_idx), beta_loc, mu
+        real(p) :: energy(hf_part_idx), beta_loc, mu(1:2)
         integer(int_64) :: iattempt
         real(p) :: local_estimators(last_idx-1), estimators(last_idx-1)
 
@@ -96,7 +96,7 @@ contains
         type (dSFMT_t) :: rng
         logical :: soft_exit, comms_found
         integer :: ngen, nalpha_allowed, nbeta_allowed
-        real(p) :: ref_shift, correction
+        real(p) :: ref_shift, correction, mu_tmp
         integer, allocatable :: occ_list0(:)
         type(json_out_t) :: js
 #ifdef PARALLEL
@@ -111,6 +111,12 @@ contains
         call dSFMT_init(rng_seed+iproc, 50000, rng)
         call copy_sys_spin_info(sys, sys_bak)
         call set_spin_polarisation(sys%basis%nbasis, sys)
+
+        ! Check that fermi_temperature is only used in cases which it is correct.
+        if (sys%system == ueg .and. fermi_temperature .and. sys%Ms /= 0 .and. sys%Ms /= sys%nel) then
+            call stop_all('check_canonical_opts', 'The fermi energy, and therefore fermi_temperature &
+                               &is incorrect for the spin polarization. Please implement.')
+        end if
 
         beta_loc = beta
         if (fermi_temperature) then
@@ -163,8 +169,12 @@ contains
         if (parent) write (iunit,'(1X,a12,17X,a5,17X,a5,14x,a12,10X,a12,11X,a11,10X,a12)') &
                     '# iterations', '<T>_0', '<V>_0', 'Tr(T\rho_HF)', 'Tr(V\rho_HF)', 'Tr(\rho_HF)', 'N_ACC/N_ATT'
 
-        forall (iorb=1:sys%basis%nbasis:2) p_single(iorb/2+1) = 1.0_p / &
-                                                          (1+exp(beta_loc*(sys%basis%basis_fns(iorb)%sp_eigv-mu)))
+        ! Calculate orbital occupancies.
+        p_single = 0.0_p
+        do iorb=1, sys%basis%nbasis
+            mu_tmp = mu(2 - mod(iorb,2))
+            p_single(iorb) = 1.0_p/(1+exp(beta_loc*(sys%basis%basis_fns(iorb)%sp_eigv-mu_tmp)))
+        end do
 
         if (all_spin_sectors) then
             ! If averaging over spin we need to allow for the number of
@@ -189,7 +199,7 @@ contains
                     cycle
                 end if
                 if (nbeta_allowed > 0) call generate_allowed_orbital_list(sys, rng, p_single, sys%nel-ngen, &
-                                                                          0, occ_list, ngen)
+                                                                          2, occ_list, ngen)
                 if (ngen /= sys%nel) cycle
                 local_estimators(naccept_idx) = local_estimators(naccept_idx) + 1
                 ! Calculate Kinetic and Hartree-Fock exchange energies.
@@ -239,7 +249,7 @@ contains
 
     end subroutine estimate_canonical
 
-    subroutine generate_allowed_orbital_list(sys, rng, porb, nselect, spin_factor, occ_list, ngen)
+    subroutine generate_allowed_orbital_list(sys, rng, porb, nselect, ispin, occ_list, ngen)
 
         ! Generate a list of orbitals according to their single
         ! particle GC orbital occupancy probabilities.
@@ -249,8 +259,8 @@ contains
         !    porb: porb(i) gives the probabilty of selecting
         !        the orbital i.
         !    nselect: number of orbitals to select.
-        !    spin_factor: integer to account for odd/even ordering of
-        !        alpha/beta spin orbitals. Set to 1 for alpha spins, 0 for beta spins.
+        !    ispin: integer to account for odd/even ordering of alpha/beta
+        !       spin orbitals. Set to 1 for alpha spins, 2 for beta spins.
         ! In/Out:
         !    rng: random number generator.
         !    ngen: running total number of electrons calculated. Should be zerod
@@ -264,7 +274,7 @@ contains
         type(sys_t), intent(in) :: sys
         real(dp), intent(in) :: porb(:)
         integer, intent(in) :: nselect
-        integer, intent(in) :: spin_factor
+        integer, intent(in) :: ispin
         type(dSFMT_t), intent(inout) :: rng
         integer, intent(out) :: occ_list(:)
         integer, intent(inout) :: ngen
@@ -274,7 +284,7 @@ contains
 
         iselect = 0
 
-        do iorb = 1, sys%basis%nbasis/2
+        do iorb = ispin, sys%basis%nbasis, 2
             ! Select a random orbital.
             r = get_rand_close_open(rng)
             if (porb(iorb) > r) then
@@ -284,7 +294,7 @@ contains
                     ! Selected too many.
                     exit
                 end if
-                occ_list(ngen) = 2*iorb - spin_factor
+                occ_list(ngen) = iorb
             end if
         end do
 
@@ -307,22 +317,25 @@ contains
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
-        real(p), intent(in) :: mu, beta
-        real(p) :: correction
+        real(p), intent(in) :: mu(1:2), beta
 
-        real(p) :: omega
-        integer :: iorb
+        real(p) :: omega, correction
+        integer :: ispin, iorb, nels(1:2)
 
         omega = 0.0_p
+        correction = 0.0_p
+        nels = (/ sys%nalpha, sys%nbeta /)
 
-        ! The grand potential omega = -kT log(prod_i(1+e^{-beta (e_i-mu)})).
-        do iorb = 1, sys%basis%nbasis, 2
-            omega = omega + log(1.0_p+exp(-beta*(sys%basis%basis_fns(iorb)%sp_eigv-mu)))
+        do ispin = 1, 2
+            if (nels(ispin) > 0) then
+                do iorb = ispin, sys%basis%nbasis, 2
+                    omega = omega + log(1.0_p+exp(-beta*(sys%basis%basis_fns(iorb)%sp_eigv-mu(ispin))))
+                end do
+                correction = correction + mu(ispin)*nels(ispin)
+            end if
         end do
 
-        if (sys%ms == 0) omega = omega * 2.0_p
-
-        correction = (-1.0_p/beta)*omega + mu*sys%nel
+        correction = correction + (-1.0_p/beta)*omega
 
     end function free_energy_correction
 

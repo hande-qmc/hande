@@ -220,6 +220,36 @@ fciqmc options
     Perform replica simulations (i.e. evolve two independent FCIQMC simulations
     concurrently).
 
+``density_matrices``
+    type: boolean.
+
+    Optional.  Default: false.
+
+    Samples the 2-RDM and reports the trace and numerator of the energy estimate.
+    Prints the Hermitian part of the 2-RDM once the calculation has completed.
+
+    Requires ``replica_tricks`` to be enabled.  
+    
+    .. note::
+
+        Both replicas must be in variable shift mode in order for the 2-RDM 
+        to be calculated. 
+
+``density_matrix_file``
+    type: string.
+
+    Optional. Default: RDM
+
+    The name of the output file that the final 2-RDM is printed to.
+    The (normalised, Hermitian part of) the 2-RDM is given in physical notation.
+
+``density_matrix_report``
+    type: int.
+
+    Optional. Default: 3000
+
+    The minimum report cycle the 2-RDM statistics are collected after.
+
 .. _load_bal_table:
 
 load_bal options

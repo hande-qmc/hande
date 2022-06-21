@@ -120,6 +120,24 @@ Options
 dmqmc options
 -------------
 
+``symmetric_bloch``
+    type: boolean.
+
+    Optional.  Default: true.
+
+    Use the symmetrized form of the Bloch equation,
+    :math:`\frac{d\hat{\rho}}{d\beta}=-\frac{1}{2}\{\hat{H},\hat{\rho}\}`,
+    to propagate the density matrix when true. Otherwise the non-symmetrized form,
+    :math:`\frac{d\hat{\rho}}{d\beta}=-\hat{\rho} \hat{H}`
+    of the Bloch equation is used. The **symmetrize** option only works with
+    the symmetric version of the Bloch equation.
+
+    .. note::
+
+        The use of symmetric or asymmetric propagation in the DMQMC methods can
+        impact the behavior of the sign problem as well the convergence with
+        respect to beta loops. For more information see [Petras21]_.
+
 ``replica_tricks``
     type: boolean.
 
@@ -165,6 +183,17 @@ dmqmc options
         each beta loop is independent, this can be done in separate calculations in an
         embararassingly parallel fashion.
 
+``final_beta``
+    type: float.
+
+    Optional.  Default: 0.0.
+
+    Sets the final inverse temperature the density matrix is propagated to.
+    When not provided in the input, the number of reports and Monte Carlo cycles
+    controls the final temperature instead.
+    If specified while using the interaction picture, the interaction picture
+    and Bloch equation are used in a piecewise fashion to sample a range of 
+    temperatures from **target_beta** to **final_beta**. [VanBenschoten22]_
 ``sampling_weights``
     type: vector of floats.
 
@@ -248,6 +277,24 @@ dmqmc options
 
     This is experimental and the user should identity when convergence has been
     reached.
+``piecewise_shift``
+    type: float.
+
+    Optional.  Default: 0.
+
+    Sets the value of the simulation shift when the propagator change occurs
+    at the **target_beta** when running the piecewise interaction picture method.
+``walker_scale_factor``
+    type: integer.
+
+    Optional.  Default: 1.
+
+    Scales the walker population on the initial trial density matrix by a constant
+    factor. The simulations target population is scaled as well.
+
+    .. warning::
+
+        This feature is experimental, and results should be tested for accuracy.
 
 .. _ipdmqmc_table:
 
@@ -263,6 +310,14 @@ ipdmqmc options
     If fermi_temperature is set to True then target_beta is interpreted as the inverse reduced temperature
     :math:`\tilde{\beta} = 1/\Theta = T_F/T`, where :math:`T_F` is the Fermi temperature. Otherwise target_beta is taken
     to be in atomic units.
+
+    .. note::
+
+        If **final_beta** is set to a value greater than **target_beta**, the
+        interaction picture will be used until the **target_beta** has been reached.
+        Thereafter, the Bloch equation will be used to sample continously until
+        the **final_beta** has been reached.
+
 ``initial_matrix``
     type: string.
 
@@ -291,6 +346,22 @@ ipdmqmc options
     requiring a non-zero value of metropolis_attempts to be set for the correct
     distribution to be reached.
 
+``skip_gci_reference_check``
+    type: boolean.
+
+    Optional.  Default: false.
+
+    When performing **grand_canonical_initialisation**, we check that :math:`H_{ii}`
+    is not lower in energy than :math:`H_{00}`. If a lower energy :math:`H_{ii}` is
+    found this can cause many spawns to occur with a weight lower than 1.0 which
+    is undesirable, and so the simulation exits with information to update the reference.
+    Setting this flag to true will ignore the lower energy :math:`H_{ii}`.
+
+    .. warning::
+
+        It is recommended that the orbital single particle eigenvalues in the
+        FCIDUMP are recalculated with the new reference.
+
 ``metropolis_attempts``
     type: integer.
 
@@ -300,10 +371,10 @@ ipdmqmc options
     It is up to the user to determine if the desired distribution has been reached,
     i.e. by checking if results are independent of metropolis_attempts.
 
-``symmetric``
+``symmetric_interaction_picture``
     type: boolean.
 
-    Optional. Default: false.
+    Optional. Default: true.
 
     Use symmetric version of ip-dmqmc where now :math:`\hat{f}(\tau) =
     e^{-\frac{1}{2}(\beta-\tau)\hat{H}^0}e^{-\tau\hat{H}}e^{-\frac{1}{2}(\beta-\tau)\hat{H}^0}`.
@@ -312,6 +383,18 @@ ipdmqmc options
 
         This feature is experimental and only tested for the 3D uniform electron
         gas.
+
+``count_diagonal_occupations``
+    type: boolean.
+
+    Optional. Default: false.
+
+    When performing **grand_canonical_initialisation**, instead of accumulating
+    the number of walkers being added to the trace count the number of diagonal
+    elements that are occupied. The original **grand_canonical_initialisation**
+    would count the number of successful occupations which could lead to substantially
+    more particles being added then the provided initial population.  Generally
+    only applicable when **initial_matrix** is set to 'hartree_fock'. 
 
 .. _operators_table:
 
@@ -561,3 +644,11 @@ Note that the use of RDMs is currently only available with the Heisenberg model.
     triangle of the RDM labelled by their index.
 
     Valid for ``ground_state`` only.
+``ref_projected_energy``
+    type: boolean.
+
+    Optional.  Default: false.
+
+    Calculate the numerator and denominator for the projected energy as well as
+    the total walker population for the reference row (or column) of the density matrix.
+    Currently only available for read in systems.

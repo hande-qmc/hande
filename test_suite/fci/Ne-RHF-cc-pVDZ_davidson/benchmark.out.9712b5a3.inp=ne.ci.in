@@ -1,0 +1,319 @@
+
+   HANDE
+
+ ================================================================
+Version information
+-------------------
+Version       | v1.5-509-gcf07666
+Commit hash   | cf076667d9f540506f71c35bc4a3f4eb8557039d
+Commit author | Brian Zhao
+Commit date   | Mon Jun 20 18:11:28 2022 +0100
+Branch        | main
+
+Configuration and build information
+-----------------------------------
+Who compiled             | maf63
+Compilation hostname     | serenity
+Operating system         | Linux-5.4.0-110-generic
+CMake version            | 3.16.3
+CMake generator          | Unix Makefiles
+Build type               | debug
+Configuration time       | 2022-06-20 17:24:01 [UTC]
+Python version           | 3.7.0
+Fortran compiler         | /usr/local/shared/ubuntu-20.04/x86_64/openmpi-4.1.2-gnu/bin/mpif90
+C compiler               | /usr/local/shared/ubuntu-20.04/x86_64/openmpi-4.1.2-gnu/bin/mpicc
+DET_SIZE set to          | 64
+POP_SIZE set to          | 64
+dSFMT Mersenne exponent  | 19937
+MPI parallelization      | ON
+MPI launcher             | /usr/local/shared/ubuntu-20.04/x86_64/openmpi-4.1.2-gnu/bin/mpiexec
+OpenMP parallelization   | OFF
+Lua version              | 5.3.5
+HDF5 library version     | 1.10.4
+
+Further components
+------------------
+DISABLE_HDF5 not defined.  HDF5 enabled.
+DISABLE_UUID not defined.  UUID enabled.
+PARALLEL defined.  MPI parallelization enabled.
+DISABLE_MPI3 not defined.  MPI-3 functionality enabled.
+PARALLEL defined. DISABLE_MPI3 and ENABLE_SHMEM_POSIX not defined. MPI-3 in use.
+DISABLE_SCALAPACK defined.  ScaLAPACK disabled.
+SINGLE_PRECISION not defined.  Double precision used throughout.
+USE_POPCNT not defined. Internal POPCNT procedure used.
+
+Runtime information
+-------------------
+Hostname:
+    serenity
+Current working dir:
+    /home/maf63/hande-release/test_suite/fci/Ne-RHF-cc-pVDZ_davidson
+Started running on 20/06/2022 at 21:52:19
+ Calculation UUID: 4ec1645a-5149-4d02-89e0-751de30d53c0.
+ ================================================================
+
+ Input options
+ -------------
+
+ -- Exact CISDT energy: -0.187624 (correlation) and -128.676399 (total).
+fci {
+    sys = read_in {
+        int_file = "INTDUMP",
+        nel = 10,
+        ms = 0,
+        sym = 0,
+    },
+    reference = {
+        ex_level = 3,
+    },
+    davidson = {
+        ndavidson_eigv = 4,
+        ndavidson_trialvec = 8,
+        davidson_maxsize = 100,
+        davidson_tol = 1e-8,
+        davidson_maxiter = 200,
+    },
+}
+
+ -------------
+
+ Memory required for all two body integrals (MB) on each processor: 0
+ It is left to the user to ensure that this does not exceed available resources.
+
+ Basis functions
+ ---------------
+
+ Spin given in units of 1/2.
+
+ index  spatial symmetry sym_index lz     ms       <i|f|i>
+     1      1       0       1       0       1       -3.27656354E+01
+     2      1       0       2       0      -1       -3.27656354E+01
+     3      2       0       3       0       1       -1.91879823E+00
+     4      2       0       4       0      -1       -1.91879823E+00
+     5      3       5       1       0       1       -8.32097252E-01
+     6      3       5       2       0      -1       -8.32097252E-01
+     7      4       6       1       0       1       -8.32097252E-01
+     8      4       6       2       0      -1       -8.32097252E-01
+     9      5       7       1       0       1       -8.32097252E-01
+    10      5       7       2       0      -1       -8.32097252E-01
+    11      6       5       3       0       1        1.69455773E+00
+    12      6       5       4       0      -1        1.69455773E+00
+    13      7       6       3       0       1        1.69455773E+00
+    14      7       6       4       0      -1        1.69455773E+00
+    15      8       7       3       0       1        1.69455773E+00
+    16      8       7       4       0      -1        1.69455773E+00
+    17      9       0       5       0       1        2.15942495E+00
+    18      9       0       6       0      -1        2.15942495E+00
+    19     10       0       7       0       1        5.19671140E+00
+    20     10       0       8       0      -1        5.19671140E+00
+    21     11       0       9       0       1        5.19671140E+00
+    22     11       0      10       0      -1        5.19671140E+00
+    23     12       1       1       0       1        5.19671140E+00
+    24     12       1       2       0      -1        5.19671140E+00
+    25     13       2       1       0       1        5.19671140E+00
+    26     13       2       2       0      -1        5.19671140E+00
+    27     14       3       1       0       1        5.19671140E+00
+    28     14       3       2       0      -1        5.19671140E+00
+
+ E_core =    0.000000000000
+ Number of electrons: 10
+ Number of basis functions: 28
+
+ Bit-length of integers used to store determinant bit-strings: 64
+ Number of integers used to store determinant bit-strings: 1
+
+ Symmetry information
+ --------------------
+
+ Number of point group symmetries: 8
+ Not using Lz symmetry.
+ Totally symmetric symmetry: 0
+ The matrix below gives the direct products of the irreducible representations.
+
+  0  1  2  3  4  5  6  7
+  1  0  3  2  5  4  7  6
+  2  3  0  1  6  7  4  5
+  3  2  1  0  7  6  5  4
+  4  5  6  7  0  1  2  3
+  5  4  7  6  1  0  3  2
+  6  7  4  5  2  3  0  1
+  7  6  5  4  3  2  1  0
+
+ The table below gives the number of basis functions spanning each irreducible representation.
+
+ irrep  Lz   sym  nbasis  nbasis_up  nbasis_down
+   0     0    0     10       5          5
+   1     0    1      2       1          1
+   2     0    2      2       1          1
+   3     0    3      2       1          1
+   4     0    4      0       0          0
+   5     0    5      4       2          2
+   6     0    6      4       2          2
+   7     0    7      4       2          2
+
+ FCI
+ ---
+
+ -- Start JSON block --
+ {
+     "system": {
+         "nbasis": 28,   
+         "nel": 10,   
+         "nvirt": 18,   
+         "Ms": 0,   
+         "nalpha": 5,   
+         "nbeta": 5,   
+         "nvirt_alpha": 9,   
+         "nvirt_beta": 9,   
+         "nsym": 7,   
+         "sym0": 0,   
+         "sym_max": 7,   
+         "nsym_tot": 8,   
+         "sym0_tot": 0,   
+         "sym_max_tot": 7,   
+         "symmetry": 0,   
+         "tot_sym": false,   
+         "aufbau_sym": false,   
+         "max_number_excitations": 10,   
+         "read_in": {
+             "int_file":  "INTDUMP",   
+             "uhf": false,   
+             "Ecore": 0.00000000,   
+             "CAS": [ -1, -1],
+             "useLz": false,   
+             "complex": false    
+         }
+     },
+     "fci_in": {
+         "write_hamiltonian": false,   
+         "hamiltonian_file":  "HAMIL",   
+         "write_determinants": false,   
+         "determinant_file":  "DETS",   
+         "print_fci_wfn": 0,   
+         "print_fci_wfn_file":  "FCI_WFN",   
+         "analyse_fci_wfn": 0,   
+         "block_size": 64,   
+         "ndavidson_eigv": 4,   
+         "ndavidson_trialvec": 8,   
+         "davidson_maxsize": 100,   
+         "davidson_tol": 0.00000001,   
+         "hamiltonian_diagonal_only": false,   
+     },
+     "reference": {
+         "det": [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+         "det_ms": 0,   
+         "det_symmetry": 0,   
+         "H00": -128.48877555,   
+         "F0": 0.00000000,   
+         "ex_level": 3    
+     }
+ }
+ -- End JSON block --
+
+ The table below gives the number of determinants for each symmetry with Ms=0.
+ Only determinants within 3 excitations of the reference determinant are included.
+ Reference determinant, |D0> = |  1  2  3  4  5  6  7  8  9 10 >
+
+ Symmetry index      # dets
+         0             4680
+         1             4588
+         2             4588
+         3             4588
+         4             4588
+         5             4628
+         6             4628
+         7             4628
+
+ Performing Davidson diagonalisation...
+
+ Davidson initialisation done!
+ Time taken for Davidson initialisation 0.003050 s
+
+ Iteration   Basis size    delta rmsE      Time  
+         1            8   2.512777E+02    0.023247
+         2           16   3.123764E+00    0.053830
+         3           24   7.891979E-02    0.060966
+         4           32   9.517917E-03    0.062867
+         5           40   5.539860E-01    0.064703
+         6           48   5.483261E-01    0.066756
+         7           56   3.441023E-01    0.073970
+         8           64   3.476063E-02    0.081618
+         9           72   1.196645E-01    0.088937
+        10           80   9.113612E-02    0.085490
+        11           88   6.275315E-02    0.081411
+        12           96   1.651369E-02    0.077871
+ Collapsing subspace...
+        13            8   2.688820E-13    0.013748
+        14           16   4.873721E-02    0.054438
+        15           24   3.561685E-02    0.061157
+        16           32   2.180278E-02    0.063197
+        17           40   7.300709E-03    0.065375
+        18           48   7.728789E-03    0.067221
+        19           56   8.099904E-03    0.074803
+        20           64   5.867092E-03    0.082298
+        21           72   1.031031E-02    0.089647
+        22           80   5.192965E-03    0.086348
+        23           88   3.416865E-03    0.082595
+        24           96   3.605577E-03    0.078885
+ Collapsing subspace...
+        25            8   3.093922E-13    0.013739
+        26           16   1.367416E-03    0.054480
+        27           24   2.753408E-03    0.061073
+        28           32   3.124969E-03    0.063280
+        29           40   3.965116E-03    0.065360
+        30           48   9.729462E-03    0.067313
+        31           56   5.141055E-03    0.074790
+        32           64   4.135568E-03    0.082263
+        33           72   4.503316E-03    0.089769
+        34           80   9.710415E-04    0.086267
+        35           88   8.803948E-04    0.082414
+        36           96   3.206009E-04    0.078865
+ Collapsing subspace...
+        37            8   2.029716E-13    0.013724
+        38           16   1.454362E-04    0.054581
+        39           24   1.305298E-04    0.061136
+        40           32   1.192283E-04    0.063258
+        41           40   5.801127E-05    0.065340
+        42           48   4.117030E-05    0.067177
+        43           56   1.766363E-05    0.075023
+        44           64   9.549618E-06    0.082370
+        45           72   7.087099E-06    0.089705
+        46           80   2.533092E-06    0.086342
+        47           88   1.436787E-06    0.082475
+        48           96   4.971836E-07    0.078752
+ Collapsing subspace...
+        49            8   1.994589E-13    0.013705
+        50           16   5.008925E-07    0.054570
+        51           24   3.933802E-07    0.061107
+        52           32   3.866301E-07    0.063374
+        53           40   1.845653E-07    0.065420
+        54           48   1.258560E-07    0.067246
+        55           56   8.008898E-08    0.074764
+        56           64   2.083177E-08    0.082225
+        57           72   2.711763E-08    0.089757
+        58           80   1.068460E-08    0.086299
+        59           88   8.374961E-09    0.082467
+ Eigenvalue tolerance of 1.0000E-08 reached, printing results...
+ Davidson diagonalisation results
+ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+  State     Energy
+      1  -128.676399416807
+      2  -127.037283769802
+      3  -126.907544389847
+      4  -126.907544375829
+
+ Timing breakdown
+ ----------------
+
+ Wall time for each calculation section (seconds):
+
+ Generic system initialisation: .01
+ FCI calculation              : 50.97
+
+ ================================================================
+ Finished running on 20/06/2022 at 21:52:26
+ Wall time (seconds):                               6.57
+ CPU time (per processor, seconds):                50.98
+ ================================================================
+

@@ -259,7 +259,7 @@ the wall time of the calculation:
             results[out.metadata['qmc']['spawn_cutoff']] = res
         else:
             results[1.0] = res
-    results = pd.DataFrame(results).T
+    results = pd.DataFrame(results).T.sort_index()
 
     # todo - legend, axis labels
     (fig, ax1) = plt.subplots()
@@ -279,6 +279,7 @@ the wall time of the calculation:
     lines = lines1 + lines2
     labels = [l.get_label() for l in lines]
     ax1.legend(lines, labels, loc='center right')
+    plt.tight_layout()
 
 For convenience, the integer amplitude calculation is shown as having a ``spawn_cutoff``
 of 1. Clearly there is a playoff between the computational cost and the desired stochastic

@@ -14,6 +14,7 @@ implicit none
 enum, bind(c)
     enumerator :: proj_energy_ind = 1
     enumerator :: D0_pop_ind
+    enumerator :: D0_noncomp_pop_ind
     ! [todo] - having a separate index for each space is not very general.
     enumerator :: proj_energy_replica_ind
     enumerator :: D0_pop_replica_ind
@@ -372,6 +373,7 @@ contains
         else
             rep_loop_loc(proj_energy_ind) = qs%estimators(1)%proj_energy
             rep_loop_loc(D0_pop_ind) = qs%estimators(1)%D0_population
+            rep_loop_loc(D0_noncomp_pop_ind) = qs%estimators(1)%D0_noncomposite_population
             if (qs%psip_list%nspaces > 1) then
                 rep_loop_loc(proj_energy_replica_ind) = qs%estimators(2)%proj_energy
                 rep_loop_loc(D0_pop_replica_ind) = qs%estimators(2)%D0_population
@@ -505,6 +507,7 @@ contains
 
         qs%estimators(1)%proj_energy = real(rep_loop_sum(proj_energy_ind), p)
         qs%estimators(1)%D0_population = real(rep_loop_sum(D0_pop_ind), p)
+        qs%estimators(1)%D0_noncomposite_population = real(rep_loop_sum(D0_noncomp_pop_ind), p)
         if (size(qs%estimators) > 1) then
             qs%estimators(2)%proj_energy = real(rep_loop_sum(proj_energy_replica_ind), p)
             qs%estimators(2)%D0_population = real(rep_loop_sum(D0_pop_replica_ind), p)
@@ -561,8 +564,10 @@ contains
         end associate
 
         ! average energy quantities over report loop.
-        qs%estimators%proj_energy = qs%estimators%proj_energy/qmc_in%ncycles
-        qs%estimators%D0_population = qs%estimators%D0_population/qmc_in%ncycles
+        ! The number of cycles is multiplied by chebyshev order as an m-th order chebyshev propagator
+        ! creates m sub-loops per cycle.
+        qs%estimators%proj_energy = qs%estimators%proj_energy/(qmc_in%ncycles*qs%cheby_prop%order)
+        qs%estimators%D0_population = qs%estimators%D0_population/(qmc_in%ncycles*qs%cheby_prop%order)
         ! Similarly for the HFS estimator
         qs%estimators%D0_hf_population = qs%estimators%D0_hf_population/qmc_in%ncycles
         qs%estimators%proj_hf_O_hpsip = qs%estimators%proj_hf_O_hpsip/qmc_in%ncycles
@@ -571,7 +576,7 @@ contains
         qs%estimators%proj_energy_comp = qs%estimators%proj_energy_comp/qmc_in%ncycles
         qs%estimators%D0_population_comp = qs%estimators%D0_population_comp/qmc_in%ncycles
         ! average spawning rate over report loop and processor.
-        qs%spawn_store%rspawn = qs%spawn_store%rspawn/(qmc_in%ncycles*nprocs)
+        qs%spawn_store%rspawn = qs%spawn_store%rspawn/(qmc_in%ncycles*qs%cheby_prop%order*nprocs)
 
         if (doing_calc(hfs_fciqmc_calc)) then
             if (qs%vary_shift(1)) then
@@ -653,15 +658,22 @@ contains
 
     subroutine update_shift(qs, loc_shift, nparticles_old, nparticles, nupdate_steps)
 
-        ! Update the shift according to:
-        !  shift(beta) = shift(beta-A*tau) - xi*log(N_w(tau)/N_w(beta-A*tau))/(A*tau)
+        ! Update the shift according to Yang, Pahl and Brand's harmonic damping
+        ! population control algorithm (J. Chem. Phys. 153, 174103 (2020)
+        ! (DOI:10.1063/5.0023088)):
+        !  shift(beta) = shift(beta-A*tau) - xi*log(N_w(beta)/N_w(beta-A*tau))/(A*tau) 
+        ! - zeta*(log(N_w(beta)/N_t))/(A*tau) 
         ! where
         !  * shift(beta) is the shift at imaginary time beta;
         !  * A*tau is the amount of imaginary time between shift-updates (=# of
         !    Monte Carlo cycles between updating the shift);
         !  * xi is a damping factor (0.05-0.10 is appropriate) to prevent large fluctations;
         !  * N_w(beta) is the total number of particles at imaginary time beta.
+        !  * zeta is a dimensionless forcing strength parameter. 
+        !  * N_t is the target population of the simulation. 
         ! The running average of the shift is also updated.
+        ! Note that when zeta is equal to zero, the original algorithm is
+        ! obtained. 
 
         ! In:
         !    qs: qmc state.
@@ -672,16 +684,30 @@ contains
         !    loc_shift: energy shift/offset.  Set to S(beta-A*tau) on input and S(beta) on output.
 
         use qmc_data, only: qmc_in_t, qmc_state_t
-
+ 
         type(qmc_state_t), intent(in) :: qs
         real(p), intent(inout) :: loc_shift
         real(dp), intent(in) :: nparticles_old, nparticles
         integer, intent(in) :: nupdate_steps
 
+        real(p) :: tau_update
+        integer :: icycle, icheb
+
         ! dmqmc_factor is included to account for a factor of 1/2 introduced into tau in
         ! DMQMC calculations. In all other calculation types, it is set to 1, and so can be ignored.
-        loc_shift = loc_shift - real(log(nparticles/nparticles_old)*qs%shift_damping/(qs%dmqmc_factor*qs%tau*nupdate_steps) ,p)
 
+        associate(cp=>qs%cheby_prop)
+        if (qs%target_particles .le. 0.00_p) then
+            loc_shift = loc_shift - real(log(nparticles/nparticles_old)*qs%shift_damping/ &
+                                         (qs%dmqmc_factor*qs%tau*nupdate_steps),p)
+        else 
+            loc_shift = loc_shift - real(log(nparticles/nparticles_old)*qs%shift_damping/ &
+                                         (qs%dmqmc_factor*qs%tau*nupdate_steps),p) & 
+                  - real(log(nparticles/qs%target_particles)*(qs%shift_harmonic_forcing)/ &
+                  (qs%dmqmc_factor*qs%tau*nupdate_steps),p)
+        end if
+        end associate
+    
     end subroutine update_shift
 
     subroutine update_hf_shift(qmc_in, qs, hf_shift, nparticles_old, nparticles, nhf_particles_old, nhf_particles, nupdate_steps)

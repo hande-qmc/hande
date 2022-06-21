@@ -71,6 +71,7 @@ target_sources(hande-static
     excit_gen_utils.f90
     excitations.F90
     fci_lapack.F90
+    fci_davidson.F90
     fci_utils.F90
     fciqmc.f90
     hamiltonian.f90
@@ -89,6 +90,7 @@ target_sources(hande-static
     hfs_data.f90
     hfs_fciqmc.f90
     hilbert_space.F90
+    state_histograms.F90
     hubbard_k.f90
     idmqmc.f90
     ifciqmc.f90
@@ -101,11 +103,13 @@ target_sources(hande-static
     molecular_integrals.F90
     momentum_sym_read_in.f90
     momentum_symmetry.f90
+    mp1.F90
     non_blocking_comm.F90
     operators.F90
     particle_t_utils.f90
     pg_symmetry.f90
     proc_pointers.f90
+    propagators.f90
     qmc.F90
     qmc_common.F90
     qmc_data.f90
@@ -128,6 +132,9 @@ target_sources(hande-static
     symmetry.f90
     symmetry_types.f90
     system.f90
+    trotterized_uccmc.F90
+    uccmc.f90
+    uccmc_utils.f90
     ueg.f90
     ueg_types.f90
   )

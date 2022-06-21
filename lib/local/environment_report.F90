@@ -173,9 +173,13 @@ contains
         !    io (optional): unit to which the environment information is written.
         !        Default: 6.
 
+        use parallel, only: nthreads
+        use const, only: dp
+
         real, intent(in) :: wall_time, cpu_time_used
         integer, intent(in), optional :: io
-        integer :: date_values(8), io_unit
+        integer :: date_values(8), io_unit, logi, nspace
+        character(255) :: fmt_str
 
         if (present(io)) then
             io_unit = io
@@ -189,8 +193,15 @@ contains
 
         write (io_unit,'(1X,a19,1X,i2.2,"/",i2.2,"/",i4.4,1X,a2,1X,i2.2,2(":",i2.2))') &
                    "Finished running on", date_values(3:1:-1), "at", date_values(5:7)
-        write (io_unit,'(1X,a20,17X,f14.2)') "Wall time (seconds):", wall_time
-        write (io_unit,'(1X,a34,3X,f14.2)') "CPU time (per processor, seconds):", cpu_time_used
+        write (io_unit,'(1X,a20,21X,f14.2)') "Wall time (seconds):", wall_time
+        if (nthreads > 1) then
+            logi = ceiling(log10(abs(real(nthreads,dp))+1))
+            nspace = 5 - logi
+            write(fmt_str, '(A,I0,A,I0,A)') '(1X,a17,I',logi,',a19,',nspace,'X,f14.2)'
+            write (io_unit, fmt_str) "CPU time (sum of ", nthreads," threads, seconds):", cpu_time_used
+        else
+            write (io_unit,'(1X,a34,7X,f14.2)') "CPU time (per processor, seconds):", cpu_time_used
+        end if
 
         write (io_unit,'(1X,64("="),/)')
 

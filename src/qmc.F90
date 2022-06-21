@@ -1,5 +1,4 @@
 module qmc
-
 ! Launcher and initialisation routines for the various QMC algorithms.
 
 implicit none
@@ -9,7 +8,7 @@ contains
 ! --- Initialisation routines ---
 
     subroutine init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, io_unit, annihilation_flags, qmc_state, uuid_restart, &
-                        restart_version_restart, dmqmc_in, fciqmc_in, qmc_state_restart, regenerate_info)
+                        restart_version_restart, dmqmc_in, fciqmc_in, qmc_state_restart, regenerate_info, psip_list_in)
 
         ! Initialisation for fciqmc calculations.
         ! Setup the spin polarisation for the system, initialise the RNG,
@@ -32,6 +31,9 @@ contains
         ! In/Out:
         !    qmc_state_restart (optional): qmc_state_t object from a calculation
         !       to restart. Deallocated on exit.
+        !    psip_list_in (optional): particle_t object from an MP1 calculation. Deallocated on exit.
+        !    state_hist (optional): type containing all the state histograms
+        !       information, if present call the setup routine for state histograms.
         ! Out:
         !    annihilation_flags: calculation specific annihilation flags.
         !    qmc_state: qmc_state_t object.  On output the QMC state is
@@ -50,14 +52,15 @@ contains
         use load_balancing, only: init_parallel_t
         use system
         use restart_hdf5, only: read_restart_hdf5, restart_info_t, init_restart_info_t, get_reference_hdf5
-        use qmc_data, only: qmc_in_t, fciqmc_in_t, restart_in_t, load_bal_in_t, annihilation_flags_t, qmc_state_t
+        use qmc_data, only: qmc_in_t, fciqmc_in_t, restart_in_t, load_bal_in_t, annihilation_flags_t, qmc_state_t, particle_t
         use reference_determinant, only: reference_t
         use dmqmc_data, only: dmqmc_in_t
         use excit_gens, only: dealloc_excit_gen_data_t
         use const, only: p
         use parallel, only: parent
         use determinants, only: sum_fock_values_occ_list
-
+        use particle_t_utils, only: move_particle_t
+        use propagators, only: init_chebyshev
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -73,12 +76,13 @@ contains
         type(fciqmc_in_t), intent(in), optional :: fciqmc_in
         type(qmc_state_t), intent(inout), optional :: qmc_state_restart
         logical, intent(out), optional :: regenerate_info
+        type(particle_t), intent(inout), optional :: psip_list_in
 
         integer :: ierr, iunit, proc_data_info(2,est_buf_n_per_proc), ntot_proc_data
         type(fciqmc_in_t) :: fciqmc_in_loc
         type(dmqmc_in_t) :: dmqmc_in_loc
         type(restart_info_t) :: ri
-        logical :: regenerate_info_loc, qmc_state_restart_loc
+        logical :: regenerate_info_loc, qmc_state_restart_loc, psip_list_in_loc
         real :: t1, t2, set_up_time
 
         iunit = 6
@@ -86,10 +90,12 @@ contains
         regenerate_info_loc = .false.
         restart_version_restart = 0
         qmc_state_restart_loc = .false.
+        psip_list_in_loc = .false.
 
         if (present(fciqmc_in)) fciqmc_in_loc = fciqmc_in
         if (present(dmqmc_in)) dmqmc_in_loc = dmqmc_in
         if (present(qmc_state_restart)) qmc_state_restart_loc = .true.
+        if (present(psip_list_in)) psip_list_in_loc = .true.        
 
         if (restart_in%read_restart) call init_restart_info_t(ri, read_id=restart_in%read_id)
 
@@ -103,12 +109,18 @@ contains
         else
             call init_reference(sys, reference_in, io_unit, qmc_state%ref)
         end if
-        
+
         call init_sp_fock(sys, qmc_state%ref, qmc_state%propagator)
         ! [WARNING - TODO] - ref%fock_sum not initialised in init_reference, etc! 
         qmc_state%ref%fock_sum = sum_fock_values_occ_list(sys, qmc_state%propagator%sp_fock, qmc_state%ref%occ_list0)
 
-        call init_psip_list(sys, dmqmc_in_loc, fciqmc_in_loc, qmc_in, qmc_state_restart_loc, io_unit, qmc_state%psip_list)
+        if (.not. psip_list_in_loc) then
+            call init_psip_list(sys, dmqmc_in_loc, fciqmc_in_loc, qmc_in, qmc_state_restart_loc, &
+                                io_unit, qmc_state%psip_list)
+        else
+            ! We move psip_list later but for now just fill in this one field needed in get_comm_processor_indx
+            qmc_state%psip_list%nspaces = psip_list_in%nspaces
+        end if
 
         call get_comm_processor_indx(qmc_state%psip_list%nspaces, proc_data_info, ntot_proc_data)
         call init_parallel_t(ntot_proc_data, est_buf_data_size, fciqmc_in_loc%non_blocking_comm, &
@@ -122,7 +134,9 @@ contains
             ! Prevent pattempt_single to be overwritten by default value in init_excit_gen.
             ! It is only overwritten if user specifies pattempt_single by qmc_in.
             qmc_state%excit_gen_data%p_single_double%pattempt_restart_store = .true.
+            if (psip_list_in_loc) call move_particle_t(psip_list_in, qmc_state%psip_list)
         else
+            if (psip_list_in_loc) call move_particle_t(psip_list_in, qmc_state%psip_list)
             call init_spawn_store(qmc_in, qmc_state%psip_list%nspaces, qmc_state%psip_list%pop_real_factor, sys%basis, &
                                   fciqmc_in_loc%non_blocking_comm, qmc_state%par_info%load%proc_map, io_unit, &
                                   qmc_state%spawn_store)
@@ -132,7 +146,7 @@ contains
             allocate(qmc_state%vary_shift(qmc_state%psip_list%nspaces), stat=ierr)
             call check_allocate('qmc_state%vary_shift', qmc_state%psip_list%nspaces, ierr)
             qmc_state%shift = qmc_in%initial_shift
-            qmc_state%vary_shift = .false.
+            qmc_state%vary_shift =  .false.
 
             allocate(qmc_state%estimators(qmc_state%psip_list%nspaces))
 
@@ -143,9 +157,12 @@ contains
             else if (doing_calc(dmqmc_calc)) then
                 ! Initial distribution handled later
                 qmc_state%psip_list%nstates = 0
+            else if (psip_list_in_loc) then
+                ! Already set to the MP1 distribution
+                continue
             else
                 call initial_distribution(sys, qmc_state%spawn_store%spawn, qmc_in%D0_population, fciqmc_in_loc, &
-                                          qmc_state%ref, qmc_state%psip_list)
+                                           qmc_state%ref, qmc_state%psip_list)
             end if
         end if
         if (present(regenerate_info)) regenerate_info = regenerate_info_loc
@@ -164,6 +181,7 @@ contains
             '(1X, "# Finishing the excitation generator initialisation, time taken:",1X,es17.10)') set_up_time
 
         call init_quasi_newton(sys, qmc_in, qmc_state%propagator)
+        call init_chebyshev(sys, qmc_in, qmc_state)
 
         ! Need to ensure we end up with a sensible value of shift damping to use.
         ! qmc_state%shift_damping will be set to either its default value or one
@@ -173,6 +191,26 @@ contains
             qmc_state%shift_damping = qmc_in%shift_damping
         end if
 
+        ! If shift_harmonic_crit_damp is set to true, the value
+        ! of shift_harmonic_forcing needs to be updated so that it follows the
+        ! critical damping equation from Yang, Pahl and Brand 
+        ! J. Chem. Phys. 153, 174103 (2020) (DOI:10.1063/5.0023088):
+        ! shift_harmonic_forcing = (shift_damping^2)/4
+        ! If shift_harmonic_crit_damp is false, the value of
+        ! shift_harmonic_forcing from the input is used. 
+        ! With harmonic forcing, we *could* turn vary_shift on from the start of the calculation, 
+        ! but it can take longer to reach the target population due to increased death events. 
+        ! So, we only turn it on from the start if shift_harmonic_forcing_two_stage is false.
+        if (qmc_in%shift_harmonic_crit_damp) then
+            qmc_state%shift_harmonic_forcing = real((qmc_state%shift_damping**2)/4.0_p, p)
+        else if (qmc_state%shift_harmonic_forcing .ne. 0.00_p) then 
+            qmc_state%shift_harmonic_forcing = qmc_in%shift_harmonic_forcing
+        end if
+        if (qmc_state%shift_harmonic_forcing .ne. 0.00_p) then
+            ! Turn on harmonic forcing right now or only when target population is reached?
+            if (.not. qmc_in%shift_harmonic_forcing_two_stage) qmc_state%vary_shift = .true. 
+        end if
+        
         qmc_state%restart_in = restart_in
     end subroutine init_qmc
 
@@ -235,6 +273,7 @@ contains
                                                 single_excitation_weight_periodic
         use hamiltonian_ringium, only: slater_condon0_ringium
         use hamiltonian_ueg, only: slater_condon0_ueg, kinetic_energy_ueg, exchange_energy_ueg, potential_energy_ueg
+
         use heisenberg_estimators
         use importance_sampling
         use operators
@@ -595,6 +634,10 @@ contains
                 end if
             case(read_in)
                 if (dmqmc_in%ipdmqmc) then
+                    if (dmqmc_in%symmetric) then
+                        spawner_ptr => spawn_importance_sampling
+                        gen_excit_ptr%trial_fn => interaction_picture_reweighting_molecular_HF
+                    end if
                     if (dmqmc_in%initial_matrix == free_electron_dm) then
                         h0_ptr => hf_hamiltonian_energy_mol
                     else
@@ -797,6 +840,7 @@ contains
         use parallel
         use energy_evaluation, only: calculate_hf_signed_pop
         use checking, only: check_allocate
+        use errors, only: warning
 
         type(qmc_in_t), intent(in) :: qmc_in
         logical, intent(in) :: restart_read_in, fciqmc_non_blocking_comm
@@ -839,7 +883,13 @@ contains
         if (qmc_in%vary_shift_present) then
             ! User input overrides other factors determining whether to vary shift
             qmc_state%vary_shift = qmc_in%vary_shift
-            if (.not. qmc_in%vary_shift) qmc_state%shift = qmc_in%initial_shift
+            if (.not. qmc_in%vary_shift) then
+                qmc_state%shift = qmc_in%initial_shift
+                if (restart_read_in) then
+                    call warning('init_estimators', &
+                        'Reading in restart file, but vary_shift is false, setting initial shift to qmc_in%initial_shift!')
+                end if
+            end if
         end if
 
         if (doing_calc(hfs_fciqmc_calc)) then
@@ -1137,7 +1187,7 @@ contains
         ! Note occ_list could be set and allocated in the input.
         reference = reference_in
 
-    if (present(occlist)) reference%occ_list0 = occlist
+        if (present(occlist)) reference%occ_list0 = occlist
 
         ! Set the reference determinant to be the spin-orbitals with the lowest
         ! single-particle eigenvalues which satisfy the spin polarisation and, if
@@ -1155,6 +1205,7 @@ contains
             allocate(reference%hs_f0(sys%basis%tot_string_len), stat=ierr)
             call check_allocate('reference%hs_f0', sys%basis%tot_string_len, ierr)
         end if
+        
 
         ! Set hilbert space reference if not given in input
         if (allocated(reference%hs_occ_list0)) then
@@ -1221,37 +1272,145 @@ contains
 
     end subroutine init_reference_restart
 
-    subroutine init_secondary_references(sys, references_in, io_unit, qs)
+    subroutine init_secondary_references(sys, ccmc_in, io_unit, qs)
         ! Set the secondary reference determinant from input options
         ! and use it to set up the maximum considered excitation level
         ! for the calculation.
 
         ! In:
         !   sys: system being studied.
-        !   references_in: array of secondary references provided in input.
+        !   ccmc_in: the ccmc_in_t object containing the secondary references.
         !   io_unit: io unit to write any information to.
         ! In/Out:
         !   qs: qmc_state used in the calculation.
     
         use reference_determinant, only: reference_t
         use system, only: sys_t
-        use qmc_data, only: qmc_state_t 
+        use qmc_data, only: qmc_state_t, ccmc_in_t
         use excitations, only: get_excitation_level, det_string
+        use search, only: tree_add
+        use const
+        use determinants, only: decode_det
+        use bit_utils, only: count_set_bits, bit_str_lshift_pad
+        use symmetry, only: symmetry_orb_list
+        use parallel, only: parent
 
         type(sys_t), intent(in) :: sys
-        type(reference_t), intent(in) :: references_in(:)
+        type(ccmc_in_t), intent(in) :: ccmc_in
         integer, intent(in) :: io_unit
         type(qmc_state_t), intent(inout) :: qs
-        integer :: i, current_max, total_max = 0
-        
-        do i = 1, size(references_in)
-           call init_reference(sys, references_in(i), io_unit, qs%secondary_refs(i))
-           current_max = qs%ref%ex_level + get_excitation_level(det_string(qs%ref%f0,sys%basis), &
-                                                                 det_string(qs%secondary_refs(i)%f0,sys%basis)) 
-           if (current_max > total_max) total_max = current_max
-        end do
 
-        qs%ref%max_ex_level = total_max
+        integer :: i, current_max, total_max, ir, iel, n_rshift, isym, nsym_refs
+        integer(i0) :: secref_bstring(sys%basis%bit_string_len), real_bstring(sys%basis%tot_string_len), core_bstring
+        type(reference_t) :: read_in_ref
+        type(reference_t), allocatable :: sym_refs(:)
+        
+        total_max = 0
+
+        if (.not. ccmc_in%mr_read_in) then
+            allocate(qs%secondary_refs(ccmc_in%n_secondary_ref))
+
+            do i = 1, size(ccmc_in%secondary_refs)
+               call init_reference(sys, ccmc_in%secondary_refs(i), io_unit, qs%secondary_refs(i))
+               current_max = qs%ref%ex_level + get_excitation_level(det_string(qs%ref%f0,sys%basis), &
+                                                                     det_string(qs%secondary_refs(i)%f0,sys%basis)) 
+               if (current_max > total_max) total_max = current_max
+            end do
+
+            qs%ref%max_ex_level = total_max
+        else
+            core_bstring = 0_i0
+            ! -1 is the default (unset) value
+            ! mr_n_frozen already takes the CAS into account in lua_hande_calc::read_ccmc_in
+            do i = 0, ccmc_in%mr_n_frozen-1
+                core_bstring = ibset(core_bstring, i)
+            end do
+
+            allocate(read_in_ref%occ_list0(sys%nel))
+            open(newunit=ir, file=ccmc_in%mr_secref_file, status='old', form='formatted', action='read')            
+
+            if (ccmc_in%mr_secref_sym_only) then
+                nsym_refs = 0
+
+                do i = 1, ccmc_in%n_secondary_ref
+                    secref_bstring(:) = 0_i0
+                    real_bstring(:) = 0_i0
+
+                    read(ir, *) secref_bstring(1:ccmc_in%secref_bit_string_len)
+                    ! left shift on a bit array and pad 1's to the right
+                    call bit_str_lshift_pad(secref_bstring, ccmc_in%mr_n_frozen, real_bstring)
+
+                    call decode_det(sys%basis, real_bstring(:), read_in_ref%occ_list0(:))
+
+                    isym = symmetry_orb_list(sys, read_in_ref%occ_list0(:))
+
+                    if (isym == sys%symmetry) nsym_refs = nsym_refs + 1
+                end do
+                ! Go back to the top of the file
+                rewind(ir)
+            end if
+
+            if (parent .and. ccmc_in%mr_secref_sym_only) write(io_unit, '(1X, A, I0)') &
+                '# Number of symmetry allowed secondary references initialised: ', nsym_refs
+
+            if (ccmc_in%mr_secref_sym_only) then
+                allocate(qs%secondary_refs(nsym_refs))
+            else
+                allocate(qs%secondary_refs(ccmc_in%n_secondary_ref))
+            end if
+
+            nsym_refs = 0
+            do i = 1, ccmc_in%n_secondary_ref
+                secref_bstring(:) = 0_i0
+                real_bstring(:) = 0_i0
+
+                read(ir, *) secref_bstring(1:ccmc_in%secref_bit_string_len)
+                ! left shift on a bit array and pad 1's to the right
+                call bit_str_lshift_pad(secref_bstring, ccmc_in%mr_n_frozen, real_bstring)
+
+                call decode_det(sys%basis, real_bstring(:), read_in_ref%occ_list0(:))
+
+                if (ccmc_in%mr_secref_sym_only) then
+                    isym = symmetry_orb_list(sys, read_in_ref%occ_list0(:))
+                    if (isym == sys%symmetry) then
+                        nsym_refs = nsym_refs + 1
+                        read_in_ref%ex_level= ccmc_in%mr_excit_lvl
+                        call init_reference(sys, read_in_ref, io_unit, qs%secondary_refs(nsym_refs))
+
+                        current_max = qs%ref%ex_level + get_excitation_level(det_string(qs%ref%f0,sys%basis), &
+                                                        det_string(qs%secondary_refs(nsym_refs)%f0,sys%basis)) 
+                        if (current_max > total_max) total_max = current_max
+                    end if
+                else
+                    read_in_ref%ex_level= ccmc_in%mr_excit_lvl
+                    call init_reference(sys, read_in_ref, io_unit, qs%secondary_refs(i))
+
+                    current_max = qs%ref%ex_level + get_excitation_level(det_string(qs%ref%f0,sys%basis), &
+                                                                         det_string(qs%secondary_refs(i)%f0,sys%basis))
+                    if (current_max > total_max) total_max = current_max
+                end if
+            end do
+            close(ir)
+
+            qs%ref%max_ex_level = total_max
+
+        end if
+
+        ! Optionally build the BK tree, see search.F90::tree_add and tree_search for further comments
+        if (ccmc_in%mr_acceptance_search == 1) then
+            ! We choose to include the (primary) reference as the node.
+            ! This may help balance the topology of the tree, and on small-scale tests 
+            ! does not appear to affect the performance of the search. Remove if found otherwise.
+            qs%secondary_ref_tree%n_secondary_ref = size(qs%secondary_refs) + 1
+            qs%secondary_ref_tree%ex_lvl = qs%ref%ex_level
+            ! The maximum possible excitation level is the smaller of number of electrons 
+            ! and the number of virtual orbitals
+            qs%secondary_ref_tree%max_excit = min(sys%nel, sys%nvirt)
+            call tree_add(qs%secondary_ref_tree, det_string(qs%ref%f0,sys%basis))
+            do i = 1, size(qs%secondary_refs)
+                call tree_add(qs%secondary_ref_tree, det_string(qs%secondary_refs(i)%f0,sys%basis))
+            end do
+        end if 
   
     end subroutine init_secondary_references
 

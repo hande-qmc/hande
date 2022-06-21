@@ -120,7 +120,7 @@ def prepare_configuration_dictionary(**kwargs):
         '@_lua_version@' : lua_version,
         '@_hdf5_version@' : hdf5_version,
         '@_mpi_launcher@' : mpi_launcher,
-        '@_git_describe@' : '1.5-dev',
+        '@_git_describe@' : '1.6',
         '@_git_last_commit_hash@' : 'unknown',
         '@_git_last_commit_author@' : 'unknown',
         '@_git_last_commit_date@' : 'unknown',

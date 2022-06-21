@@ -1,0 +1,55 @@
+sys = read_in {
+    int_file = "INTDUMP",
+    sym = 'aufbau',
+    Lz = true,
+}
+
+qmc_opt = {
+    rng_seed = 12345,
+    tau = 0.01,
+    real_amplitudes = true,
+    init_pop = 2000,
+    mc_cycles = 1,
+    nreports = 100,
+    target_population = 5e6,
+    state_size = -500,
+    spawned_state_size = -500,
+    vary_shift_from = 'proje',
+    shift_damping = 0.01,
+    excit_gen = 'heat_bath',
+    quasi_newton = true,
+}
+
+ccmc_opt = {
+    full_non_composite = true,
+    even_selection = false,
+    cluster_multispawn_threshold = 5,
+    multiref = true,
+    mr_acceptance_search = 'bk_tree',
+    mr_read_in = true,
+    mr_excit_lvl = 2,
+    mr_secref_file = 'secondary_references',
+}
+
+psip_list = mp1_mc {
+    sys = sys,
+    qmc = qmc_opt,
+    ccmc = ccmc_opt,
+}
+
+ccmc {
+    sys = sys,
+    psip_list = psip_list,
+    qmc = qmc_opt,
+    ccmc = ccmc_opt,
+    reference = {
+        ex_level = 2,
+        },
+}
+
+-- INTDUMP generated with tools/fcidump/lz_fcidump.py, with clamped occupancy as:
+-- mf.irrep_nelec = {'A1g':4,'A1u':4,'E1ux':2,'E1uy':2}
+-- Energies: 
+-- HF:  -75.167851021500766
+-- MP2: -75.527301295217299
+-- MP2 correlation energy: -0.359450273716533

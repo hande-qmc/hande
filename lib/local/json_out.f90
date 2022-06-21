@@ -44,6 +44,7 @@ interface json_write_key
     module procedure :: write_real_64
     module procedure :: write_string
     module procedure :: write_bool
+    module procedure :: write_bool_arr
     module procedure :: write_int_32_arr
     module procedure :: write_int_64_arr
     module procedure :: write_int_32_arr_2d
@@ -288,6 +289,30 @@ contains
         end if
 
     end subroutine write_bool
+
+    subroutine write_bool_arr(js, key, val, terminal)
+
+        ! Write out a key/pair for a logical.
+
+        type(json_out_t), intent(in) :: js
+        character(*), intent(in) :: key
+        logical, intent(in) :: val(:)
+        logical, intent(in), optional :: terminal
+        integer :: i
+
+        call write_key(js, key)
+        write (js%io, '("[")', advance='no')
+        do i = 1, size(val)
+            if (val(i)) then
+                write (js%io,'(a)', advance='no') 'true'
+            else
+                write (js%io,'(a)', advance='no') 'false'
+            end if
+            if (i/=size(val)) write (js%io,'(",")', advance='no')
+        end do
+        write (js%io,'("]"'//record_delim(terminal, .true.)//')')
+
+    end subroutine write_bool_arr
 
     subroutine write_int_32_arr(js, key, val, terminal)
 

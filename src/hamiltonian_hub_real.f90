@@ -104,12 +104,10 @@ contains
         ! which case it has a kinetic interaction with its self-image.
         ! This only arises if there is at least one crystal cell vector
         ! which is a unit cell vector.
-        if (sys%real_lattice%t_self_images) then
-            call decode_det(sys%basis, f, root_det)
-            do i = 1, sys%nel
-                hmatel = hmatel + get_one_e_int_real(sys, root_det(i), root_det(i))
-            end do
-        end if
+        call decode_det(sys%basis, f, root_det)
+        do i = 1, sys%nel
+            hmatel = hmatel + get_one_e_int_real(sys, root_det(i), root_det(i))*count(sys%real_lattice%t_self_images)
+        end do
 
         ! Two electron operator
         hmatel = hmatel + get_coulomb_matel_real(sys, f)
@@ -141,7 +139,7 @@ contains
         ! < D | H | D_i^a > = < i | h(a) | a > + \sum_j < ij || aj >
 
         ! One electron operator
-         hmatel = get_one_e_int_real(sys, i, a)
+        hmatel = get_one_e_int_real(sys, i, a)
 
         ! Two electron operator
         ! < D | U | D_i^a > = 0 within the real space formulation of the
