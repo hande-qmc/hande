@@ -258,7 +258,7 @@ test-intel-mpi-pop64:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack --lua=./local/ --hdf5=./local/hdf5-intel --pop-size=64 --det-size=64
         - cd build && make -j 6 && cd ..
         - cd test_suite
-        - ../testcode/bin/testcode.py -e ../bin/hande.x -c mpi --processors=4
+        - ../testcode/bin/testcode.py -e ../bin/hande.x -c pop64_mpi --processors=4
     only:
         - schedules
     artifacts:
@@ -284,7 +284,7 @@ test-intel-mpi-pop64-dbg:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-intel  --type=debug --pop-size=64 --det-size=64
         - cd build && make -j 6 && cd ..
         - cd test_suite
-        - ../testcode/bin/testcode.py -e ../bin/hande.x -c mpi --processors=4
+        - ../testcode/bin/testcode.py -e ../bin/hande.x -c pop64_mpi --processors=4
     only:
         - schedules
     artifacts:
