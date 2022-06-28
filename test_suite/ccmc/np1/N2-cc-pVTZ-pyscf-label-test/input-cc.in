@@ -1,0 +1,27 @@
+sys = read_in {
+    int_file = 'FCIDUMP.N2.cc-pvtz-1.4A',
+}
+
+ccmc {
+    sys = sys,
+    qmc = {
+        tau = 0.0001,
+        real_amplitudes = true,
+        init_pop = 200,
+        mc_cycles = 20,
+        nreports = 1e1, 
+        target_population = 1e7,
+        state_size =-4000,
+        spawned_state_size = -4000,
+        vary_shift = false,
+        vary_shift_from = 'proje',
+        shift_damping = 0.01
+    },
+    reference = {
+        ex_level = 2,
+    },
+    ccmc = {
+        full_non_composite = true,
+    }
+}
+

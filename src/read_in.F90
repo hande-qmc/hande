@@ -359,6 +359,21 @@ contains
         ! Set up basis functions, including those which are subsequently frozen.
         allocate(all_basis_fns(sys%basis%nbasis), stat=ierr)
         call check_allocate('all_basis_fns', sys%basis%nbasis, ierr)
+        if (sys%read_in%uhf == .true.)  then
+            if (any(orbsym(:sys%basis%nbasis) == 0)) then
+                do i = 1, sys%basis%nbasis
+                    orbsym(i) = orbsym(i) + 1
+                end do
+                call warning('read_in_integrals', "Symmetry labels = 0 found. Rebased from 1.", 1)
+            end if
+        else
+            if (any(orbsym(:sys%basis%nbasis/2) == 0)) then
+                do i = 1, sys%basis%nbasis/2
+                    orbsym(i) = orbsym(i) + 1
+                end do
+                call warning('read_in_integrals', "Symmetry labels = 0 found. Rebased from 1.", 1)
+            end if
+        end if
         call init_basis_fns_read_in(norb, sys, orbsym, symlz,  sp_eigv, sp_eigv_rank(1:), all_basis_fns)
 
         ! From sys%CAS work out the start of the active basis functions, the number
@@ -399,11 +414,12 @@ contains
         !ORBSYM=0,5,0,5,0,6,7,2,3,5,5,0,6,7,0,2,3,5,10,11,6,7,14,15,0,2,3,5,6,7,0,2,3,10,11,6,7,5,0,16,
         !17,0,12,13,5,14,15,10,11,14,15,2,3,6,7,5,2,3,0,5,6,7,0,10,11,16,17,20,21,24,25,12,13,14,15,2,3,
         !5,6,7,2,3,0,5,10,11,16,17,12,13,6,7,14,15,0,10,11,5,14,15,6,7,2,3,2,3,0,5,0,5
+
         if (any(sys%basis%basis_fns(:)%sym > 7))then
             do i=1, sys%basis%nbasis
                 sys%basis%basis_fns(i)%sym = mod(sys%basis%basis_fns(i)%sym, 10)
             end do
-            call warning('read_in_integrals', "Symmetry labels > 10 found. Folded back into D2h.", 1)
+            call warning('read_in_integrals', "Symmetry labels > 7 found. Folded back into D2h.", 1)
         end if
         ! Was a symmetry found for all basis functions?  If not, then we must
         ! turn symmetry off.
