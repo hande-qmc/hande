@@ -359,7 +359,7 @@ contains
         ! Set up basis functions, including those which are subsequently frozen.
         allocate(all_basis_fns(sys%basis%nbasis), stat=ierr)
         call check_allocate('all_basis_fns', sys%basis%nbasis, ierr)
-        if (sys%read_in%uhf == .true.)  then
+        if (sys%read_in%uhf)  then
             if (any(orbsym(:sys%basis%nbasis) == 0)) then
                 do i = 1, sys%basis%nbasis
                     orbsym(i) = orbsym(i) + 1
