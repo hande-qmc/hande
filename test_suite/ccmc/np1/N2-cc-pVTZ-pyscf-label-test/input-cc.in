@@ -6,7 +6,6 @@ ccmc {
     sys = sys,
     qmc = {
         tau = 0.0001,
-        real_amplitudes = true,
         init_pop = 200,
         mc_cycles = 20,
         nreports = 1e1, 
@@ -15,7 +14,9 @@ ccmc {
         spawned_state_size = -4000,
         vary_shift = false,
         vary_shift_from = 'proje',
-        shift_damping = 0.01
+        shift_damping = 0.01,
+        rng_seed = 1396797314,
+
     },
     reference = {
         ex_level = 2,
