@@ -113,8 +113,11 @@ contains
         end if
 
         ! 2. Attempt spawning.
-        nspawn = attempt_to_spawn(rng, qmc_state%tau, spawn_cutoff, real_factor, hmatel%r * qn_weight, pgen, &
+        ! See propagators.f90 for documentation on the wall-Chebyshev projector
+        associate (cheby_weight => qmc_state%cheby_prop%weights(qmc_state%cheby_prop%icheb))
+            nspawn = attempt_to_spawn(rng, qmc_state%tau, spawn_cutoff, real_factor, hmatel%r*qn_weight*cheby_weight, pgen, &
                                 parent_sign)
+        end associate
 
         if (debug) call write_logging_spawn(logging_info, hmatel, pgen, qn_weight, [nspawn], real(parent_sign, p), .false.)
 

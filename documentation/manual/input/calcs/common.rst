@@ -16,3 +16,4 @@ options.
     logging
     output
     blocking
+    state_histogram

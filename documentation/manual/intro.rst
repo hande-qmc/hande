@@ -1,7 +1,7 @@
 Introduction
 ============
 
-HANDE[Spencer2019]_ contains optimised, highly parallel implementations of the full configuration
+HANDE [Spencer19]_ contains optimised, highly parallel implementations of the full configuration
 interaction quantum Monte Carlo (FCIQMC) [Booth09]_, coupled cluster
 Monte Carlo (CCMC) [Thom10]_ and Density Matrix Quantum Monte Carlo (DMQMC) 
 [Blunt14]_, [Malone15]_ algorithms for a variety of systems.  Development

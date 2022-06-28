@@ -472,5 +472,4 @@ contains
 
     end function sum_fock_values_bit_string
 
-
 end module determinants

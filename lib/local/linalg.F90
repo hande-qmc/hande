@@ -5,8 +5,8 @@ module linalg
 implicit none
 
 private
-public :: syev, heev, geev, psyev, pheev, plaprnt, syev_wrapper, &
-            heev_wrapper, geev_wrapper, psyev_wrapper, pheev_wrapper
+public :: syev, heev, geev, gemm, gemv, geqrf, orgqr, psyev, pheev, plaprnt, syev_wrapper, &
+            heev_wrapper, geev_wrapper, qr_wrapper, psyev_wrapper, pheev_wrapper
 
 interface syev
     module procedure ssyev_f90
@@ -22,6 +22,26 @@ interface geev
     module procedure sgeev_f90
     module procedure dgeev_f90
 end interface geev
+
+interface gemm
+    module procedure sgemm_f90
+    module procedure dgemm_f90
+end interface gemm
+
+interface gemv
+    module procedure sgemv_f90
+    module procedure dgemv_f90
+end interface gemv
+
+interface geqrf
+    module procedure sgeqrf_f90
+    module procedure dgeqrf_f90
+end interface geqrf
+
+interface orgqr
+    module procedure sorgqr_f90
+    module procedure dorgqr_f90
+end interface orgqr
 
 interface psyev
     module procedure pssyev_f90
@@ -236,6 +256,174 @@ contains
         end do
 
     end subroutine geev_wrapper
+
+    subroutine sgemm_f90(transA, transB, M, N, K, alpha, A, lda, B, ldb, beta, C, ldc)
+
+        ! See LAPACK sgemm procedure for details
+
+        use const, only: sp
+
+        character, intent(in) :: transA, transB
+        integer, intent(in) :: M, N, K, lda, ldb, ldc
+        real(sp), intent(in) :: alpha, beta
+        real(sp), intent(in) :: A(lda,*), B(ldb,*)
+        real(sp), intent(inout) :: C(ldc,*)
+
+        call sgemm(transA, transB, M, N, K, alpha, A, lda, B, ldb, beta, C, ldc)
+
+    end subroutine sgemm_f90
+
+    subroutine dgemm_f90(transA, transB, M, N, K, alpha, A, lda, B, ldb, beta, C, ldc)
+
+        ! See LAPACK dgemm procedure for details
+
+        use const, only: dp
+
+        character, intent(in) :: transA, transB
+        integer, intent(in) :: M, N, K, lda, ldb, ldc
+        real(dp), intent(in) :: alpha, beta
+        real(dp), intent(in) :: A(lda,*), B(ldb,*)
+        real(dp), intent(inout) :: C(ldc,*)
+
+        call dgemm(transA, transB, M, N, K, alpha, A, lda, B, ldb, beta, C, ldc)
+        
+    end subroutine dgemm_f90
+    
+    subroutine sgemv_f90(trans, M, N, alpha, A, lda, x, incx, beta, y, incy)
+
+        ! See LAPACK sgemv procedure for details
+
+        use const, only: sp
+
+        character, intent(in) :: trans
+        integer, intent(in) :: M, N, incx, incy, lda
+        real(sp), intent(in) :: alpha, beta
+        real(sp), intent(in) :: A(lda,*), x(*)
+        real(sp), intent(inout) :: y(*)
+
+        call sgemv(trans, M, N, alpha, A, lda, x, incx, beta, y, incy)
+
+    end subroutine sgemv_f90
+
+    subroutine dgemv_f90(trans, M, N, alpha, A, lda, x, incx, beta, y, incy)
+
+        ! See LAPACK dgemv procedure for details
+
+        use const, only: dp
+
+        character, intent(in) :: trans
+        integer, intent(in) :: M, N, incx, incy, lda
+        real(dp), intent(in) :: alpha, beta
+        real(dp), intent(in) :: A(lda,*), x(*)
+        real(dp), intent(inout) :: y(*)
+
+        call dgemv(trans, M, N, alpha, A, lda, x, incx, beta, y, incy)
+
+    end subroutine dgemv_f90
+
+    subroutine sgeqrf_f90(M, N, A, lda, tau, work, lwork, info)
+
+        ! See LAPACK sgeqrf procedure for details
+
+        use const, only: sp
+
+        integer, intent(in) :: M, N, lda, lwork
+        real(sp), intent(inout) :: A(lda,*)
+        real(sp), intent(out) :: tau(*)
+        real(sp), intent(in) :: work(*)
+        integer, intent(out) :: info
+
+        call sgeqrf(M, N, A, lda, tau, work, lwork, info)
+
+    end subroutine sgeqrf_f90
+
+    subroutine dgeqrf_f90(M, N, A, lda, tau, work, lwork, info)
+
+        ! See LAPACK dgeqrf procedure for details
+
+        use const, only: dp
+
+        integer, intent(in) :: M, N, lda, lwork
+        real(dp), intent(inout) :: A(lda,*)
+        real(dp), intent(out) :: tau(*)
+        real(dp), intent(in) :: work(*)
+        integer, intent(out) :: info
+
+        call dgeqrf(M, N, A, lda, tau, work, lwork, info)
+
+    end subroutine dgeqrf_f90
+
+    subroutine sorgqr_f90(M, N, K, A, lda, tau, work, lwork, info)
+
+        ! See LAPACK sorgqr procedure for details
+
+        use const, only: sp
+
+        integer, intent(in) :: M, N, K, lda, lwork
+        real(sp), intent(inout) :: A(lda,*)
+        real(sp), intent(out) :: tau(*)
+        real(sp), intent(in) :: work(*)
+        integer, intent(out) :: info
+
+        call sorgqr(M, N, K, A, lda, tau, work, lwork, info)
+
+    end subroutine sorgqr_f90
+
+    subroutine dorgqr_f90(M, N, K, A, lda, tau, work, lwork, info)
+
+        ! See LAPACK dorgqr procedure for details
+
+        use const, only: dp
+
+        integer, intent(in) :: M, N, K, lda, lwork
+        real(dp), intent(inout) :: A(lda,*)
+        real(dp), intent(out) :: tau(*)
+        real(dp), intent(in) :: work(*)
+        integer, intent(out) :: info
+
+        call dorgqr(M, N, K, A, lda, tau, work, lwork, info)
+
+    end subroutine dorgqr_f90
+
+    subroutine qr_wrapper(M, N, A, lda, info)
+
+        ! Wrapper around the geqrf (QR decomposition) and orgqr (extracting the Q matrix from the output of geqrf)
+        ! subroutines, which automates using optimal workspace.
+
+        use checking, only: check_allocate, check_deallocate
+        use const, only: p
+
+        integer, intent(in) :: M, N, lda
+        real(p), intent(inout) :: A(lda,*)
+        integer, intent(out) :: info
+
+        integer :: lwork, ierr, i
+        real(p), allocatable :: tau(:), work(:)
+
+        allocate(tau(min(M,N)), stat=ierr)
+        call check_allocate('tau', min(M,N), ierr)
+
+        lwork = -1
+        do i = 1, 2
+            allocate(work(abs(lwork)), stat=ierr)
+            call check_allocate('work', abs(lwork), ierr)
+            call geqrf(M, N, A, lda, tau, work, lwork, info)
+            lwork = nint(work(1))
+            deallocate(work, stat=ierr)
+            call check_deallocate('work', ierr)
+        end do
+
+        lwork = -1
+        do i = 1, 2
+            allocate(work(abs(lwork)), stat=ierr)
+            call check_allocate('work', abs(lwork), ierr)
+            call orgqr(M, N, min(M,N), A, lda, tau, work, lwork, info)
+            lwork = nint(work(1))
+            deallocate(work)
+            call check_deallocate('work', ierr)
+        end do
+
+    end subroutine qr_wrapper
 
     subroutine pssyev_f90(job, uplo, N, A, IA, JA, desca, W, Z, IZ, JZ, descz, work, lwork, info)
 

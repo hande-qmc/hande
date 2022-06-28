@@ -9,8 +9,7 @@ implicit none
 
 contains
     subroutine spawner_ccmc(rng, sys, qs, spawn_cutoff, linked_ccmc, cdet, cluster, &
-                            gen_excit_ptr, logging_info, nspawn, connection, &
-                            nspawnings_total, ps_stat)
+                            gen_excit_ptr, logging_info, nspawn, connection, nspawnings_total, ps_stat)
 
         ! Attempt to spawn a new particle on a connected excitor with
         ! probability
@@ -99,6 +98,7 @@ contains
         type(logging_t), intent(in) :: logging_info
         integer(int_p), intent(out) :: nspawn
         type(excit_t), intent(out) :: connection
+        integer :: i
 
         ! We incorporate the sign of the amplitude into the Hamiltonian matrix
         ! element, so we 'pretend' to attempt_to_spawn that all excips are
@@ -110,7 +110,6 @@ contains
         integer :: excitor_sign, excitor_level, excitor_level2
         logical :: linked, single_unlinked, allowed_excitation, allowed_multiref
         real(p) :: invdiagel
-        integer :: i
 
         ! 1. Generate random excitation.
         ! Note CCMC is not (yet, if ever) compatible with the 'split' excitation
@@ -143,7 +142,7 @@ contains
         else
             invdiagel = 1
         end if
-        ! 2, Apply additional factors.
+        ! 2. Apply additional factors.
         hmatel_save = hmatel
         hmatel%r = hmatel%r*real(cluster%amplitude)*invdiagel*cluster%cluster_to_det_sign
         pgen = spawn_pgen*cluster%pselect*nspawnings_total
@@ -157,8 +156,8 @@ contains
             end if
         end if
         ! 3. Attempt spawning.
-        nspawn = attempt_to_spawn(rng, qs%tau, spawn_cutoff, qs%psip_list%pop_real_factor, hmatel%r, pgen, parent_sign)
-
+        nspawn = attempt_to_spawn(rng, qs%tau*qs%cheby_prop%weights(qs%cheby_prop%icheb), spawn_cutoff, &
+                                  qs%psip_list%pop_real_factor, hmatel%r, pgen, parent_sign)
         if (nspawn /= 0_int_p) then
             ! 4. Convert the random excitation from a determinant into an
             ! excitor.  This might incur a sign change and hence result in
@@ -208,7 +207,6 @@ contains
                 end if
             end if
         end if
-
 
     end subroutine spawner_ccmc
 
@@ -337,7 +335,7 @@ contains
 
         ! Amplitude is the decoded value.  Scale here so death is performed exactly (bar precision).
         ! See comments in stochastic_death.
-        KiiAi = qs%psip_list%pop_real_factor*KiiAi
+        KiiAi = qs%cheby_prop%weights(qs%cheby_prop%icheb)*qs%psip_list%pop_real_factor*KiiAi
 
         ! Scale by tau and pselect before pass to specific functions.
         KiiAi = KiiAi * qs%tau / cluster%pselect
@@ -503,7 +501,6 @@ contains
         ! a difference in the sign of the determinant formed from applying the
         ! parent excitor to the reference and that formed from applying the
         ! child excitor.
-
         invdiagel = calc_qn_weighting(qs%propagator, dfock)
         if (isD0) then
             KiiAi = ((- proj_energy)*invdiagel + (proj_energy - qs%shift(1))*qs%propagator%quasi_newton_pop_control)*population
@@ -515,6 +512,9 @@ contains
                     (proj_energy - qs%shift(1))*qs%propagator%quasi_newton_pop_control)*population
             end if
         end if
+        old_pop = population
+        ! Apply Chebyshev weights corresponding to the current iteration
+        KiiAi = KiiAi*qs%cheby_prop%weights(qs%cheby_prop%icheb)
 
         ! Death is attempted exactly once on this cluster regardless of pselect.
         ! Population passed in is in the *encoded* form.
@@ -531,10 +531,9 @@ contains
             if (KiiAi > 0) nkill = -nkill
             ! Kill directly for single excips
             ! This only works in the full non composite algorithm as otherwise the
-            ! population on an excip can still be needed if it as selected as (part of)
+            ! population on an excip can still be needed if it was selected as (part of)
             ! another cluster. It is also necessary that death is not done until after
             ! all spawning attempts from the excip
-            old_pop = population
             population = population + nkill
             ! Also need to update total population
             tot_population = tot_population + real(abs(population)-abs(old_pop),p)/qs%psip_list%pop_real_factor
@@ -942,15 +941,15 @@ contains
 
 ! --- Helper functions ---
 
-    subroutine create_spawned_particle_ccmc(basis, ref, cdet, connection, nspawned, ispace, &
-                                            parent_cluster_ex_level, ex_lvl_sort, fexcit, spawn, bloom_stats)
+    subroutine create_spawned_particle_ccmc(sys, ref, cdet, connection, nspawned, ispace, &
+                                            parent_cluster_ex_level, ex_lvl_sort, fexcit, spawn, bloom_stats, trot)
 
         ! Function to create spawned particle in spawned list for ccmc
         ! calculations. Performs required manipulations of bit string
         ! beforehand and accumulation on blooming.
 
         ! In:
-        !   basis: info on current basis functions.
+        !   sys: info on system being studied.
         !   reference: info on current reference state.
         !   cdet: determinant representing state currently spawning
         !       spawning from.
@@ -963,6 +962,7 @@ contains
         !       ccmc, otherwise generated using cdet+connection.
         !   ex_lvl_sort: true if require states to be sorted by excitation
         !       level within walker list, false otherwise.
+        !   trot: is this a trotterized UCCMC calculation.
         ! In/Out:
         !   spawn: spawn_t type containing information on particles created
         !       via spawning this iteration. Spawned particles will be added
@@ -970,7 +970,7 @@ contains
         !   bloom_stats: information on blooms within a calculation. Will be
         !       updated if a bloom has occurred.
 
-        use basis_types, only: basis_t
+        use system, only: sys_t
         use reference_determinant, only: reference_t
         use spawn_data, only: spawn_t
         use determinant_data, only: det_info_t
@@ -978,8 +978,9 @@ contains
         use excitations, only: excit_t, create_excited_det
         use proc_pointers, only: create_spawned_particle_ptr
         use ccmc_utils, only: add_ex_level_bit_string_calc
+        use uccmc_utils, only: add_info_str_trot
 
-        type(basis_t), intent(in) :: basis
+        type(sys_t), intent(in) :: sys
         type(reference_t), intent(in) :: ref
         type(spawn_t), intent(inout) :: spawn
         type(det_info_t), intent(in) :: cdet
@@ -990,17 +991,22 @@ contains
         integer, intent(in) :: ispace, parent_cluster_ex_level
         integer(i0), intent(in) :: fexcit(:)
         logical, intent(in) :: ex_lvl_sort
+        logical, intent(in), optional :: trot
         integer(i0) :: fexcit_loc(lbound(fexcit,dim=1):ubound(fexcit,dim=1))
 
         if (parent_cluster_ex_level /= huge(0)) then
-            call create_excited_det(basis, cdet%f, connection, fexcit_loc)
+            call create_excited_det(sys%basis, cdet%f, connection, fexcit_loc)
         else
             fexcit_loc = fexcit
         end if
 
-        if (ex_lvl_sort) call add_ex_level_bit_string_calc(basis, ref%f0, fexcit_loc)
-        call create_spawned_particle_ptr(basis, ref, cdet, connection, nspawned, &
+        if (ex_lvl_sort) call add_ex_level_bit_string_calc(sys%basis, ref%f0, fexcit_loc)
+        if (present(trot)) then
+            if (trot) call add_info_str_trot(sys%basis, ref%f0, sys%nel, fexcit_loc)
+        end if
+        call create_spawned_particle_ptr(sys%basis, ref, cdet, connection, nspawned, &
                                         ispace, spawn, fexcit_loc)
+
         call accumulate_bloom_stats(bloom_stats, nspawned)
 
     end subroutine create_spawned_particle_ccmc

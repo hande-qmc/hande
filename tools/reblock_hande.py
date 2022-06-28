@@ -219,14 +219,8 @@ reblock_plot : string
     filename for the reblock convergence plot output.
 '''
 
-    try:
-        cols = pd.core.series.get_terminal_size()[0]
-    except AttributeError:
-        try:
-            cols = pd.util.terminal.get_terminal_size()[0]
-        except AttributeError:
-            # terminal module moved in pandas 0.20
-            cols = pd.io.formats.terminal.get_terminal_size()[0]
+    cols, _ = os.get_terminal_size(0)
+
     if not sys.stdout.isatty():
         cols = -1
 

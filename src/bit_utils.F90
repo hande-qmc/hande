@@ -47,6 +47,11 @@ interface count_even_set_bits
     module procedure count_even_set_bits_int_64
 end interface
 
+interface bit_str_lshift_pad
+    module procedure bit_str_32_lshift_pad
+    module procedure bit_str_64_lshift_pad
+end interface
+
 contains
 
 !--- Counting set bits ---
@@ -472,5 +477,85 @@ contains
         end do
 
     end function bit_str_64_cmp
+
+    pure subroutine bit_str_32_lshift_pad(f, lshift, f_shift)
+
+        ! This is a generic function to left shift an int_32 array and pad 1's to the right.
+
+        ! In:
+        !    f(:): the int_32 array to be shifted.
+        !    lshift: the amount of left shift to do.
+        ! Out:
+        !    f_shift(:): the shifted int_32 array.
+
+        integer(int_32), intent(in) :: f(:)
+        integer, intent(in) :: lshift
+        integer(int_32), intent(out) :: f_shift(:)
+
+        integer :: nbasis, new_str_len, ierr, bit_el_shft, bit_pos_shft, bit_el_orig, bit_pos_orig, bsize, i
+
+        bsize = bit_size(0_int_32)
+
+        ! The upper bound to the number of basis functions
+        nbasis = size(f_shift) * bsize
+
+        f_shift(:) = 0_int_32
+
+        do i = 0, nbasis-1
+            ! i starts at 0, so integer division (round towards 0) has the correct behaviour
+            bit_el_shft = i/bsize + 1
+            bit_pos_shft = mod(i, bsize)
+            if (i <= lshift-1) then
+                ! Just set the padding bit
+                f_shift(bit_el_shft) = ibset(f_shift(bit_el_shft), bit_pos_shft)
+            else
+                ! Copy the bit from f to f_shift
+                bit_el_orig = (i-lshift)/bsize + 1
+                bit_pos_orig = mod((i-lshift), bsize)
+                if (btest(f(bit_el_orig), bit_pos_orig)) f_shift(bit_el_shft) = ibset(f_shift(bit_el_shft), bit_pos_shft)
+            end if
+        end do
+
+    end subroutine bit_str_32_lshift_pad
+
+    pure subroutine bit_str_64_lshift_pad(f, lshift, f_shift)
+
+        ! This is a generic function to left shift an int_64 array and pad 1's to the right.
+
+        ! In:
+        !    f(:): the int_64 array to be shifted.
+        !    lshift: the amount of left shift to do.
+        ! Out:
+        !    f_shift(:): the shifted int_64 array.
+
+        integer(int_64), intent(in) :: f(:)
+        integer, intent(in) :: lshift
+        integer(int_64), intent(out) :: f_shift(:)
+
+        integer :: nbasis, new_str_len, ierr, bit_el_shft, bit_pos_shft, bit_el_orig, bit_pos_orig, bsize, i
+
+        bsize = bit_size(0_int_64)
+
+        ! The upper bound to the number of basis functions
+        nbasis = size(f_shift) * bsize
+
+        f_shift(:) = 0_int_64
+
+        do i = 0, nbasis-1
+            ! i starts at 0, so integer division (round towards 0) has the correct behaviour
+            bit_el_shft = i/bsize + 1
+            bit_pos_shft = mod(i, bsize)
+            if (i <= lshift-1) then
+                ! Just set the padding bit
+                f_shift(bit_el_shft) = ibset(f_shift(bit_el_shft), bit_pos_shft)
+            else
+                ! Copy the bit from f to f_shift
+                bit_el_orig = (i-lshift)/bsize + 1
+                bit_pos_orig = mod((i-lshift), bsize)
+                if (btest(f(bit_el_orig), bit_pos_orig)) f_shift(bit_el_shft) = ibset(f_shift(bit_el_shft), bit_pos_shft)
+            end if
+        end do
+
+    end subroutine bit_str_64_lshift_pad
 
 end module bit_utils

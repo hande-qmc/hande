@@ -22,3 +22,4 @@ import pyhande.results_viewer
 import pyhande.utils
 import pyhande.weight
 import pyhande.dmqmc
+import pyhande.state_histograms

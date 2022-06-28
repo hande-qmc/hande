@@ -561,7 +561,7 @@ module restart_hdf5
             use hdf5
             use hdf5_helper, only: hdf5_kinds_t, hdf5_read, dtype_equal, dset_shape, hdf5_path, hdf5_file_close
             use restart_utils, only: convert_dets, convert_ref, convert_pops, change_pop_scaling, change_nbasis
-            use calc, only: calc_type, exact_diag, mc_hilbert_space
+            use calc, only: calc_type, exact_diag, davidson_diag, mc_hilbert_space
             use parallel
 #endif
             use errors, only: stop_all, warning
@@ -635,6 +635,7 @@ module restart_hdf5
                 ! restarted anyway and don't affect the QMC calculation).
                 calc_type_restart = ieor(calc_type, calc_type_restart)
                 calc_type_restart = iand(calc_type_restart, not(exact_diag))
+                calc_type_restart = iand(calc_type_restart, not(davidson_diag))
                 calc_type_restart = iand(calc_type_restart, not(mc_hilbert_space))
                 if (calc_type_restart /= 0) &
                     call stop_all('read_restart_hdf5', &
@@ -795,7 +796,7 @@ module restart_hdf5
                 end if
 
                 associate(pl=>qs%psip_list)
-                    if (resort) call qsort(pl%nstates, pl%states, pl%pops, pl%dat)
+                    if (resort) call qsort(pl%nstates, pl%states, pl%pops, pl%dat, pl%descending)
                 end associate
 
                 call h5gclose_f(subgroup_id, ierr)
