@@ -359,19 +359,21 @@ contains
         ! Set up basis functions, including those which are subsequently frozen.
         allocate(all_basis_fns(sys%basis%nbasis), stat=ierr)
         call check_allocate('all_basis_fns', sys%basis%nbasis, ierr)
-        if (sys%read_in%uhf)  then
-            if (any(orbsym(:sys%basis%nbasis) == 0)) then
-                do i = 1, sys%basis%nbasis
-                    orbsym(i) = orbsym(i) + 1
-                end do
-                call warning('read_in_integrals', "Symmetry labels = 0 found. Rebased from 1.", 1)
-            end if
-        else
-            if (any(orbsym(:sys%basis%nbasis/2) == 0)) then
-                do i = 1, sys%basis%nbasis/2
-                    orbsym(i) = orbsym(i) + 1
-                end do
-                call warning('read_in_integrals', "Symmetry labels = 0 found. Rebased from 1.", 1)
+        if (.not. sys%momentum_space) then
+            if (sys%read_in%uhf)  then
+                if (any(orbsym(:sys%basis%nbasis) == 0)) then
+                    do i = 1, sys%basis%nbasis
+                        orbsym(i) = orbsym(i) + 1
+                    end do
+                    call warning('read_in_integrals', "Symmetry labels = 0 found. Rebased from 1.", 1)
+                end if
+            else
+                if (any(orbsym(:sys%basis%nbasis/2) == 0)) then
+                    do i = 1, sys%basis%nbasis/2
+                        orbsym(i) = orbsym(i) + 1
+                    end do
+                    call warning('read_in_integrals', "Symmetry labels = 0 found. Rebased from 1.", 1)
+                end if
             end if
         end if
         call init_basis_fns_read_in(norb, sys, orbsym, symlz,  sp_eigv, sp_eigv_rank(1:), all_basis_fns)
