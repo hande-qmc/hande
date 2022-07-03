@@ -1712,10 +1712,10 @@ contains
         character(len=10) :: str
         logical :: separate_annihilation
         integer, allocatable :: ci_range(:), cas(:), err_arr(:)
-        character(21), parameter :: keys(14) = [character(21) :: 'space', 'size', 'start_iteration', 'separate_annihilation', &
+        character(21), parameter :: keys(16) = [character(21) :: 'space', 'size', 'start_iteration', 'separate_annihilation', &
                                                                 'shift_start_iteration', 'write_determ_space', 'write', 'read', &
                                                                 'ci_space', 'separate_stats', 'average', 'wfn_weightage', &
-                                                                'max_ndets', 'nreports']
+                                                                'max_ndets', 'nreports', 'ci_range', 'cas']
 
         if (aot_exists(lua_state, opts, 'semi_stoch')) then
 
