@@ -1286,6 +1286,8 @@ contains
         !     use_mpi_barriers = true/false,
         !     vary_shift_from = shift or "proje",
         !     vary_shift = true/false,
+        !     read_in_dist = true,
+        !     read_in_dist_file = filename,
         !     chebyshev = {
         !           chebyshev_order = order,
         !           chebyshev_shift = float,
@@ -1303,6 +1305,7 @@ contains
         ! Out:
         !    qmc_in: qmc_in_t object containing generic QMC input options.
 
+        use, intrinsic :: iso_fortran_env, only: iostat_end
         use flu_binding, only: flu_State
         use aot_table_module, only: aot_get_val, aot_exists, aot_table_open, aot_table_close
 
@@ -1313,17 +1316,21 @@ contains
         use lua_hande_utils, only: warn_unused_args, get_rng_seed
         use parallel, only: parent
         use errors, only: stop_all, warning
+        use const, only: p, int_s
+        use checking, only: check_allocate
 
         type(flu_State), intent(inout) :: lua_state
         integer, intent(in) :: opts
         type(qmc_in_t), intent(out) :: qmc_in
         logical, intent(in), optional :: short
 
-        integer :: qmc_table, err, chebyshev_table
+        integer :: qmc_table, err, chebyshev_table, ir, ios, i, ncols, nrows
         character(len=30) :: str
-        logical :: skip, no_renorm
+        logical :: skip, no_renorm, read_in_dist_file_exists
+        integer(int_s) :: test_arr(50)
+        character(1000) :: test_line
 
-        character(32), parameter :: keys(37) = [character(32) :: 'tau', 'init_pop', 'mc_cycles', 'nreports', 'state_size', &
+        character(32), parameter :: keys(39) = [character(32) :: 'tau', 'init_pop', 'mc_cycles', 'nreports', 'state_size', &
                                                                  'spawned_state_size', 'rng_seed', 'target_population', &
                                                                  'real_amplitudes', 'spawn_cutoff', 'no_renorm', 'tau_search', &
                                                                  'real_amplitude_force_32', &
@@ -1337,7 +1344,8 @@ contains
                                                                  'vary_shift_from', 'excit_gen', 'power_pitzer_min_weight', &
                                                                  'reference_target', 'vary_shift', 'quasi_newton', &
                                                                  'quasi_newton_threshold', 'quasi_newton_value', &
-                                                                 'quasi_newton_pop_control', 'chebyshev']
+                                                                 'quasi_newton_pop_control', 'read_in_dist', 'read_in_dist_file', &
+                                                                 'chebyshev']
 
         if (present(short)) then
             skip = short
@@ -1502,6 +1510,50 @@ contains
                 call aot_get_val(str, err, lua_state, qmc_table, 'vary_shift_from')
                 qmc_in% vary_shift_from_proje = trim(str) == 'proje'
             end if
+        end if
+
+        call aot_get_val(qmc_in%read_in_dist, err, lua_state, qmc_table, 'read_in_dist')
+        if (qmc_in%read_in_dist) then
+            call aot_get_val(qmc_in%read_in_dist_file, err, lua_state, qmc_table, 'read_in_dist_file')
+            ! Inquire if file exists first
+            inquire(file=qmc_in%read_in_dist_file, exist=read_in_dist_file_exists)
+            if (.not. read_in_dist_file_exists) call stop_all('read_qmc_in', 'read_in_dist_file not found!')
+
+            ! Determine the number of columns in the file, for when bit_string_len > 1
+            open(newunit=ir, file=qmc_in%read_in_dist_file, status='old', form='formatted', action='read')
+            read(ir, '(A)') test_line
+            test_line = trim(test_line)
+            ! ios==iostat_end occurs 1 iteration after the actual end, 
+            ! i.e., if there are two columns, ios==iostat_end will occur at i==3, therefore ncols start at 0.
+            ncols = 0
+            do i = 1, size(test_arr)
+                read(test_line, *, iostat=ios) test_arr(1:i)
+                ! The smallest i for which the test_line can be read is the number of columns.
+                if (ios == iostat_end) exit
+                ncols = ncols + 1
+            end do
+
+            qmc_in%read_in_dist_bit_string_len = ncols - 1
+
+            ! Now determine the number of rows
+            rewind(ir)
+            nrows = 0
+            do
+                read(ir, *, iostat=ios)
+                if (ios == iostat_end) exit
+                nrows = nrows + 1
+            end do
+
+            ! Time to read the actual thing in
+            allocate(qmc_in%dist(ncols, nrows), stat=err)
+            call check_allocate('qmc_in%dist', ncols*nrows, err)
+
+            rewind(ir)
+            do i = 1, nrows
+                read(ir, *) qmc_in%dist(:, i)
+            end do
+
+            close(ir)
         end if
 
         call warn_unused_args(lua_state, keys, qmc_table)
