@@ -1392,8 +1392,8 @@ contains
                 ! If passed a table, assume we are using Chebyshev
                 qmc_in%chebyshev = .true.
                 call aot_get_val(qmc_in%chebyshev_order, err, lua_state, chebyshev_table, 'chebyshev_order', default=5)
-                if (qmc_in%chebyshev_order <= 1) then
-                    call stop_all('read_qmc_in', 'Chebyshev order must be greater than 1 if using the Chebyshev projector')
+                if (qmc_in%chebyshev_order < 1) then
+                    call stop_all('read_qmc_in', 'Chebyshev order must be at least 1 if using the Chebyshev projector')
                 end if
                 call aot_get_val(qmc_in%chebyshev_shift, err, lua_state, chebyshev_table, 'chebyshev_shift')
                 call aot_get_val(qmc_in%chebyshev_scale, err, lua_state, chebyshev_table, 'chebyshev_scale')
