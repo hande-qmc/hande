@@ -1,0 +1,456 @@
+
+   HANDE
+
+ ================================================================
+Version information
+-------------------
+Version       | v1.5-138-ga461d2b-dirty
+Commit hash   | a461d2baa2f87e6f9ed28504d4c7bb631d38a1a2
+Commit author | Andreea Filip
+Commit date   | Wed Apr 6 09:44:16 2022 +0100
+Branch        | bugfix/symmetry_index_warning
+
+Configuration and build information
+-----------------------------------
+Who compiled             | maf63
+Compilation hostname     | serenity
+Operating system         | Linux-5.4.0-121-generic
+CMake version            | 3.16.3
+CMake generator          | Unix Makefiles
+Build type               | release
+Configuration time       | 2022-06-28 12:22:37 [UTC]
+Python version           | 3.7.0
+Fortran compiler         | /usr/local/shared/oneapi/compiler/2022.0.1/linux/bin/intel64/ifort
+C compiler               | /usr/local/shared/oneapi/compiler/2022.0.1/linux/bin/intel64/icc
+DET_SIZE set to          | 64
+POP_SIZE set to          | 64
+dSFMT Mersenne exponent  | 19937
+MPI parallelization      | OFF
+OpenMP parallelization   | OFF
+Lua version              | 5.3.5
+HDF5 library version     | 1.10.4
+
+Further components
+------------------
+DISABLE_HDF5 not defined.  HDF5 enabled.
+DISABLE_UUID not defined.  UUID enabled.
+PARALLEL not defined.  MPI parallelization disabled.
+PARALLEL not defined. MPI-3 functionality disabled.
+Neither POSIX shared memory nor MPI-3 are in use.
+DISABLE_SCALAPACK not defined.  ScaLAPACK enabled.
+SINGLE_PRECISION not defined.  Double precision used throughout.
+USE_POPCNT not defined. Internal POPCNT procedure used.
+
+Runtime information
+-------------------
+Hostname:
+    serenity
+Current working dir:
+    /home/maf63/hande-release/test_suite/ccmc/np1/N2-cc-pVTZ-pyscf-label-test
+Started running on 28/06/2022 at 15:12:35
+ Calculation UUID: 3ee00cbc-c584-4f09-93e4-1c85f217a437.
+ ================================================================
+
+ Input options
+ -------------
+
+sys = read_in {
+    int_file = 'FCIDUMP.N2.cc-pvtz-1.4A',
+}
+
+ccmc {
+    sys = sys,
+    qmc = {
+        tau = 0.0001,
+        init_pop = 200,
+        mc_cycles = 20,
+        nreports = 1e1, 
+        target_population = 1e7,
+        state_size =-4000,
+        spawned_state_size = -4000,
+        vary_shift = false,
+        vary_shift_from = 'proje',
+        shift_damping = 0.01,
+        rng_seed = 1396797314,
+
+    },
+    reference = {
+        ex_level = 2,
+    },
+    ccmc = {
+        full_non_composite = true,
+    }
+}
+
+
+ -------------
+
+ Memory required for all two body integrals (MB) on each processor: 13
+ It is left to the user to ensure that this does not exceed available resources.
+
+ Only the first  10 error messages are shown.
+
+ Basis functions
+ ---------------
+
+ Spin given in units of 1/2.
+
+ index  spatial symmetry sym_index lz     ms       <i|f|i>
+     1      1       0       1       0       1       -1.57668478E+01
+     2      1       0       2       0      -1       -1.57668478E+01
+     3      2       5       1       0       1       -1.57658477E+01
+     4      2       5       2       0      -1       -1.57658477E+01
+     5      3       0       3       0       1       -1.27926062E+00
+     6      3       0       4       0      -1       -1.27926062E+00
+     7      4       5       3       0       1       -8.65574313E-01
+     8      4       5       4       0      -1       -8.65574313E-01
+     9      5       0       5       0       1       -5.94558645E-01
+    10      5       0       6       0      -1       -5.94558645E-01
+    11      6       6       1       0       1       -5.10995007E-01
+    12      6       6       2       0      -1       -5.10995007E-01
+    13      7       7       1       0       1       -5.10995007E-01
+    14      7       7       2       0      -1       -5.10995007E-01
+    15      8       2       1       0       1        3.72805703E-02
+    16      8       2       2       0      -1        3.72805703E-02
+    17      9       3       1       0       1        3.72805703E-02
+    18      9       3       2       0      -1        3.72805703E-02
+    19     10       5       5       0       1        3.37437845E-01
+    20     10       5       6       0      -1        3.37437845E-01
+    21     11       0       7       0       1        5.98918719E-01
+    22     11       0       8       0      -1        5.98918719E-01
+    23     12       6       3       0       1        5.99558951E-01
+    24     12       6       4       0      -1        5.99558951E-01
+    25     13       7       3       0       1        5.99558951E-01
+    26     13       7       4       0      -1        5.99558951E-01
+    27     14       5       7       0       1        6.24037336E-01
+    28     14       5       8       0      -1        6.24037336E-01
+    29     15       0       9       0       1        6.65933181E-01
+    30     15       0      10       0      -1        6.65933181E-01
+    31     16       2       3       0       1        6.97827831E-01
+    32     16       2       4       0      -1        6.97827831E-01
+    33     17       3       3       0       1        6.97827831E-01
+    34     17       3       4       0      -1        6.97827831E-01
+    35     18       5       9       0       1        1.05919035E+00
+    36     18       5      10       0      -1        1.05919035E+00
+    37     19       0      11       0       1        1.07832053E+00
+    38     19       0      12       0      -1        1.07832053E+00
+    39     20       1       1       0       1        1.07832053E+00
+    40     20       1       2       0      -1        1.07832053E+00
+    41     21       6       5       0       1        1.17081472E+00
+    42     21       6       6       0      -1        1.17081472E+00
+    43     22       7       5       0       1        1.17081472E+00
+    44     22       7       6       0      -1        1.17081472E+00
+    45     23       4       1       0       1        1.40778007E+00
+    46     23       4       2       0      -1        1.40778007E+00
+    47     24       5      11       0       1        1.40778007E+00
+    48     24       5      12       0      -1        1.40778007E+00
+    49     25       0      13       0       1        1.82195984E+00
+    50     25       0      14       0      -1        1.82195984E+00
+    51     26       2       5       0       1        1.84086748E+00
+    52     26       2       6       0      -1        1.84086748E+00
+    53     27       3       5       0       1        1.84086748E+00
+    54     27       3       6       0      -1        1.84086748E+00
+    55     28       5      13       0       1        1.90182310E+00
+    56     28       5      14       0      -1        1.90182310E+00
+    57     29       6       7       0       1        3.10886127E+00
+    58     29       6       8       0      -1        3.10886127E+00
+    59     30       7       7       0       1        3.10886127E+00
+    60     30       7       8       0      -1        3.10886127E+00
+    61     31       0      15       0       1        3.22710884E+00
+    62     31       0      16       0      -1        3.22710884E+00
+    63     32       2       7       0       1        3.30940084E+00
+    64     32       2       8       0      -1        3.30940084E+00
+    65     33       3       7       0       1        3.30940084E+00
+    66     33       3       8       0      -1        3.30940084E+00
+    67     34       0      17       0       1        3.84305540E+00
+    68     34       0      18       0      -1        3.84305540E+00
+    69     35       1       3       0       1        3.84305540E+00
+    70     35       1       4       0      -1        3.84305540E+00
+    71     36       6       9       0       1        3.85778984E+00
+    72     36       6      10       0      -1        3.85778984E+00
+    73     37       7       9       0       1        3.85778984E+00
+    74     37       7      10       0      -1        3.85778984E+00
+    75     38       5      15       0       1        3.98631421E+00
+    76     38       5      16       0      -1        3.98631421E+00
+    77     39       0      19       0       1        3.99896424E+00
+    78     39       0      20       0      -1        3.99896424E+00
+    79     40       6      11       0       1        4.08950731E+00
+    80     40       6      12       0      -1        4.08950731E+00
+    81     41       7      11       0       1        4.08950731E+00
+    82     41       7      12       0      -1        4.08950731E+00
+    83     42       2       9       0       1        4.26629117E+00
+    84     42       2      10       0      -1        4.26629117E+00
+    85     43       3       9       0       1        4.26629117E+00
+    86     43       3      10       0      -1        4.26629117E+00
+    87     44       4       3       0       1        4.64541798E+00
+    88     44       4       4       0      -1        4.64541798E+00
+    89     45       5      17       0       1        4.64541798E+00
+    90     45       5      18       0      -1        4.64541798E+00
+    91     46       0      21       0       1        4.73552823E+00
+    92     46       0      22       0      -1        4.73552823E+00
+    93     47       1       5       0       1        4.73552823E+00
+    94     47       1       6       0      -1        4.73552823E+00
+    95     48       5      19       0       1        4.74470401E+00
+    96     48       5      20       0      -1        4.74470401E+00
+    97     49       4       5       0       1        4.92826353E+00
+    98     49       4       6       0      -1        4.92826353E+00
+    99     50       5      21       0       1        4.92826353E+00
+   100     50       5      22       0      -1        4.92826353E+00
+   101     51       2      11       0       1        4.96295846E+00
+   102     51       2      12       0      -1        4.96295846E+00
+   103     52       3      11       0       1        4.96295846E+00
+   104     52       3      12       0      -1        4.96295846E+00
+   105     53       6      13       0       1        5.03166765E+00
+   106     53       6      14       0      -1        5.03166765E+00
+   107     54       7      13       0       1        5.03166765E+00
+   108     54       7      14       0      -1        5.03166765E+00
+   109     55       5      23       0       1        5.35517974E+00
+   110     55       5      24       0      -1        5.35517974E+00
+   111     56       0      23       0       1        5.62785082E+00
+   112     56       0      24       0      -1        5.62785082E+00
+   113     57       2      13       0       1        5.79825988E+00
+   114     57       2      14       0      -1        5.79825988E+00
+   115     58       3      13       0       1        5.79825988E+00
+   116     58       3      14       0      -1        5.79825988E+00
+   117     59       0      25       0       1        6.01564007E+00
+   118     59       0      26       0      -1        6.01564007E+00
+   119     60       5      25       0       1        9.43464434E+00
+   120     60       5      26       0      -1        9.43464434E+00
+
+ E_core =   18.521202382200
+ Number of electrons: 14
+ Number of basis functions: 120
+
+ Bit-length of integers used to store determinant bit-strings: 64
+ Number of integers used to store determinant bit-strings: 2
+
+ Symmetry information
+ --------------------
+
+ Number of point group symmetries: 8
+ Not using Lz symmetry.
+ Totally symmetric symmetry: 0
+ The matrix below gives the direct products of the irreducible representations.
+
+  0  1  2  3  4  5  6  7
+  1  0  3  2  5  4  7  6
+  2  3  0  1  6  7  4  5
+  3  2  1  0  7  6  5  4
+  4  5  6  7  0  1  2  3
+  5  4  7  6  1  0  3  2
+  6  7  4  5  2  3  0  1
+  7  6  5  4  3  2  1  0
+
+ The table below gives the number of basis functions spanning each irreducible representation.
+
+ irrep  Lz   sym  nbasis  nbasis_up  nbasis_down
+   0     0    0     26      13         13
+   1     0    1      6       3          3
+   2     0    2     14       7          7
+   3     0    3     14       7          7
+   4     0    4      6       3          3
+   5     0    5     26      13         13
+   6     0    6     14       7          7
+   7     0    7     14       7          7
+
+
+ Reference determinant and so symmetry sector selected using the Aufbau principle.
+ Selected symmetry  0.
+
+ CCMC
+ ----
+
+ Memory allocated per core for main walker list (MB):   4000.00
+ Number of elements per core in main walker list: 111111111
+ Memory allocated per core for spawned walker lists (MB):   4000.00
+ Number of elements per core in spawned walker list: 83333333
+
+ # Starting the excitation generator initialisation.
+ # Finishing the excitation generator initialisation, time taken:  2.4080276489E-05
+ -- Start JSON block --
+ {
+     "system": {
+         "nbasis": 120,   
+         "nel": 14,   
+         "nvirt": 106,   
+         "Ms": 0,   
+         "nalpha": 7,   
+         "nbeta": 7,   
+         "nvirt_alpha": 53,   
+         "nvirt_beta": 53,   
+         "nsym": 7,   
+         "sym0": 0,   
+         "sym_max": 7,   
+         "nsym_tot": 8,   
+         "sym0_tot": 0,   
+         "sym_max_tot": 7,   
+         "symmetry": 0,   
+         "tot_sym": false,   
+         "aufbau_sym": true,   
+         "max_number_excitations": 14,   
+         "read_in": {
+             "int_file":  "FCIDUMP.N2.cc-pvtz-1.4A",   
+             "uhf": false,   
+             "Ecore": 18.52120238,   
+             "CAS": [ -1, -1],
+             "useLz": false,   
+             "complex": false    
+         }
+     },
+     "qmc": {
+         "rng_seed": 1396797314,   
+         "real_amplitudes": false,   
+         "real_amplitude_force_32": false,   
+         "spawn_cutoff": 0.01000000,   
+         "excit_gen":  "renorm",   
+         "pattempt_update": false,   
+         "pattempt_zero_accum_data": false,   
+         "pattempt_single": 0.00484500,   
+         "pattempt_double": 0.99515500,   
+         "pattempt_parallel": 0.00000000,   
+         "tau": 0.00010000,   
+         "tau_search": false,   
+         "vary_shift_from": 0.00000000,   
+         "vary_shift_from_proje": true,   
+         "vary_shift": false,   
+         "initial_shift": 0.00000000,   
+         "shift_damping": 0.01000000,   
+         "shift_harmonic_forcing": 0.00000000,   
+         "shift_harmonic_crit_damp": false,   
+         "walker_length": -4000,   
+         "spawned_walker_length": -4000,   
+         "D0_population": 200.00000000,   
+         "target_particles": 10000000.00000000,   
+         "target_reference": false,   
+         "initiator_approx": false,   
+         "initiator_pop": 3.00000000,   
+         "ncycles": 20,   
+         "nreport": 10,   
+         "power_pitzer_min_weight": 0.01000000,   
+         "quasi_newton": false,   
+         "quasi_newton_threshold": 0.00000000,   
+         "quasi_newton_value": 0.00000000,   
+         "quasi_newton_pop_control": 1.00000000,   
+         "use_mpi_barriers": false    
+     },
+     "ccmc": {
+         "move_freq": 5,   
+         "cluster_multispawn_threshold": 1.79769313E+308,   
+         "full_nc": true,   
+         "linked": false,   
+         "vary_shift_reference": false,   
+         "density_matrices": false,   
+         "density_matrix_file":  "RDM",   
+         "even_selection": false,   
+         "multiref": false    
+     },
+     "semi_stoch": {
+         "start_iter": 1,   
+         "shift_iter": -1,   
+         "space_type":  "none",   
+         "target_size": 0,   
+         "write_determ_space": false,   
+         "projection_mode":  "separate",   
+         "read_id": 2147483647,   
+         "write_id": 2147483647,   
+         "ci_space": {
+             "ex_level": -1    
+         }
+     },
+     "restart": {
+         "read_restart": false,   
+         "read_id": 2147483647,   
+         "write_restart": false,   
+         "write_id": 2147483647,   
+         "write_freq": 2147483647,   
+         "write_restart_shift": false,   
+         "write_shift_id": 2147483647,   
+         "restart_rng": true    
+     },
+     "reference": {
+         "det": [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
+         "det_ms": 0,   
+         "det_symmetry": 0,   
+         "H00": -108.78641386,   
+         "F0": -70.58815823,   
+         "hilbert_space_det": [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
+         "hilbert_space_det_ms": 0,   
+         "hilbert_space_det_symmetry": 0,   
+         "ex_level": 2    
+     },
+     "blocking": {
+         "blocking_on_the_fly": false,   
+         "start_save_frequency": -1,   
+         "start_point_number": -1,   
+         "filename":  "BLOCKING",   
+         "start_point": -1,   
+         "error_limit": 0.00000000,   
+         "blocks_used": 2147483647,   
+         "min_blocks_used": 10,   
+         "auto_shift_damping": false,   
+         "shift_damping_precision": 2.00000000,   
+         "force_shift_damping_opt": false    
+     },
+     "logging_in": {
+         "calc": 0,   
+         "calc_file":  "CALC",   
+         "spawn": 0,   
+         "spawn_file":  "SPAWN",   
+         "death": 0,   
+         "death_file":  "DEATH",   
+         "start_iter": 0,   
+         "end_iter": 9223372036854775807    
+     },
+     "logging": {
+         "write_highlevel_values": false,   
+         "calc_unit": 2147483647,   
+         "write_successful_spawn": false,   
+         "write_failed_spawn": false,   
+         "spawn_unit": 2147483647,   
+         "write_successful_death": false,   
+         "write_failed_death": false,   
+         "death_unit": 2147483647    
+     }
+ }
+ -- End JSON block --
+
+ Information printed out every QMC report loop:
+
+ Shift: the energy offset calculated at the end of the report loop.
+ H_0j: <D_0|H|D_j>, Hamiltonian matrix element.
+ N_j: population of Hamiltonian particles on determinant D_j.
+ # H psips: current total population of Hamiltonian particles.
+ # states: number of many-particle states occupied.
+ spawn_events: number of successful spawning events across all processors.
+ R_spawn: average rate of spawning across all processors.
+ time: average time per Monte Carlo cycle.
+
+ Note that all particle populations are averaged over the report loop.
+
+ #     iterations   Shift                 \sum H_0j N_j         N_0                   # H psips                  # states  # spawn_events      # attempts   R_spawn    time   
+ #              0   0.0000000000E+00      0.0000000000E+00      2.0000000000E+02      2.0000000000E+02                  1               0             200    0.0000    0.0000 
+               20   0.0000000000E+00     -3.0437436040E-01      2.0000000000E+02      2.4100000000E+02                 42               1             280    0.0096    0.0001 
+               40   0.0000000000E+00     -1.0033761608E+00      2.0000000000E+02      2.9000000000E+02                 91               1             378    0.0093    0.0002 
+               60   0.0000000000E+00     -1.8071229312E+00      2.0000000000E+02      3.3800000000E+02                136               3             470    0.0080    0.0003 
+               80   0.0000000000E+00     -2.4293771417E+00      2.0000000000E+02      3.9200000000E+02                191               6             572    0.0074    0.0004 
+              100   0.0000000000E+00     -3.2945075380E+00      2.0000000000E+02      4.5200000000E+02                252               3             700    0.0073    0.0005 
+              120   0.0000000000E+00     -4.0735205797E+00      2.0000000000E+02      5.0100000000E+02                300               4             794    0.0056    0.0006 
+              140   0.0000000000E+00     -4.7277015220E+00      2.0000000000E+02      5.3500000000E+02                331               0             874    0.0044    0.0007 
+              160   0.0000000000E+00     -5.1490721022E+00      2.0000000000E+02      5.8200000000E+02                376               2             962    0.0045    0.0007 
+              180   0.0000000000E+00     -5.8550287142E+00      2.0000000000E+02      6.3200000000E+02                424               2            1064    0.0045    0.0008 
+              200   0.0000000000E+00     -6.6142573091E+00      2.0000000000E+02      6.7900000000E+02                468               0            1160    0.0046    0.0009 
+
+ Timing breakdown
+ ----------------
+
+ Time for each calculation section (seconds):
+
+ Generic system initialisation: 1.56
+ CCMC calculation             : 1.44
+
+ ================================================================
+ Finished running on 28/06/2022 at 15:12:38
+ Wall time (seconds):                           2.37
+ CPU time (per processor, seconds):             3.07
+ ================================================================
+
