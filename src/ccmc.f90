@@ -841,7 +841,7 @@ contains
                         ! changed which stops a problem with intel compilers v17-v19.
                         ! See https://software.intel.com/en-us/forums/intel-fortran-compiler/topic/806597
 #ifdef OPENMP_DETERM
-                        !$omp do schedule(dynamic, 200) private(dfock)
+                        !$omp do schedule(static, 200) private(dfock)
 #else
                         !$omp do schedule(dynamic,200) private(dfock)
 #endif
