@@ -473,7 +473,7 @@ contains
                 end do
 
 #ifdef OPENMP_DETERM
-                !$omp do schedule(static, 200) &
+                !$omp do schedule(static, 200) 
 #else
                 !$omp do schedule(dynamic,200) 
 #endif
