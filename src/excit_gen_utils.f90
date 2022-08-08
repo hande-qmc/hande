@@ -104,7 +104,11 @@ contains
 
         ij_sym = sys%read_in%sym_conj_ptr(sys%read_in, cross_product_basis_read_in(sys, i_tmp, j_tmp))
         
+#ifdef OPENMP_DETERM
+        !$omp parallel do default(none) schedule(static, 200) &
+#else
         !$omp parallel do default(none) &
+#endif
         !$omp shared(sys,i,j,i_tmp,j_tmp,ij_sym,slater_condon2_excit_ptr,abs_hmatel_ptr) &
         !$omp private(a,b,a_tmp,b_tmp,isymb,hmatel) reduction(+:weight)
         do a = 1, sys%basis%nbasis

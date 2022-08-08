@@ -310,7 +310,11 @@ contains
         ortho_weight = 0.0_p
 
         do i = iproc_nbasis_start, iproc_nbasis_end
+#ifdef OPENMP_DETERM
+            !$omp parallel do default(none) schedule(static, 200) &
+#else
             !$omp parallel do default(none) &
+#endif
             !$omp shared(sys,i,slater_condon2_excit_ptr,abs_hmatel_ptr) &
             !$omp private(i_tmp, j_tmp, a_tmp, b_tmp, j, a, b, ij_sym, isymb, hmatel) reduction(+:parallel_weight,ortho_weight)
             do j = 1, sys%basis%nbasis
@@ -553,7 +557,11 @@ contains
 
         nsent = 0.0_dp
 
+#ifdef OPENMP_DETERM
+        !$omp parallel do default(none) schedule(static, 200) &
+#else
         !$omp parallel do default(none) &
+#endif
         !$omp shared(nstates, states, pops, spawn, iproc, nprocs) &
         !$omp private(pproc, slot) reduction(+:nsent)
         do iexcitor = 1, nstates

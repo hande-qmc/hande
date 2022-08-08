@@ -733,7 +733,11 @@ contains
                     iexcip_pos = 0
                     seen_D0 = .false.
                     
+#ifdef OPENMP_DETERM
+                    !$omp do schedule(static,200)
+#else
                     !$omp do schedule(dynamic,200) 
+#endif
                     do iattempt = 1, selection_data%nsingle_excitors + selection_data%nstochastic_clusters
                         if (iattempt <= selection_data%nsingle_excitors) then
                             ! As noncomposite clusters can't be above truncation level or linked-only all can accumulate +
@@ -796,7 +800,11 @@ contains
                     ! See comments below 'if (.not. seen_D0) then' on why this loop needs to be separate from above.
                     ! If noncomposite is turned off, this loop will be 'do i = nclusters+1, nclusters', which will be a null 
                     ! loop and ignored (as strides at +1 by default)
+#ifdef OPENMP_DETERM
+                    !$omp do schedule(static, 200)
+#else
                     !$omp do schedule(dynamic, 200)
+#endif
                     do iattempt = selection_data%nsingle_excitors + selection_data%nstochastic_clusters+1, &
                                   selection_data%nclusters
                         ! We just select the empty cluster.
@@ -832,7 +840,11 @@ contains
                         ! Ordering in reduction between ndeath_nc and nparticles_change has been
                         ! changed which stops a problem with intel compilers v17-v19.
                         ! See https://software.intel.com/en-us/forums/intel-fortran-compiler/topic/806597
+#ifdef OPENMP_DETERM
+                        !$omp do schedule(dynamic, 200) private(dfock)
+#else
                         !$omp do schedule(dynamic,200) private(dfock)
+#endif
                         do iattempt = 1, qs%psip_list%nstates
                             ! Note we use the (encoded) population directly in stochastic_ccmc_death_nc
                             ! (unlike the stochastic_ccmc_death) to avoid unnecessary decoding/encoding
