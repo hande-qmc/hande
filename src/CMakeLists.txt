@@ -146,6 +146,7 @@ target_compile_definitions(hande-static
     $<$<NOT:$<BOOL:${HAS_MPI3}>>:DISABLE_MPI3>
     $<$<NOT:$<BOOL:${USE_ScaLAPACK}>>:DISABLE_SCALAPACK>
     $<$<BOOL:${USE_SINGLE_PRECISION}>:SINGLE_PRECISION>
+    $<$<BOOL:${USE_OPENMP_DETERM}>:OPENMP_DETERM>
     $<$<CONFIG:Debug>:DEBUG>
     )
 target_include_directories(hande-static
