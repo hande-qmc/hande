@@ -26,6 +26,7 @@ modules:
     - 'custom/lua.cmake'
     - 'custom/mpi.cmake'
     - 'custom/omp.cmake'
+    - 'custom/omp_determ.cmake'
     - 'custom/math_libs.cmake'
     - 'custom/explicit_libs.cmake'
 - nonbooloptions:
