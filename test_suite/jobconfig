@@ -66,6 +66,8 @@ output = HANDE.out
 # Serial MC tests (with POP_SIZE=32) + deterministic tests.
 serial = fci mc_hilbert_space/np1 mc_canonical_estimates/np1 simple_fciqmc *mc/np1 *mc_real_32/np1
 
+omp_only = *mc_real_64/np1_omp
+
 omp = serial *mc_real_64/np1_omp
 
 omp_mpi = omp *mc_real_64/np2_omp

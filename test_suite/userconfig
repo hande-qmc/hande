@@ -13,25 +13,27 @@ skip_cmd_template = tc.skip tc.args tc.test tc.error
 exe = ../bin/hande.x
 inputs_args = ('*.in', '')
 vcs = git
+run_cmd_template = bash -c "OMP_NUM_THREADS=4 tc.program tc.args tc.input > tc.output 2> tc.error"
 extract_fn = ../tools/pyhande pyhande.testcode.testcode_data
 extract_program = ../tools/tests/extract_test_data.py
 ignore_fields = time
 skip_program = grep
 skip_args = -i 'disabled at compile-time\|Fatal: not compiled with HDF5 support\|Tried to pass logging options to a non-debug build'
 skip_cmd_template = tc.skip tc.args tc.test tc.error
-launch_parallel = export OMP_NUM_THREADS=4 &
+launch_parallel = srun -n 1
 
 [hande_omp_np2]
 exe = ../bin/hande.x
 inputs_args = ('*.in', '')
 vcs = git
+run_cmd_template = bash -c "OMP_NUM_THREADS=4 tc.program tc.args tc.input > tc.output 2> tc.error"
 extract_fn = ../tools/pyhande pyhande.testcode.testcode_data
 extract_program = ../tools/tests/extract_test_data.py
 ignore_fields = time
 skip_program = grep
 skip_args = -i 'disabled at compile-time\|Fatal: not compiled with HDF5 support\|Tried to pass logging options to a non-debug build'
 skip_cmd_template = tc.skip tc.args tc.test tc.error
-launch_parallel = export OMP_NUM_THREADS=2 & mpirun -np 2
+launch_parallel = srun -n 1
 
 [user]
 diff = vimdiff
