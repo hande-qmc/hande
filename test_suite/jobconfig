@@ -44,6 +44,18 @@ nprocs = 4
 min_nprocs = 4
 max_nprocs = 4
 
+# Deterministic OpenMP testing requires a 'submission script' that wraps ``export OMP_NUM_THREAD = num_threads``
+[*/np1_omp/*/]
+nprocs = 4
+min_nprocs = 4
+max_nprocs = 4
+program = hande_omp_np1
+[*/np2_omp/*/]
+nprocs = 4
+min_nprocs = 4
+max_nprocs = 4
+program = hande_omp_np2
+
 # Need to set up jobs that have additional information output.
 [*/*/*write-to-file/]
 output = HANDE.out
@@ -53,6 +65,10 @@ output = HANDE.out
 
 # Serial MC tests (with POP_SIZE=32) + deterministic tests.
 serial = fci mc_hilbert_space/np1 mc_canonical_estimates/np1 simple_fciqmc *mc/np1 *mc_real_32/np1
+
+omp = serial *mc_real_64/np1_omp
+
+omp_mpi = omp *mc_real_64/np2_omp
 
 mpi = serial mc_hilbert_space mc_canonical_estimates *mc *mc_real_32
 

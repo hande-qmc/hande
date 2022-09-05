@@ -9,8 +9,32 @@ skip_program = grep
 skip_args = -i 'disabled at compile-time\|Fatal: not compiled with HDF5 support\|Running with .* threads\|Tried to pass logging options to a non-debug build'
 skip_cmd_template = tc.skip tc.args tc.test tc.error
 
+[hande_omp_np1]
+exe = ../bin/hande.x
+inputs_args = ('*.in', '')
+vcs = git
+extract_fn = ../tools/pyhande pyhande.testcode.testcode_data
+extract_program = ../tools/tests/extract_test_data.py
+ignore_fields = time
+skip_program = grep
+skip_args = -i 'disabled at compile-time\|Fatal: not compiled with HDF5 support\|Tried to pass logging options to a non-debug build'
+skip_cmd_template = tc.skip tc.args tc.test tc.error
+launch_parallel = export OMP_NUM_THREADS=4 &
+
+[hande_omp_np2]
+exe = ../bin/hande.x
+inputs_args = ('*.in', '')
+vcs = git
+extract_fn = ../tools/pyhande pyhande.testcode.testcode_data
+extract_program = ../tools/tests/extract_test_data.py
+ignore_fields = time
+skip_program = grep
+skip_args = -i 'disabled at compile-time\|Fatal: not compiled with HDF5 support\|Tried to pass logging options to a non-debug build'
+skip_cmd_template = tc.skip tc.args tc.test tc.error
+launch_parallel = export OMP_NUM_THREADS=2 & mpirun -np 2
+
 [user]
 diff = vimdiff
-benchmark = a7d5ca7b 9712b5a3
+benchmark = hande-fc224b1c.hande_omp_np1-fc224b1c.hande_omp_np2-fc224b1c fc224b1c a7d5ca7b 9712b5a3
 tolerance = (1.e-10, 1.e-10, None, False)
 
