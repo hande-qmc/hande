@@ -1,0 +1,415 @@
+
+   HANDE
+
+ ================================================================
+Version information
+-------------------
+Version       | v1.5-509-gcf07666
+Commit hash   | cf076667d9f540506f71c35bc4a3f4eb8557039d
+Commit author | Brian Zhao
+Commit date   | Mon Jun 20 18:11:28 2022 +0100
+Branch        | main
+
+Configuration and build information
+-----------------------------------
+Who compiled             | maf63
+Compilation hostname     | serenity
+Operating system         | Linux-5.4.0-110-generic
+CMake version            | 3.16.3
+CMake generator          | Unix Makefiles
+Build type               | debug
+Configuration time       | 2022-06-20 17:24:01 [UTC]
+Python version           | 3.7.0
+Fortran compiler         | /usr/local/shared/ubuntu-20.04/x86_64/openmpi-4.1.2-gnu/bin/mpif90
+C compiler               | /usr/local/shared/ubuntu-20.04/x86_64/openmpi-4.1.2-gnu/bin/mpicc
+DET_SIZE set to          | 64
+POP_SIZE set to          | 64
+dSFMT Mersenne exponent  | 19937
+MPI parallelization      | ON
+MPI launcher             | /usr/local/shared/ubuntu-20.04/x86_64/openmpi-4.1.2-gnu/bin/mpiexec
+OpenMP parallelization   | OFF
+Lua version              | 5.3.5
+HDF5 library version     | 1.10.4
+
+Further components
+------------------
+DISABLE_HDF5 not defined.  HDF5 enabled.
+DISABLE_UUID not defined.  UUID enabled.
+PARALLEL defined.  MPI parallelization enabled.
+DISABLE_MPI3 not defined.  MPI-3 functionality enabled.
+PARALLEL defined. DISABLE_MPI3 and ENABLE_SHMEM_POSIX not defined. MPI-3 in use.
+DISABLE_SCALAPACK defined.  ScaLAPACK disabled.
+SINGLE_PRECISION not defined.  Double precision used throughout.
+USE_POPCNT not defined. Internal POPCNT procedure used.
+
+Runtime information
+-------------------
+Hostname:
+    serenity
+Current working dir:
+    /home/maf63/hande-release/test_suite/fci/h6_sto3g
+Started running on 20/06/2022 at 21:52:27
+ Calculation UUID: 3fb9541f-ed82-4f6f-a575-cc76ec801a41.
+ ================================================================
+
+ Input options
+ -------------
+
+fci {
+    sys = read_in {
+        int_file = 'FCIDUMP',
+    },
+    fci = {
+        hamiltonian_diagonal_only = true,
+    },
+}
+
+ -------------
+
+ Memory required for all two body integrals (MB) on each processor: 0
+ It is left to the user to ensure that this does not exceed available resources.
+
+ Basis functions
+ ---------------
+
+ Spin given in units of 1/2.
+
+ index  spatial symmetry sym_index lz     ms       <i|f|i>
+     1      1       0       1       0       1       -5.35888407E-01
+     2      1       0       2       0      -1       -5.35888407E-01
+     3      2       4       1       0       1       -4.43588911E-01
+     4      2       4       2       0      -1       -4.43588911E-01
+     5      3       0       3       0       1       -2.95006825E-01
+     6      3       0       4       0      -1       -2.95006825E-01
+     7      4       4       3       0       1        1.33282348E-01
+     8      4       4       4       0      -1        1.33282348E-01
+     9      5       0       5       0       1        3.81756887E-01
+    10      5       0       6       0      -1        3.81756887E-01
+    11      6       4       5       0       1        6.14823040E-01
+    12      6       4       6       0      -1        6.14823040E-01
+
+ E_core =    3.624999738001
+ Number of electrons: 6
+ Number of basis functions: 12
+
+ Bit-length of integers used to store determinant bit-strings: 64
+ Number of integers used to store determinant bit-strings: 1
+
+ Symmetry information
+ --------------------
+
+ Number of point group symmetries: 8
+ Not using Lz symmetry.
+ Totally symmetric symmetry: 0
+ The matrix below gives the direct products of the irreducible representations.
+
+  0  1  2  3  4  5  6  7
+  1  0  3  2  5  4  7  6
+  2  3  0  1  6  7  4  5
+  3  2  1  0  7  6  5  4
+  4  5  6  7  0  1  2  3
+  5  4  7  6  1  0  3  2
+  6  7  4  5  2  3  0  1
+  7  6  5  4  3  2  1  0
+
+ The table below gives the number of basis functions spanning each irreducible representation.
+
+ irrep  Lz   sym  nbasis  nbasis_up  nbasis_down
+   0     0    0      6       3          3
+   1     0    1      0       0          0
+   2     0    2      0       0          0
+   3     0    3      0       0          0
+   4     0    4      6       3          3
+   5     0    5      0       0          0
+   6     0    6      0       0          0
+   7     0    7      0       0          0
+
+ FCI
+ ---
+
+
+ Reference determinant and so symmetry sector selected using the Aufbau principle.
+ Selected symmetry  0.
+
+ -- Start JSON block --
+ {
+     "system": {
+         "nbasis": 12,   
+         "nel": 6,   
+         "nvirt": 6,   
+         "Ms": 0,   
+         "nalpha": 3,   
+         "nbeta": 3,   
+         "nvirt_alpha": 3,   
+         "nvirt_beta": 3,   
+         "nsym": 7,   
+         "sym0": 0,   
+         "sym_max": 7,   
+         "nsym_tot": 8,   
+         "sym0_tot": 0,   
+         "sym_max_tot": 7,   
+         "symmetry": 0,   
+         "tot_sym": false,   
+         "aufbau_sym": true,   
+         "max_number_excitations": 6,   
+         "read_in": {
+             "int_file":  "FCIDUMP",   
+             "uhf": false,   
+             "Ecore": 3.62499974,   
+             "CAS": [ -1, -1],
+             "useLz": false,   
+             "complex": false    
+         }
+     },
+     "fci_in": {
+         "write_hamiltonian": false,   
+         "hamiltonian_file":  "HAMIL",   
+         "write_determinants": false,   
+         "determinant_file":  "DETS",   
+         "print_fci_wfn": 0,   
+         "print_fci_wfn_file":  "FCI_WFN",   
+         "analyse_fci_wfn": 0,   
+         "block_size": 64,   
+         "ndavidson_eigv": 4,   
+         "ndavidson_trialvec": 8,   
+         "davidson_maxsize": 50,   
+         "davidson_tol": 0.00000010,   
+         "hamiltonian_diagonal_only": true,   
+     },
+     "reference": {
+         "ex_level": 6    
+     }
+ }
+ -- End JSON block --
+
+ The table below gives the number of determinants for each symmetry with Ms=0.
+
+ Symmetry index      # dets
+         0              200
+         1                0
+         2                0
+         3                0
+         4              200
+         5                0
+         6                0
+         7                0
+
+ Diagonal elements of the FCI Hamiltonian
+ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+  State     Energy
+      1    -2.949478174616
+      2    -2.593111200242
+      3    -2.593111200242
+      4    -2.517473642794
+      5    -2.500455996352
+      6    -2.500455996352
+      7    -2.308423131262
+      8    -2.308423131262
+      9    -2.286630465922
+     10    -2.286630465922
+     11    -2.238414865532
+     12    -2.238414865532
+     13    -2.190668763842
+     14    -2.190668763842
+     15    -2.175820211960
+     16    -2.162051847999
+     17    -2.162051847999
+     18    -2.152706990441
+     19    -2.152706990441
+     20    -2.079779503639
+     21    -2.079779503639
+     22    -2.058109169361
+     23    -2.058109169361
+     24    -2.042007811952
+     25    -1.988199176872
+     26    -1.981612557185
+     27    -1.981612557185
+     28    -1.958176729196
+     29    -1.958176729196
+     30    -1.946444037004
+     31    -1.946444037004
+     32    -1.921113473541
+     33    -1.921113473541
+     34    -1.913324139721
+     35    -1.913324139721
+     36    -1.907608829475
+     37    -1.907608829475
+     38    -1.867703619114
+     39    -1.867703619114
+     40    -1.841737248343
+     41    -1.841737248343
+     42    -1.786846111583
+     43    -1.778097667557
+     44    -1.778097667557
+     45    -1.776978811844
+     46    -1.776978811844
+     47    -1.772737787915
+     48    -1.772737787915
+     49    -1.751815082200
+     50    -1.751815082200
+     51    -1.732666945662
+     52    -1.732666945662
+     53    -1.716035216010
+     54    -1.716035216010
+     55    -1.698311389540
+     56    -1.698311389540
+     57    -1.692167246716
+     58    -1.692167246716
+     59    -1.691577991598
+     60    -1.691577991598
+     61    -1.649513985812
+     62    -1.649513985812
+     63    -1.639446827653
+     64    -1.639446827653
+     65    -1.624200961232
+     66    -1.624200961232
+     67    -1.595037257147
+     68    -1.595037257147
+     69    -1.593143356976
+     70    -1.593143356976
+     71    -1.589206795581
+     72    -1.589206795581
+     73    -1.572697359742
+     74    -1.566286746660
+     75    -1.566286746660
+     76    -1.556236430546
+     77    -1.556236430546
+     78    -1.551960175422
+     79    -1.551960175422
+     80    -1.537307242383
+     81    -1.537307242383
+     82    -1.527565010159
+     83    -1.527565010159
+     84    -1.508393639036
+     85    -1.496352385051
+     86    -1.496040215181
+     87    -1.496040215181
+     88    -1.468276945429
+     89    -1.468276945429
+     90    -1.450911167012
+     91    -1.450911167012
+     92    -1.428185313548
+     93    -1.428185313548
+     94    -1.426100880976
+     95    -1.426100880976
+     96    -1.414632334400
+     97    -1.414632334400
+     98    -1.382400272277
+     99    -1.382400272277
+    100    -1.377610698886
+    101    -1.377610698886
+    102    -1.342810758071
+    103    -1.342810758071
+    104    -1.331221408112
+    105    -1.331221408112
+    106    -1.329620410398
+    107    -1.329620410398
+    108    -1.323421178055
+    109    -1.323421178055
+    110    -1.300948990011
+    111    -1.300948990011
+    112    -1.300634693618
+    113    -1.300634693618
+    114    -1.289166147043
+    115    -1.289166147043
+    116    -1.277232239714
+    117    -1.277232239714
+    118    -1.271760166502
+    119    -1.269424195032
+    120    -1.269424195032
+    121    -1.268266467163
+    122    -1.268266467163
+    123    -1.236790005484
+    124    -1.236790005484
+    125    -1.221544139063
+    126    -1.221544139063
+    127    -1.221396125120
+    128    -1.221396125120
+    129    -1.220125674622
+    130    -1.193785518456
+    131    -1.186549973413
+    132    -1.186549973413
+    133    -1.180000108692
+    134    -1.180000108692
+    135    -1.173743923574
+    136    -1.173743923574
+    137    -1.151249598205
+    138    -1.151249598205
+    139    -1.136923026968
+    140    -1.136923026968
+    141    -1.101089296242
+    142    -1.101089296242
+    143    -1.098476239525
+    144    -1.098476239525
+    145    -1.093125163280
+    146    -1.083821757432
+    147    -1.083821757432
+    148    -1.048041891241
+    149    -1.048041891241
+    150    -1.023358637883
+    151    -1.023358637883
+    152    -1.012992769616
+    153    -1.012992769616
+    154    -1.005618431955
+    155    -1.005618431955
+    156    -0.975929513962
+    157    -0.975929513962
+    158    -0.962424869896
+    159    -0.962424869896
+    160    -0.957286202547
+    161    -0.957286202547
+    162    -0.930431658508
+    163    -0.924543461134
+    164    -0.924543461134
+    165    -0.924504081476
+    166    -0.924504081476
+    167    -0.902911560677
+    168    -0.888632818874
+    169    -0.888632818874
+    170    -0.869014148950
+    171    -0.869014148950
+    172    -0.848007469299
+    173    -0.848007469299
+    174    -0.819414525978
+    175    -0.819414525978
+    176    -0.812838949119
+    177    -0.812838949119
+    178    -0.782513336554
+    179    -0.782513336554
+    180    -0.766145726241
+    181    -0.766145726241
+    182    -0.752727570140
+    183    -0.752727570140
+    184    -0.704981468451
+    185    -0.704981468451
+    186    -0.678552683500
+    187    -0.676364552608
+    188    -0.676364552608
+    189    -0.631212089256
+    190    -0.610498240626
+    191    -0.610498240626
+    192    -0.545545201061
+    193    -0.545545201061
+    194    -0.514092114549
+    195    -0.472241563550
+    196    -0.472241563550
+    197    -0.402513505086
+    198    -0.388855965420
+    199    -0.388855965420
+    200    -0.202695802383
+
+ Timing breakdown
+ ----------------
+
+ Wall time for each calculation section (seconds):
+
+ Generic system initialisation: .00
+ FCI calculation              : .00
+
+ ================================================================
+ Finished running on 20/06/2022 at 21:52:27
+ Wall time (seconds):                               0.00
+ CPU time (per processor, seconds):                 0.00
+ ================================================================
+

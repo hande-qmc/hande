@@ -142,7 +142,7 @@ type sys_real_lattice_t
     ! i both directly and via periodic boundary conditions).
     ! For the triangular lattice there are 3*ndim bonds and ndim must equal 2,
     ! so each site is connected to 6 other sites.
-    integer, allocatable :: connected_sites(:,:) ! (0:2ndim, nbasis) or (0:3dim, nbasis)
+    integer, allocatable :: connected_sites(:,:) ! (0:2*ndim, nbasis) or (0:3*ndim, nbasis)
 
     ! next_nearest_orbs(i,j) gives the number of paths by which sites i and j are
     ! are next nearest neighbors. For example, on a square lattice in the
@@ -163,7 +163,22 @@ type sys_real_lattice_t
     ! cell.  If so then the an orbital can incur a kinetic interaction with itself.
     ! This is the only way that the integral < i | T | i >, where i is a basis
     ! function centred on a lattice site, can be non-zero.
-    logical :: t_self_images
+    logical, allocatable :: t_self_images(:) ! (ndim)
+    ! For the lattice [[1,1], [1,-1]] (2-site), like
+    !     a b a b
+    !     b A B a
+    !     a b a b
+    ! each A is surrounded by 4 B, and vice versa, so there should be 4 t contributions.
+    ! In general, the question can be posed as 'for each site i, how many of i's neighbours are their own self images'
+    ! The answer is two times the number of side lengths equal to sqrt(2), this is true for any number of dimensions.
+    ! Consider another lattice [[2,2],[1,-1]] (4-site):
+    !  d A B c
+    !  C D a b
+    !  b c d a
+    ! for example, the D site has two neighbours that are A's, and so on. 
+    ! The sqrt(2) comes from the factor that the Hubbard model is a nearest-neighbour model, so the question above
+    ! can only be satisfied when a lattice vector has a norm that equals to sqrt(2) (related by two hoppings 90deg from e/o).
+    integer :: second_images = -1
 
     ! True if we are actually only modelling a finite system (e.g. a H_2 molecule)
     ! False if we are modelling an infinite lattice
@@ -718,13 +733,26 @@ contains
             if (sys%system /= hub_k) then
                 call json_write_key(js, 'triangular_lattice', sys%lattice%triangular_lattice)
                 call json_write_key(js, 'bipartite_lattice', sys%lattice%bipartite_lattice)
+                call json_object_init(js, 'tmat')
+                do i = 1, sys%basis%nbasis
+                    write (isite,'(i0)') i
+                    call json_write_key(js, trim(isite), sys%real_lattice%tmat(:,i), i==sys%basis%nbasis)
+                end do
+                call json_object_end(js)
+                call json_object_init(js, 'connected_orbs')
+                do i = 1, sys%basis%nbasis
+                    write (isite,'(i0)') i
+                    call json_write_key(js, trim(isite), sys%real_lattice%connected_orbs(:,i), i==sys%basis%nbasis)
+                end do
+                call json_object_end(js)
                 call json_object_init(js, 'connected_sites')
                 do i = 1, sys%basis%nbasis
                     write (isite,'(i0)') i
-                    call json_write_key(js, trim(isite), sys%real_lattice%connected_sites(1:,i), i==sys%basis%nbasis)
+                    call json_write_key(js, trim(isite), sys%real_lattice%connected_sites(0:,i), i==sys%basis%nbasis)
                 end do
                 call json_object_end(js)
-                call json_write_key(js, 'self_image', sys%real_lattice%t_self_images)
+                call json_write_key(js, 't_self_images', sys%real_lattice%t_self_images)
+                call json_write_key(js, 'second_images', sys%real_lattice%second_images)
                 call json_write_key(js, 'finite_cluster', sys%real_lattice%finite_cluster, terminal=.true.)
             end if
             call json_object_end(js)

@@ -285,9 +285,9 @@ contains
 
                 if (.not. hist_in%skip_memory_check .and. 0.000001_p * bytes_est > 1000.0_p) then
                     call stop_all('init_state_histogram_t', 'The memory estimate for the state &
-                                   histogram files is over 1000 (MB), if you acknowledge this &
-                                   warning and wish to proceed add "skip_memory_check = true," &
-                                   to the state_histogram lua block.')
+                                   &histogram files is over 1000 (MB), if you acknowledge this &
+                                   &warning and wish to proceed add "skip_memory_check = true," &
+                                   &to the state_histogram lua block.')
                 end if
             end if
 

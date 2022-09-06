@@ -1,0 +1,461 @@
+
+   HANDE
+
+ ================================================================
+Version information
+-------------------
+Version       | v1.5-509-gcf07666
+Commit hash   | cf076667d9f540506f71c35bc4a3f4eb8557039d
+Commit author | Brian Zhao
+Commit date   | Mon Jun 20 18:11:28 2022 +0100
+Branch        | main
+
+Configuration and build information
+-----------------------------------
+Who compiled             | maf63
+Compilation hostname     | serenity
+Operating system         | Linux-5.4.0-110-generic
+CMake version            | 3.16.3
+CMake generator          | Unix Makefiles
+Build type               | debug
+Configuration time       | 2022-06-20 17:24:01 [UTC]
+Python version           | 3.7.0
+Fortran compiler         | /usr/local/shared/ubuntu-20.04/x86_64/openmpi-4.1.2-gnu/bin/mpif90
+C compiler               | /usr/local/shared/ubuntu-20.04/x86_64/openmpi-4.1.2-gnu/bin/mpicc
+DET_SIZE set to          | 64
+POP_SIZE set to          | 64
+dSFMT Mersenne exponent  | 19937
+MPI parallelization      | ON
+MPI launcher             | /usr/local/shared/ubuntu-20.04/x86_64/openmpi-4.1.2-gnu/bin/mpiexec
+OpenMP parallelization   | OFF
+Lua version              | 5.3.5
+HDF5 library version     | 1.10.4
+
+Further components
+------------------
+DISABLE_HDF5 not defined.  HDF5 enabled.
+DISABLE_UUID not defined.  UUID enabled.
+PARALLEL defined.  MPI parallelization enabled.
+DISABLE_MPI3 not defined.  MPI-3 functionality enabled.
+PARALLEL defined. DISABLE_MPI3 and ENABLE_SHMEM_POSIX not defined. MPI-3 in use.
+DISABLE_SCALAPACK defined.  ScaLAPACK disabled.
+SINGLE_PRECISION not defined.  Double precision used throughout.
+USE_POPCNT not defined. Internal POPCNT procedure used.
+
+Runtime information
+-------------------
+Hostname:
+    serenity
+Current working dir:
+    /home/maf63/hande-release/test_suite/ccmc_real_64/np2/polyyne_complex_ccsdt-real64-restart-legacyv1
+Started running on 20/06/2022 at 20:22:28
+ Calculation UUID: 79d495ab-44b7-46a1-8fe9-c8b16c17cee4.
+ ================================================================
+
+ Number of MPI processes running on: 2
+ Running with 1 thread per MPI process.
+
+ Input options
+ -------------
+
+system = {
+    int_file = "FCIDUMP",
+    nel = 24,
+    ms = 0,
+    sym = "aufbau",
+    complex = true,
+}
+
+sys = read_in(system)
+
+ccmc {
+    sys = sys,
+    qmc = {
+        tau = 5e-4,
+        rng_seed = 23,
+        init_pop = 1000,
+        mc_cycles = 20,
+        real_amplitudes = true,
+        nreports = 20,
+        target_population = 12500,
+        state_size = 12000,
+        spawned_state_size = 15000,
+    },
+    reference = {
+        ex_level = 3,
+    },
+    ccmc = {
+        full_non_composite = true,
+        even_selection = true,
+    },
+    restart = {
+        read = 1,
+    },
+}
+
+ -------------
+
+ Memory required for all two body integrals (MB) on each processor: 0
+ It is left to the user to ensure that this does not exceed available resources.
+
+ Basis functions
+ ---------------
+
+ Spin given in units of 1/2.
+ k-points given in terms of the reciprocal lattice vectors of the crystal cell.
+
+ index   k-point            ms       <i|f|i>
+     1   (  0,  0,  0)      1       -1.00236005E+00
+     2   (  0,  0,  0)     -1       -1.00236005E+00
+     3   (  1,  0,  0)      1       -9.26018339E-01
+     4   (  1,  0,  0)     -1       -9.26018339E-01
+     5   (  2,  0,  0)      1       -9.26018339E-01
+     6   (  2,  0,  0)     -1       -9.26018339E-01
+     7   (  2,  0,  0)      1       -7.28383055E-01
+     8   (  2,  0,  0)     -1       -7.28383055E-01
+     9   (  1,  0,  0)      1       -7.28383055E-01
+    10   (  1,  0,  0)     -1       -7.28383055E-01
+    11   (  0,  0,  0)      1       -5.97827871E-01
+    12   (  0,  0,  0)     -1       -5.97827871E-01
+    13   (  0,  0,  0)      1       -4.42755448E-01
+    14   (  0,  0,  0)     -1       -4.42755448E-01
+    15   (  0,  0,  0)      1       -4.42755446E-01
+    16   (  0,  0,  0)     -1       -4.42755446E-01
+    17   (  1,  0,  0)      1       -2.63091309E-01
+    18   (  1,  0,  0)     -1       -2.63091309E-01
+    19   (  2,  0,  0)      1       -2.63091308E-01
+    20   (  2,  0,  0)     -1       -2.63091308E-01
+    21   (  1,  0,  0)      1       -2.63091308E-01
+    22   (  1,  0,  0)     -1       -2.63091308E-01
+    23   (  2,  0,  0)      1       -2.63091305E-01
+    24   (  2,  0,  0)     -1       -2.63091305E-01
+    25   (  1,  0,  0)      1        4.24212132E-01
+    26   (  1,  0,  0)     -1        4.24212132E-01
+    27   (  1,  0,  0)      1        4.24212136E-01
+    28   (  1,  0,  0)     -1        4.24212136E-01
+    29   (  2,  0,  0)      1        4.24212136E-01
+    30   (  2,  0,  0)     -1        4.24212136E-01
+    31   (  2,  0,  0)      1        4.24212141E-01
+    32   (  2,  0,  0)     -1        4.24212141E-01
+    33   (  0,  0,  0)      1        5.87812296E-01
+    34   (  0,  0,  0)     -1        5.87812296E-01
+    35   (  0,  0,  0)      1        7.92184979E-01
+    36   (  0,  0,  0)     -1        7.92184979E-01
+    37   (  0,  0,  0)      1        7.92184982E-01
+    38   (  0,  0,  0)     -1        7.92184982E-01
+    39   (  2,  0,  0)      1        8.74608188E-01
+    40   (  2,  0,  0)     -1        8.74608188E-01
+    41   (  1,  0,  0)      1        8.74608188E-01
+    42   (  1,  0,  0)     -1        8.74608188E-01
+    43   (  1,  0,  0)      1        1.55775862E+00
+    44   (  1,  0,  0)     -1        1.55775862E+00
+    45   (  2,  0,  0)      1        1.55775862E+00
+    46   (  2,  0,  0)     -1        1.55775862E+00
+    47   (  0,  0,  0)      1        2.00066738E+00
+    48   (  0,  0,  0)     -1        2.00066738E+00
+
+ E_core =  102.892373280773
+ Number of electrons: 24
+ Number of basis functions: 48
+
+ Bit-length of integers used to store determinant bit-strings: 64
+ Number of integers used to store determinant bit-strings: 1
+
+ Symmetry information
+ --------------------
+
+ The table below gives the label and inverse of each wavevector.
+
+ Index    k-point         Inverse
+   1      (  0,  0,  0)        1
+   2      (  1,  0,  0)        3
+   3      (  2,  0,  0)        2
+
+ The matrix below gives the result of k_i+k_j to within a reciprocal lattice vector.
+
+  1  2  3
+  2  3  1
+  3  1  2
+
+
+ Reference determinant and so symmetry sector selected using the Aufbau principle.
+ Selected symmetry  1.
+
+ CCMC
+ ----
+
+ Reading restart file from HANDE.RS.1.p0.H5 family.
+ Memory allocated per core for main walker list (MB):      0.62
+ Number of elements per core in main walker list: 12000
+ Memory allocated per core for spawned walker lists (MB):      0.96
+ Number of elements per core in spawned walker list: 15000
+
+ Reading restart file from HANDE.RS.1.p0.H5 family.
+ # Starting the excitation generator initialisation.
+ # Finishing the excitation generator initialisation, time taken:  3.7014484406E-05
+ -- Start JSON block --
+ {
+     "system": {
+         "nbasis": 48,   
+         "nel": 24,   
+         "nvirt": 24,   
+         "Ms": 0,   
+         "nalpha": 12,   
+         "nbeta": 12,   
+         "nvirt_alpha": 12,   
+         "nvirt_beta": 12,   
+         "nsym": 3,   
+         "sym0": 1,   
+         "sym_max": 3,   
+         "nsym_tot": 3,   
+         "sym0_tot": 1,   
+         "sym_max_tot": 3,   
+         "symmetry": 1,   
+         "tot_sym": false,   
+         "aufbau_sym": true,   
+         "max_number_excitations": 24,   
+         "read_in": {
+             "int_file":  "FCIDUMP",   
+             "uhf": false,   
+             "Ecore": 102.89237328,   
+             "CAS": [ -1, -1],
+             "useLz": false,   
+             "complex": true    
+         }
+     },
+     "qmc": {
+         "rng_seed": 23,   
+         "real_amplitudes": true,   
+         "real_amplitude_force_32": false,   
+         "spawn_cutoff": 0.01000000,   
+         "excit_gen":  "renorm",   
+         "pattempt_update": false,   
+         "pattempt_zero_accum_data": false,   
+         "pattempt_single": 0.00968523,   
+         "pattempt_double": 0.99031477,   
+         "pattempt_parallel": 0.00000000,   
+         "tau": 0.00050000,   
+         "tau_search": false,   
+         "vary_shift_from": 0.00000000,   
+         "vary_shift_from_proje": false,   
+         "initial_shift": 0.00000000,   
+         "shift_damping": 0.05000000,   
+         "shift_harmonic_forcing_two_stage": false,   
+         "shift_harmonic_forcing": 0.00000000,   
+         "shift_harmonic_crit_damp": false,   
+         "walker_length": 12000,   
+         "spawned_walker_length": 15000,   
+         "D0_population": 1000.00000000,   
+         "target_particles": 12500.00000000,   
+         "target_reference": false,   
+         "initiator_approx": false,   
+         "initiator_pop": 3.00000000,   
+         "ncycles": 20,   
+         "nreport": 20,   
+         "power_pitzer_min_weight": 0.01000000,   
+         "chebyshev": false,   
+         "quasi_newton": false,   
+         "quasi_newton_threshold": 0.00000000,   
+         "quasi_newton_value": 0.00000000,   
+         "quasi_newton_pop_control": 1.00000000    
+     },
+     "ccmc": {
+         "move_freq": 5,   
+         "cluster_multispawn_threshold": 1.79769313E+308,   
+         "full_nc": true,   
+         "linked": false,   
+         "vary_shift_reference": false,   
+         "density_matrices": false,   
+         "density_matrix_file":  "RDM",   
+         "even_selection": true,   
+         "multiref": false,   
+         "discard_threshold": 1.79769313E+308    
+     },
+     "semi_stoch": {
+         "start_iter": 1,   
+         "shift_iter": -1,   
+         "space_type":  "none",   
+         "target_size": 0,   
+         "write_determ_space": false,   
+         "projection_mode":  "separate",   
+         "read_id": 2147483647,   
+         "write_id": 2147483647,   
+         "ci_space": {
+             "ex_level": -1    
+         }
+     },
+     "restart": {
+         "read_restart": true,   
+         "read_id": 1,   
+         "write_restart": false,   
+         "write_id": 2147483647,   
+         "write_freq": 2147483647,   
+         "write_restart_shift": false,   
+         "write_shift_id": 2147483647,   
+         "restart_rng": true,   
+         "uuid_restart":  "3ae74716-aa33-424b-921f-9dc6ffa3e5d1"    
+     },
+     "reference": {
+         "det": [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24],
+         "det_ms": 0,   
+         "det_symmetry": 1,   
+         "H00": 0.00000000,   
+         "F0": -13.69373366,   
+         "hilbert_space_det": [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24],
+         "hilbert_space_det_ms": 0,   
+         "hilbert_space_det_symmetry": 1,   
+         "ex_level": 3    
+     },
+     "blocking": {
+         "blocking_on_the_fly": false,   
+         "start_save_frequency": -1,   
+         "start_point_number": -1,   
+         "filename":  "BLOCKING",   
+         "start_point": -1,   
+         "error_limit": 0.00000000,   
+         "blocks_used": 2147483647,   
+         "min_blocks_used": 10,   
+         "auto_shift_damping": false,   
+         "shift_damping_precision": 2.00000000,   
+         "force_shift_damping_opt": false    
+     },
+     "logging_in": {
+         "calc": 0,   
+         "calc_file":  "CALC",   
+         "spawn": 0,   
+         "spawn_file":  "SPAWN",   
+         "death": 0,   
+         "death_file":  "DEATH",   
+         "start_iter": 0,   
+         "end_iter": 9223372036854775807    
+     },
+     "logging": {
+         "write_highlevel_values": false,   
+         "calc_unit": 2147483647,   
+         "write_successful_spawn": false,   
+         "write_failed_spawn": false,   
+         "spawn_unit": 2147483647,   
+         "write_successful_death": false,   
+         "write_failed_death": false,   
+         "death_unit": 2147483647    
+     }
+ }
+ -- End JSON block --
+
+ Truncated Selection Initialisation
+ ----------------------------------
+
+ Setting up required data storage to sample all composite clusters of size <= 5, 
+ cluster excitation level <= 5 using excitors of excitation level <= 3.
+
+ Found 5 possible excitation level combinations for a cluster of size 2.
+ Combinations are:
+
+            |     N_excitors @ excitation level:
+      Combo |-----------------------------------------
+     Number |  ex level= 1  ex level= 2  ex level= 3 
+    --------------------------------------------------
+          1 |        0            1            1     
+          2 |        0            2            0     
+          3 |        1            0            1     
+          4 |        1            1            0     
+          5 |        2            0            0     
+
+ Found 4 possible excitation level combinations for a cluster of size 3.
+ Combinations are:
+
+            |     N_excitors @ excitation level:
+      Combo |-----------------------------------------
+     Number |  ex level= 1  ex level= 2  ex level= 3 
+    --------------------------------------------------
+          1 |        1            2            0     
+          2 |        2            0            1     
+          3 |        2            1            0     
+          4 |        3            0            0     
+
+ Found 2 possible excitation level combinations for a cluster of size 4.
+ Combinations are:
+
+            |     N_excitors @ excitation level:
+      Combo |-----------------------------------------
+     Number |  ex level= 1  ex level= 2  ex level= 3 
+    --------------------------------------------------
+          1 |        3            1            0     
+          2 |        4            0            0     
+
+ Found 1 possible excitation level combinations for a cluster of size 5.
+ Combinations are:
+
+            |     N_excitors @ excitation level:
+      Combo |-----------------------------------------
+     Number |  ex level= 1  ex level= 2  ex level= 3 
+    --------------------------------------------------
+          1 |        5            0            0     
+
+ Information printed out every QMC report loop:
+
+ Shift: the energy offset calculated at the end of the report loop.
+ H_0j: <D_0|H|D_j>, Hamiltonian matrix element.
+ N_j: population of Hamiltonian particles on determinant D_j.
+ # H psips: current total population of Hamiltonian particles.
+ # states: number of many-particle states occupied.
+ spawn_events: number of successful spawning events across all processors.
+ R_spawn: average rate of spawning across all processors.
+ time: average time per Monte Carlo cycle.
+
+ Note that all particle populations are averaged over the report loop.
+
+ #     iterations   Shift                 Re{\sum H_0j N_j}     Im{\sum H_0j N_j}     Re{N_0}               Im{N_0}               # H psips                  # states  # spawn_events            # attempts   R_spawn    time    
+ #            400  -2.2325692933E+00     -1.6259345228E+02      7.6666919158E-01      9.5971421460E+02     -1.3171125841E+00      2.1031508301E+04              13800               0                   960    0.0000    0.0000  
+              420  -2.4866085280E+00     -1.6384697832E+02      7.5565598304E-01      9.5032314084E+02     -1.3666092712E+00      2.2127685355E+04              14707            2767                135357    0.0305    0.2240  
+              440  -2.7339215041E+00     -1.6609871620E+02      8.4907686397E-01      9.2940273693E+02     -1.4061902897E+00      2.3249698187E+04              15669            2780                148528    0.0287    0.2416  
+              460  -2.9589530673E+00     -1.6827431590E+02      8.4876847134E-01      9.0711568771E+02     -1.3641683657E+00      2.4319985561E+04              16595            2788                161625    0.0272    0.2589  
+              480  -3.1401495792E+00     -1.6857075915E+02      6.0166498906E-01      8.8325170889E+02     -1.2495766232E+00      2.5217489101E+04              17407            2822                173040    0.0255    0.2751  
+              500  -3.3239973481E+00     -1.6897583973E+02      4.1417874526E-01      8.5861740897E+02     -1.0658949096E+00      2.6161982818E+04              18269            2797                186862    0.0242    0.2960  
+              520  -3.4832902623E+00     -1.6915570991E+02      3.3296005571E-01      8.3369909974E+02     -8.3629689524E-01      2.7008885444E+04              19050            2886                198680    0.0232    0.3172  
+              540  -3.6394146358E+00     -1.6878904931E+02      2.3519791187E-01      8.0751446372E+02      0.0000000000E+00      2.7865539361E+04              19897            2880                213023    0.0218    0.3362  
+              560  -3.7667995044E+00     -1.6762017162E+02      2.0549920190E-01      7.7980800669E+02      0.0000000000E+00      2.8584589696E+04              20611            2868                225828    0.0208    0.3617  
+              580  -3.8797882886E+00     -1.6568724684E+02     -2.3147947260E-02      7.5280546320E+02      0.0000000000E+00      2.9237891075E+04              21292            2890                238063    0.0198    0.3781  
+              600  -3.9714717111E+00     -1.6383412477E+02     -9.4509699650E-02      7.2658095302E+02     -4.5059806323E-01      2.9778962628E+04              21907            2841                249758    0.0189    0.3971  
+              620  -4.0445409457E+00     -1.6137607569E+02     -1.5033478305E-01      7.0179332375E+02     -1.0353769209E+00      3.0217343241E+04              22442            2919                259800    0.0184    0.4127  
+              640  -4.1190584406E+00     -1.5873523013E+02      8.9231572618E-02      6.7676439233E+02     -1.0190165493E+00      3.0671059970E+04              22997            2885                271082    0.0176    0.4374  
+              660  -4.2016174872E+00     -1.5601887284E+02     -2.5908641270E-03      6.5209784586E+02     -1.0079126020E+00      3.1181698849E+04              23559            2988                282270    0.0170    0.4569  
+
+ Load balancing
+ ^^^^^^^^^^^^^^
+
+ The final distribution of walkers and determinants across the processors was:
+
+ Particle type: 1
+ Min # of particles on a processor:       6.179874E+03
+ Max # of particles on a processor:       8.145265E+03
+ Mean # of particles on a processor:      7.162570E+03
+
+ Particle type: 2
+ Min # of particles on a processor:       6.000227E+03
+ Max # of particles on a processor:       7.464020E+03
+ Mean # of particles on a processor:      6.732123E+03
+
+ Min # of determinants on a processor:    9232
+ Max # of determinants on a processor:   11784
+ Mean # of determinants on a processor:   1.050800E+04
+
+ Min time taken by walker communication:         1.06s
+ Max time taken by walker communication:         2.82s
+ Mean time taken by walker communication:        1.94s
+
+ Number of discard events: 0
+ Timing breakdown
+ ----------------
+
+ Wall time for each calculation section (seconds):
+
+ Generic system initialisation: .44
+ CCMC calculation             : 97.09
+
+ ================================================================
+ Finished running on 20/06/2022 at 20:24:05
+ Wall time (seconds):                              97.52
+ CPU time (per processor, seconds):                97.48
+ ================================================================
+

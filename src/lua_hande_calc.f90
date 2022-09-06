@@ -46,7 +46,6 @@ contains
         type(sys_t), pointer :: sys
         type(fci_in_t) :: fci_in
         type(reference_t) :: ref
-        logical :: davidson
         character(12), parameter :: keys(4) = [character(12) :: 'sys', 'fci', 'davidson', 'reference']
 
         call cpu_time(t1)
@@ -440,6 +439,7 @@ contains
         !       output = { ... },
         !       blocking = { ... },
         !       qmc_state = qmc_state,
+        !       psip_list = psip_list,
         !    }
 
         ! Returns a qmc_state.
@@ -451,19 +451,21 @@ contains
         use flu_binding, only: flu_State, flu_copyptr
         use aot_table_module, only: aot_table_top, aot_table_close
 
+        use const, only: p
         use dmqmc_data, only: dmqmc_in_t
         use ccmc, only: do_ccmc
         use lua_hande_system, only: get_sys_t
         use lua_hande_utils, only: warn_unused_args, register_timing
         use lua_hande_calc_utils, only: init_output_unit, end_output_unit
         use qmc_data, only: qmc_in_t, ccmc_in_t, semi_stoch_in_t, restart_in_t, load_bal_in_t, &
-                            qmc_state_t, output_in_t, blocking_in_t
+                            qmc_state_t, output_in_t, blocking_in_t, particle_t
         use logging, only: logging_in_t
         use reference_determinant, only: reference_t
         use system, only: sys_t
 
         use calc, only: calc_type, ccmc_calc
         use calc_system_init, only: set_spin_polarisation, set_symmetry_aufbau
+        use errors, only: warning
         use excitations, only: end_excitations, init_excitations
 
         integer(c_int) :: nresult
@@ -481,14 +483,15 @@ contains
         type(logging_in_t) :: logging_in
         type(output_in_t) :: output_in
         type(blocking_in_t) :: blocking_in
+        type(particle_t), pointer :: psip_list_in
 
-        logical :: have_restart_state
+        logical :: have_restart_state, have_psip_list
         integer :: opts, io_unit
-        real :: t1, t2
-        character(10), parameter :: keys(9) = [character(10) :: 'sys', 'qmc', 'ccmc', 'restart', 'reference', 'qmc_state', &
-                                                                'logging', 'output', 'blocking']
+        integer(p) :: t1, t2, count_rate, count_max
+        character(10), parameter :: keys(10) = [character(10) :: 'sys', 'qmc', 'ccmc', 'restart', 'reference', 'qmc_state', &
+                                                                'logging', 'output', 'blocking', 'psip_list']
 
-        call cpu_time(t1)
+        call system_clock(t1, count_rate, count_max)
 
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys)
@@ -521,6 +524,7 @@ contains
 
 
         call get_qmc_state(lua_state, have_restart_state, qmc_state_restart)
+        call get_psip_list(lua_state, have_psip_list, psip_list_in)
         call warn_unused_args(lua_state, keys, opts)
         call aot_table_close(lua_state, opts)
 
@@ -533,7 +537,10 @@ contains
 
         if (have_restart_state) then
             call do_ccmc(sys, qmc_in, ccmc_in, semi_stoch_in, restart_in, load_bal_in, reference, logging_in, blocking_in, &
-                            io_unit, qmc_state_out, qmc_state_restart)
+                            io_unit, qmc_state_out, qmc_state_restart=qmc_state_restart)
+        else if (have_psip_list) then
+            call do_ccmc(sys, qmc_in, ccmc_in, semi_stoch_in, restart_in, load_bal_in, reference, logging_in, blocking_in, &
+                            io_unit, qmc_state_out, psip_list_in=psip_list_in)
         else
             call do_ccmc(sys, qmc_in, ccmc_in, semi_stoch_in, restart_in, load_bal_in, reference, logging_in, blocking_in, &
                             io_unit, qmc_state_out)
@@ -553,10 +560,163 @@ contains
         call push_qmc_state(lua_state, qmc_state_out)
         nresult = 1
 
-        call cpu_time(t2)
-        call register_timing(lua_state, "CCMC calculation", t2-t1)
+        call system_clock(t2)
+
+        if (t2 < t1) t2 = t2 + count_max
+
+        call register_timing(lua_state, "CCMC calculation", real(t2-t1)/count_rate)
 
     end function lua_ccmc
+
+    function lua_uccmc(L) result(nresult) bind(c)
+
+        ! In/Out:
+        !    L: lua state (bare C pointer).
+
+        ! Lua:
+        !    uccmc{
+        !       sys = system,         --  required
+        !       qmc = { ... },        --  required
+        !       ccmc = { ... },
+        !       uccmc = { ... }
+        !       restart = { ... },
+        !       reference = { ... },
+        !       logging = { ... },
+        !       output = { ... },
+        !       blocking = { ... },
+        !       qmc_state = qmc_state,
+        !    }
+
+        ! Returns a qmc_state.
+
+        ! See interface documentation for the relevant read_TYPE procedure to
+        ! understand the options available within a given subtable.
+
+        use, intrinsic :: iso_c_binding, only: c_ptr, c_int
+        use flu_binding, only: flu_State, flu_copyptr
+        use aot_table_module, only: aot_table_top, aot_table_close
+
+        use dmqmc_data, only: dmqmc_in_t
+        use uccmc, only: do_uccmc
+        use trotterized_uccmc, only: do_trot_uccmc
+        use lua_hande_system, only: get_sys_t
+        use lua_hande_utils, only: warn_unused_args, register_timing
+        use lua_hande_calc_utils, only: init_output_unit, end_output_unit
+        use qmc_data, only: qmc_in_t, ccmc_in_t, uccmc_in_t, restart_in_t, load_bal_in_t, &
+                            qmc_state_t, output_in_t
+        use logging, only: logging_in_t
+        use reference_determinant, only: reference_t
+        use system, only: sys_t
+
+        use calc, only: calc_type, uccmc_calc, trot_uccmc_calc
+        use calc_system_init, only: set_spin_polarisation, set_symmetry_aufbau
+        use excitations, only: end_excitations, init_excitations
+        use errors, only: stop_all
+
+        integer(c_int) :: nresult
+        type(c_ptr), value :: L
+
+        type(flu_state) :: lua_state
+        type(sys_t), pointer :: sys
+        type(qmc_in_t) :: qmc_in
+        type(ccmc_in_t) :: ccmc_in
+        type(uccmc_in_t) :: uccmc_in
+        type(restart_in_t) :: restart_in
+        type(load_bal_in_t) :: load_bal_in
+        type(reference_t) :: reference
+        type(qmc_state_t), pointer :: qmc_state_restart, qmc_state_out
+        type(logging_in_t) :: logging_in
+        type(output_in_t) :: output_in
+
+        logical :: have_restart_state
+        integer :: opts, io_unit
+        real :: t1, t2
+        character(10), parameter :: keys(10) = [character(10) :: 'sys', 'qmc', 'ccmc', 'uccmc', 'restart', &
+                                                'reference', 'qmc_state', 'logging', 'output', 'blocking']
+
+        call cpu_time(t1)
+
+        lua_state = flu_copyptr(L)
+        call get_sys_t(lua_state, sys)
+
+        if (sys%read_in%comp) call stop_all('lua_uccmc', 'UCCMC does not support complex read-in systems.')
+
+        ![todo] can this be merged with lua_ccmc?
+        call set_spin_polarisation(sys%basis%nbasis, sys)
+
+        ! Get main table.
+        opts = aot_table_top(lua_state)
+        call read_qmc_in(lua_state, opts, qmc_in)
+        call read_ccmc_in(lua_state, opts, ccmc_in, sys)
+        call read_uccmc_in(lua_state, opts, uccmc_in)
+        if (ccmc_in%even_selection) &
+            call stop_all('lua_uccmc', 'Even selection is not compatible with UCCMC.')
+
+        if (uccmc_in%trot) then
+            sys%basis%info_string_len = 2
+            sys%basis%tot_string_len = sys%basis%bit_string_len + sys%basis%info_string_len
+            sys%basis%tensor_label_len = sys%basis%tot_string_len
+            call end_excitations(sys%basis%excit_mask)
+            call init_excitations(sys%basis)
+        end if
+
+        call read_restart_in(lua_state, opts, restart_in)
+        call read_reference_t(lua_state, opts, reference, sys)
+
+        call read_logging_in_t(lua_state, opts, logging_in)
+        call read_output_in_t(lua_state, opts, output_in)
+
+        call get_qmc_state(lua_state, have_restart_state, qmc_state_restart)
+        call warn_unused_args(lua_state, keys, opts)
+        call aot_table_close(lua_state, opts)
+
+        if (uccmc_in%trot) then
+            calc_type = trot_uccmc_calc
+        else
+            calc_type = uccmc_calc
+        end if
+
+        allocate(qmc_state_out)
+
+        call init_output_unit(output_in, sys, io_unit)
+        ! If using Aufbau determined symmetry need to do after setting spin polarisation.
+        if (sys%aufbau_sym) call set_symmetry_aufbau(sys, io_unit)
+
+        if (have_restart_state) then
+            if (uccmc_in%trot) then
+                call do_trot_uccmc(sys, qmc_in, ccmc_in, uccmc_in, restart_in, load_bal_in, reference, logging_in, &
+                            io_unit, qmc_state_out, qmc_state_restart)
+            else
+                call do_uccmc(sys, qmc_in, ccmc_in, uccmc_in, restart_in, load_bal_in, reference, logging_in, &
+                            io_unit, qmc_state_out, qmc_state_restart)
+            end if
+        else
+            if (uccmc_in%trot) then
+                call do_trot_uccmc(sys, qmc_in, ccmc_in, uccmc_in, restart_in, load_bal_in, reference, logging_in, &
+                            io_unit, qmc_state_out)
+            else
+                call do_uccmc(sys, qmc_in, ccmc_in, uccmc_in,  restart_in, load_bal_in, reference, logging_in, &
+                            io_unit, qmc_state_out)
+            end if
+        end if
+
+        if (uccmc_in%trot) then
+            sys%basis%info_string_len = 0
+            sys%basis%tot_string_len = sys%basis%bit_string_len + sys%basis%info_string_len
+            sys%basis%tensor_label_len = sys%basis%tot_string_len
+            call end_excitations(sys%basis%excit_mask)
+            call init_excitations(sys%basis)
+        end if
+
+        call end_output_unit(output_in%out_filename, io_unit)
+
+        call push_qmc_state(lua_state, qmc_state_out)
+        nresult = 1
+
+        call cpu_time(t2)
+        call register_timing(lua_state, "UCCMC calculation", t2-t1)
+
+    end function lua_uccmc
 
     function lua_dmqmc(L) result(nresult) bind(c)
 
@@ -684,6 +844,123 @@ contains
         call register_timing(lua_state, "DMQMC calculation", t2-t1)
 
     end function lua_dmqmc
+
+    function lua_mp1_mc(L) result(nresult) bind(c)
+
+        ! Run a deterministic MP1 wavefunction calculation and produce the 
+        ! exact MP2 energy, and return a stochastically coarse-grained psip_list object.
+
+        ! In/Out:
+        !    L: lua state (bare C pointer).
+
+        ! Lua:
+        ! psip_list = mp1_mc {
+        !     sys = sys,
+        !     mp1 = {
+        !           D0_population = nD0,              -- required
+        !           state_size = S,                   -- required
+        !           real_amplitudes = true/false,
+        !           spawn_cutoff = cutoff,
+        !           rng_seed = seed,
+        !           even_selection = true/false,
+        !     },
+        !     qmc = {...},
+        !     ccmc = {...},
+        ! }
+
+        use, intrinsic :: iso_c_binding, only: c_ptr, c_int
+        use flu_binding, only: flu_State, flu_copyptr
+        use aot_table_module, only: aot_table_top, aot_table_close, aot_exists, aot_table_open, aot_get_val
+        use aot_vector_module, only: aot_get_val
+
+        use lua_hande_system, only: get_sys_t
+        use lua_hande_utils, only: warn_unused_args, register_timing
+
+        use system, only: sys_t
+        use qmc_data, only: reference_t, qmc_state_t, particle_t, qmc_in_t, ccmc_in_t
+        use mp1, only: mp1_in_t, sample_mp1_wfn
+        use excitations, only: init_excitations, end_excitations
+
+        use errors, only: warning
+        use parallel, only: parent
+
+        integer(c_int) :: nresult
+        type(c_ptr), value :: L
+
+        type(flu_state) :: lua_state
+        type(sys_t), pointer :: sys
+
+        type(mp1_in_t) :: mp1_in
+        type(reference_t) :: ref
+
+        integer :: opts
+        logical :: have_seed
+
+        real :: t1, t2
+
+        type(particle_t), pointer :: psip_list
+
+        type(qmc_in_t) :: qmc_in
+        type(ccmc_in_t) :: ccmc_in
+        logical :: qmc_exists, ccmc_exists
+
+        call cpu_time(t1)
+
+        lua_state = flu_copyptr(L)
+        call get_sys_t(lua_state, sys)
+
+        opts = aot_table_top(lua_state)
+
+        qmc_exists = aot_exists(lua_state, opts, 'qmc')
+        ccmc_exists = aot_exists(lua_state, opts, 'ccmc')
+
+        if (qmc_exists) call read_qmc_in(lua_state, opts, qmc_in)
+        if (ccmc_exists) call read_ccmc_in(lua_state, opts, ccmc_in, sys)
+        call read_mp1_in(lua_state, opts, mp1_in, have_seed, qmc_exists)
+
+        ref%ex_level = 2
+
+        if (qmc_exists) then
+            if (parent) call warning('lua_mp1_mc', &
+                'qmc table provided, overriding D0_normlisation, state_size, real_amplitudes, and rng_seed!')
+            mp1_in%D0_norm = qmc_in%D0_population
+            mp1_in%state_size = qmc_in%walker_length
+            mp1_in%real_amplitudes = qmc_in%real_amplitudes
+            ! Calling read_qmc_in fetches the seed provided in lua, or else generates a random seed
+            mp1_in%seed = qmc_in%seed
+            have_seed = .true.
+            mp1_in%spawn_cutoff = qmc_in%spawn_cutoff
+        end if
+
+        if (ccmc_exists) then
+            mp1_in%even_selection = ccmc_in%even_selection
+        end if
+
+        call aot_table_close(lua_state, opts)
+
+        if (mp1_in%even_selection) then
+            sys%basis%info_string_len = 1
+            sys%basis%tot_string_len = sys%basis%bit_string_len + sys%basis%info_string_len
+            sys%basis%tensor_label_len = sys%basis%tot_string_len
+            call end_excitations(sys%basis%excit_mask)
+            call init_excitations(sys%basis)
+        end if
+
+        allocate(psip_list)
+
+        if (have_seed) then
+            call sample_mp1_wfn(sys, mp1_in, ref, psip_list, mp1_in%seed)
+        else
+            call sample_mp1_wfn(sys, mp1_in, ref, psip_list)
+        end if
+
+        call push_psip_list(lua_state, psip_list)
+        nresult = 1
+
+        call cpu_time(t2)
+        call register_timing(lua_state, "MP1 initialisation", t2-t1)
+
+    end function lua_mp1_mc
 
     ! --- table-derived type wrappers ---
 
@@ -900,6 +1177,70 @@ contains
 
     end subroutine read_canonical_args
 
+    subroutine read_mp1_in(lua_state, opts, mp1_in, have_seed, qmc_exists)
+
+        ! mp1 = {
+        !     D0_population = nD0,              -- required
+        !     state_size = S,                   -- required
+        !     real_amplitudes = true/false,
+        !     spawn_cutoff = cutoff,
+        !     rng_seed = seed,
+        !     even_selection = true/false,
+        ! }
+        ! In:
+        !   opts: handle to the table which is input to the Lua canonical_estimates
+        !        routine.
+        !   qmc_exists: whether a qmc table is passed into mp1_mc. If yes, some options will be overwritten with those
+        !        in the qmc table.
+        ! In/Out:
+        !   lua_state: flu/Lua state to which the HANDE API is added.
+        ! Out:
+        !   mp1_in: mp1_in_t object containing mp1 options.
+
+        use flu_binding, only: flu_State
+        use aot_table_module, only: aot_get_val, aot_exists, aot_table_open, aot_table_close
+
+        use mp1, only: mp1_in_t
+        use parallel, only: parent
+        use errors, only: stop_all
+        use lua_hande_utils, only: warn_unused_args
+
+        type(flu_State), intent(inout) :: lua_state
+        integer, intent(in) :: opts
+        type(mp1_in_t), intent(out) :: mp1_in
+        logical, intent(out) :: have_seed
+        logical, intent(in) :: qmc_exists
+
+        integer :: mp1_table, err
+        character(15), parameter :: keys(6) = [character(15) :: 'D0_population', 'state_size', &
+                                                                'real_amplitudes', 'spawn_cutoff', 'rng_seed','even_selection']
+
+        if (.not. aot_exists(lua_state, opts, 'mp1') .and. .not. qmc_exists) then
+            if (parent) call stop_all('read_mp1_args', '"mp1" table not present.')
+        end if
+
+        if (aot_exists(lua_state, opts, 'mp1')) then
+            call aot_table_open(lua_state, opts, mp1_table, 'mp1')
+
+            call aot_get_val(mp1_in%D0_norm, err, lua_state, mp1_table, 'D0_population')
+            if (err /= 0 .and. parent .and. .not. qmc_exists) &
+                call stop_all('read_mp1_args', 'D0_population: Internal normalisation not supplied.')
+            call aot_get_val(mp1_in%state_size, err, lua_state, mp1_table, 'state_size')
+            if (err /= 0 .and. parent .and. .not. qmc_exists) call stop_all('read_mp1_args', 'state_size not set.')
+
+            call aot_get_val(mp1_in%real_amplitudes, err, lua_state, mp1_table, 'real_amplitudes')
+            call aot_get_val(mp1_in%spawn_cutoff, err, lua_state, mp1_table, 'spawn_cutoff')
+            call aot_get_val(mp1_in%even_selection, err, lua_state, mp1_table, 'even_selection')
+
+            have_seed = aot_exists(lua_state, mp1_table, 'rng_seed')
+            if (have_seed) call aot_get_val(mp1_in%seed, err, lua_state, mp1_table, 'rng_seed')
+
+            call warn_unused_args(lua_state, keys, mp1_table)
+            call aot_table_close(lua_state, mp1_table)
+        end if
+
+    end subroutine read_mp1_in
+
     subroutine read_qmc_in(lua_state, opts, qmc_in, short)
 
         ! Read in a qmc table to a qmc_in_t object.
@@ -937,6 +1278,12 @@ contains
         !     use_mpi_barriers = true/false,
         !     vary_shift_from = shift or "proje",
         !     vary_shift = true/false,
+        !     chebyshev = {
+        !           chebyshev_order = order,
+        !           chebyshev_shift = float,
+        !           chebyshev_scale = float,
+        !           skip_gershgorin = true/false,
+        !     },
         ! }
 
         ! In/Out:
@@ -964,23 +1311,25 @@ contains
         type(qmc_in_t), intent(out) :: qmc_in
         logical, intent(in), optional :: short
 
-        integer :: qmc_table, err
+        integer :: qmc_table, err, chebyshev_table
         character(len=30) :: str
         logical :: skip, no_renorm
 
-        character(24), parameter :: keys(34) = [character(24) :: 'tau', 'init_pop', 'mc_cycles', 'nreports', 'state_size', &
+        character(32), parameter :: keys(37) = [character(32) :: 'tau', 'init_pop', 'mc_cycles', 'nreports', 'state_size', &
                                                                  'spawned_state_size', 'rng_seed', 'target_population', &
                                                                  'real_amplitudes', 'spawn_cutoff', 'no_renorm', 'tau_search', &
                                                                  'real_amplitude_force_32', &
                                                                  'pattempt_single', 'pattempt_double', 'pattempt_update', &
                                                                  'pattempt_zero_accum_data', &
+                                                                 'shift_harmonic_forcing_two_stage', &
                                                                  'pattempt_parallel', 'initial_shift', 'shift_damping', &
+                                                                 'shift_harmonic_forcing_two_stage', &
                                                                  'shift_harmonic_forcing', 'shift_harmonic_crit_damp', &
                                                                  'initiator', 'initiator_threshold', 'use_mpi_barriers', &
                                                                  'vary_shift_from', 'excit_gen', 'power_pitzer_min_weight', &
                                                                  'reference_target', 'vary_shift', 'quasi_newton', &
                                                                  'quasi_newton_threshold', 'quasi_newton_value', &
-                                                                 'quasi_newton_pop_control']
+                                                                 'quasi_newton_pop_control', 'chebyshev']
 
         if (present(short)) then
             skip = short
@@ -1019,6 +1368,7 @@ contains
         call aot_get_val(qmc_in%tau_search, err, lua_state, qmc_table, 'tau_search')
         call aot_get_val(qmc_in%initial_shift, err, lua_state, qmc_table, 'initial_shift')
         call aot_get_val(qmc_in%shift_damping, err, lua_state, qmc_table, 'shift_damping')
+        call aot_get_val(qmc_in%shift_harmonic_forcing_two_stage, err, lua_state, qmc_table, 'shift_harmonic_forcing_two_stage')
         call aot_get_val(qmc_in%shift_harmonic_forcing, err, lua_state, qmc_table, 'shift_harmonic_forcing')
         call aot_get_val(qmc_in%shift_harmonic_crit_damp, err, lua_state, qmc_table, 'shift_harmonic_crit_damp')
         call aot_get_val(qmc_in%target_particles, err, lua_state, qmc_table, 'target_population')
@@ -1031,6 +1381,33 @@ contains
         call aot_get_val(qmc_in%quasi_newton_value, err, lua_state, qmc_table, 'quasi_newton_value')
         call aot_get_val(qmc_in%quasi_newton_pop_control, err, lua_state, qmc_table, 'quasi_newton_pop_control')
 
+        if (aot_exists(lua_state, qmc_table, 'chebyshev')) then
+            call aot_table_open(lua_state, qmc_table, chebyshev_table, 'chebyshev')
+            if (chebyshev_table == 0) then
+                ! Just passed a boolean.
+                call aot_get_val(qmc_in%chebyshev, err, lua_state, qmc_table, 'chebyshev')
+                ! Set the default here
+                if (qmc_in%chebyshev) qmc_in%chebyshev_order = 5
+            else
+                ! If passed a table, assume we are using Chebyshev
+                qmc_in%chebyshev = .true.
+                call aot_get_val(qmc_in%chebyshev_order, err, lua_state, chebyshev_table, 'chebyshev_order', default=5)
+                if (qmc_in%chebyshev_order < 1) then
+                    call stop_all('read_qmc_in', 'Chebyshev order must be at least 1 if using the Chebyshev projector')
+                end if
+                call aot_get_val(qmc_in%chebyshev_shift, err, lua_state, chebyshev_table, 'chebyshev_shift')
+                call aot_get_val(qmc_in%chebyshev_scale, err, lua_state, chebyshev_table, 'chebyshev_scale')
+                call aot_get_val(qmc_in%chebyshev_skip_gershgorin, err, lua_state, chebyshev_table, 'skip_gershgorin')
+            end if
+
+            if (qmc_in%chebyshev .and. qmc_in%tau_search) then
+                call warning('read_qmc_in', 'Both Chebyshev and tau_search is enabled. Although there is formally no timestep'//&
+                    ' in the wall-Chebyshev projector, tau_search can be beneficial, as it is akin to auto_shift_damping.')
+            end if
+
+            call warning('read_qmc_in', 'Wall-Chebyshev projector used, which is independent of tau. Setting tau to 1!')
+            qmc_in%tau = 1
+        end if
 
         if (aot_exists(lua_state, qmc_table, 'reference_target')) then
             qmc_in%target_reference = .true.
@@ -1102,6 +1479,7 @@ contains
             end select
         end if
 
+
         ! If user sets initial shift and vary_shift_from, assume they know what
         ! they're doing.  Otherwise, vary the shift from the initial shift
         ! value.
@@ -1143,6 +1521,7 @@ contains
         !     replica_tricks = true/false,
         !     density_matrices = true/false,
         !     density_matrix_file = filename,
+        !     density_matrix_report = report,
         ! }
 
         ! In/Out:
@@ -1167,10 +1546,11 @@ contains
         integer :: fciqmc_table, ref_det, err
         character(len=12) :: str
         logical :: ref_det_flag
-        character(31), parameter :: keys(10) = [character(31) :: 'non_blocking_comm', 'load_balancing', 'guiding_function', &
+        character(31), parameter :: keys(11) = [character(31) :: 'non_blocking_comm', 'load_balancing', 'guiding_function', &
                                                                  'init_spin_inverse_reference_det', 'trial_function', &
                                                                  'select_reference_det', 'quadrature_initiator', &
-                                                                 'replica_tricks', 'density_matrices', 'density_matrix_file']
+                                                                 'replica_tricks', 'density_matrices', 'density_matrix_file', &
+                                                                 'density_matrix_report']
 
         if (aot_exists(lua_state, opts, 'fciqmc')) then
 
@@ -1184,6 +1564,7 @@ contains
             call aot_get_val(fciqmc_in%replica_tricks, err, lua_state, fciqmc_table, 'replica_tricks')
             call aot_get_val(fciqmc_in%density_matrices, err, lua_state, fciqmc_table, 'density_matrices')
             call aot_get_val(fciqmc_in%density_matrix_file, err, lua_state, fciqmc_table, 'density_matrix_file')
+            call aot_get_val(fciqmc_in%density_matrix_report, err, lua_state, fciqmc_table, 'density_matrix_report')
 
             ! If the user has asked to calculate an RDM, then replica_tricks
             ! *must* be on.
@@ -1354,9 +1735,14 @@ contains
         !     density_matrices = true/false,
         !     density_matrix_file = filename,
         !     even_selection = true/false,
+        !     discard_threshold = float,
         !     multiref = true/false,
         !     n_secondary_ref = number of additional references,
         !     secondary_ref1,...,secondary_ref999 ={...},
+        !     mr_read_in = true/false,
+        !     mr_secref_file = filename,
+        !     mr_excit_lvl = ex_level,
+        !     mr_secref_sym_only = true/false,
         ! }
 
         ! In/Out:
@@ -1367,32 +1753,42 @@ contains
         ! Out:
         !    ccmc_in: ccmc_in_t object containing ccmc-specific input options.
 
+        use, intrinsic :: iso_fortran_env, only: iostat_end
+        use const
+        use bit_utils, only: count_set_bits
+        use utils, only: int_fmt
         use flu_binding, only: flu_State
         use aot_table_module, only: aot_get_val, aot_exists, aot_table_open, aot_table_close
+        use const, only: p
 
         use qmc_data, only: ccmc_in_t
         use lua_hande_utils, only: warn_unused_args
         use system, only: sys_t
         use errors, only: stop_all
+        use checking, only: check_allocate
 
         type(flu_State), intent(inout) :: lua_state
         integer, intent(in) :: opts
         type (sys_t), intent(in) :: sys
         type(ccmc_in_t), intent(out) :: ccmc_in
 
-        integer :: ccmc_table, err, i
-        character(28), parameter :: keys(15) = [character(28) :: 'move_frequency', 'cluster_multispawn_threshold', &
+        integer :: ccmc_table, err, i, ir, ios, nel, iel, bit_string_len, ierr
+        integer(i0) :: test_arr(50)
+        integer(i0), allocatable :: bstring(:)
+        character(255) :: err_msg, test_line
+        character(28), parameter :: keys(16) = [character(28) :: 'move_frequency', 'cluster_multispawn_threshold', &
                                                                 'full_non_composite', 'linked', 'vary_shift_reference', &
                                                                 'density_matrices', 'density_matrix_file', 'even_selection', &
                                                                 'multiref', 'n_secondary_ref', 'mr_acceptance_search', &
-                                                                'mr_excit_lvl','mr_secref_file','mr_n_frozen','mr_read_in']
+                                                                'mr_excit_lvl','mr_secref_file','mr_read_in', &
+                                                                'mr_secref_sym_only', 'discard_threshold']
         character(23) :: string ! 32 bit integer has 10 digits, should be more than enough
         ! secondary_refX keywords are not hardcoded in, so we dynamically add them into the
         ! array of allowed keys 
         character(23), dimension(:), allocatable :: secondary_ref_keys
         character(28), dimension(:), allocatable :: keys_concat
         character(10) :: str
-        character(40) :: secref_file
+        logical :: secref_exist
 
         if (aot_exists(lua_state, opts, 'ccmc')) then
 
@@ -1407,18 +1803,101 @@ contains
             call aot_get_val(ccmc_in%density_matrices, err, lua_state, ccmc_table, 'density_matrices')
             call aot_get_val(ccmc_in%density_matrix_file, err, lua_state, ccmc_table, 'density_matrix_file')
             call aot_get_val(ccmc_in%even_selection, err, lua_state, ccmc_table, 'even_selection')
+            call aot_get_val(ccmc_in%discard_threshold, err, lua_state, ccmc_table, 'discard_threshold')
+            if (err == 0 .and. ccmc_in%discard_threshold <= 0.0_p) then
+                call stop_all('read_ccmc_in', 'discard_threshold must be greater than 0!') 
+            end if
             call aot_get_val(ccmc_in%multiref, err, lua_state, ccmc_table, 'multiref')
             if (ccmc_in%multiref) then
+                call aot_get_val(ccmc_in%mr_read_in, err, lua_state, ccmc_table, 'mr_read_in')
+                call aot_get_val(ccmc_in%mr_secref_sym_only, err, lua_state, ccmc_table, 'mr_secref_sym_only')
+                if (ccmc_in%mr_secref_sym_only .and. .not. ccmc_in%mr_read_in) call stop_all('read_ccmc_in', &
+                    'mr_secref_sym_only is only supported if mr_read_in is true.')
+
                 call aot_get_val(ccmc_in%n_secondary_ref, err, lua_state, ccmc_table, 'n_secondary_ref')
-                if (ccmc_in%n_secondary_ref == 0) then
+                if (ccmc_in%n_secondary_ref == 0 .and. .not. ccmc_in%mr_read_in) then
                     call stop_all('read_ccmc_in', 'Number of secondary references unspecified.') 
                 end if
+
+                if (ccmc_in%mr_read_in) then
+                    call aot_get_val(ccmc_in%mr_secref_file, err, lua_state, ccmc_table, 'mr_secref_file')
+                    if (err.ne.0) then
+                        call stop_all('read_ccmc_in','mr_read_in set but mr_secref_file unset.')
+                    end if
+                    inquire(file=ccmc_in%mr_secref_file, exist=secref_exist)
+                    if (.not. secref_exist) call stop_all('read_ccmc_in','mr_secref_file not found!')
+
+                    
+                    open(newunit=ir, file=ccmc_in%mr_secref_file, status='old', form='formatted', action='read')
+                    ! Find out the bit string length used in the file
+                    read(ir, '(A)') test_line
+                    test_line = trim(test_line)
+                    ! ios==iostat_end occurs 1 iteration after the actual end, 
+                    ! i.e., if there are two columns, ios==iostat_end will occur at i==3, therefore ncols start at 0.
+                    ccmc_in%secref_bit_string_len = 0
+                    do i = 1, size(test_arr)
+                        read(test_line, *, iostat=ios) test_arr(1:i)
+                        ! The smallest i for which the test_line can be read is the number of columns.
+                        if (ios == iostat_end) exit
+                        ccmc_in%secref_bit_string_len = ccmc_in%secref_bit_string_len + 1
+                    end do
+                    rewind(ir)
+
+                    allocate(bstring(ccmc_in%secref_bit_string_len), stat=ierr)
+                    call check_allocate('bstring', ccmc_in%secref_bit_string_len, ierr)
+
+                    ! Find out how many secondary references are in the file
+                    ccmc_in%n_secondary_ref = 0
+                    do
+                        bstring(:) = 0_i0
+                        read(ir, *, iostat=ios) bstring(1:ccmc_in%secref_bit_string_len)
+                        if (ios == iostat_end) exit
+
+                        ! Make sure all of them have the same number of electrons as the first one, which we assume to be correct.
+                        iel = sum(count_set_bits(bstring))
+                        ! Check that the bitstrings are sensible..
+                        if (ccmc_in%n_secondary_ref == 0) then
+                            nel = iel
+                            if (sys%CAS(1) /= -1) then
+                                if (nel > sys%CAS(1)) then
+                                    call stop_all('read_ccmc_in', &
+                                        'More electrons in first secondary reference than active electrons!')
+                                end if
+                            else
+                                if (nel > sys%nel) then
+                                    call stop_all('read_ccmc_in', &
+                                        'More electrons in first secondary reference than number of electrons!')
+                                end if
+                            end if
+                        end if
+
+                        if (iel /= nel) then
+                            write(err_msg, '(1X, A,'//int_fmt(bstring,1)//',A)') 'Secondary reference ',&
+                                bstring,' does not contain the same number of electrons as the first reference!'
+                            call stop_all('read_ccmc_in', trim(err_msg))
+                        end if
+                        ccmc_in%n_secondary_ref = ccmc_in%n_secondary_ref + 1
+                    end do
+
+                    ! Automatically deduce the number of electrons we need to pad to each of the bitstrings
+                    if (sys%CAS(1) /= -1) then
+                        ccmc_in%mr_n_frozen = sys%CAS(1) - nel
+                    else
+                        ccmc_in%mr_n_frozen = sys%nel - nel
+                    end if
+
+                    close(ir)
+
+                    call aot_get_val(ccmc_in%mr_excit_lvl, err, lua_state, ccmc_table, 'mr_excit_lvl')
+                    if (ccmc_in%mr_excit_lvl == -1) call stop_all('read_ccmc_in','mr_read_in set but mr_excit_lvl unset.')
+
+                    keys_concat = keys
+                end if
+
                 allocate(secondary_ref_keys(ccmc_in%n_secondary_ref))
-                allocate(ccmc_in%secondary_refs(ccmc_in%n_secondary_ref))
 
-                call aot_get_val(ccmc_in%mr_read_in, err, lua_state, ccmc_table, 'mr_read_in')  
-
-                if (.not.ccmc_in%mr_read_in) then
+                if (.not. ccmc_in%mr_read_in) then
+                    allocate(ccmc_in%secondary_refs(ccmc_in%n_secondary_ref))
                     do i = 1, ccmc_in%n_secondary_ref
                         ! I0 makes sure there are no whitespaces around the number string
                         write (string, '(A13,I0)') 'secondary_ref', i ! up to 2.15E9 secondary references can be provided      
@@ -1433,18 +1912,7 @@ contains
                              secondary_ref_keys(i) = trim(string)
                     end do
                     keys_concat = [keys,secondary_ref_keys]
-                else
-                    call aot_get_val(ccmc_in%mr_secref_file, err, lua_state, ccmc_table, 'mr_secref_file')
-                    if (err.ne.0) then
-                        call stop_all('read_ccmc_in','mr_read_in set but mr_secref_file unset.')
-                    endif
-                    call aot_get_val(ccmc_in%mr_n_frozen, err, lua_state, ccmc_table, 'mr_n_frozen')
-                    call aot_get_val(ccmc_in%mr_excit_lvl, err, lua_state, ccmc_table, 'mr_excit_lvl')
-                    if (ccmc_in%mr_excit_lvl.eq.-1) then
-                        call stop_all('read_ccmc_in','mr_read_in set but mr_excit_lvl unset.')
-                    endif
-                    keys_concat = keys
-                endif
+                end if
 
                 call aot_get_val(str, err, lua_state, ccmc_table, 'mr_acceptance_search')
                 select case (str)
@@ -1456,7 +1924,6 @@ contains
             else
                 keys_concat = keys
             end if
-
             call warn_unused_args(lua_state, keys_concat, ccmc_table)
 
             call aot_table_close(lua_state, ccmc_table)
@@ -1464,6 +1931,62 @@ contains
         end if
 
     end subroutine read_ccmc_in
+
+    subroutine read_uccmc_in(lua_state, opts, uccmc_in)
+
+        ! Read in an ccmc table (if it exists) to an ccmc_in object.
+
+        ! uccmc = {
+        !   pow_trunc = pow_trunc,
+        !   variational_energy = true/false,
+        !   average_wfn = true/false,
+        !   trotterized = true/false,
+        !   threshold = threshold,
+        ! }
+
+        ! In/Out:
+        !    lua_state: flu/Lua state to which the HANDE API is added.
+        ! In:
+        !    opts: handle for the table containing the ccmc table.
+        ! Out:
+        !    ccmc_in: ccmc_in_t object containing ccmc-specific input options.
+
+        use flu_binding, only: flu_State
+        use aot_table_module, only: aot_get_val, aot_exists, aot_table_open, aot_table_close
+        use const, only: p
+
+        use qmc_data, only: uccmc_in_t
+        use lua_hande_utils, only: warn_unused_args
+        use errors, only: stop_all
+
+        type(flu_State), intent(inout) :: lua_state
+        integer, intent(in) :: opts
+        type(uccmc_in_t), intent(out) :: uccmc_in
+
+        integer :: uccmc_table, err
+        character(28), parameter :: keys(5) = [character(28) :: 'pow_trunc', 'variational_energy', &
+                                                           'average_wfn', 'trotterized', 'threshold']
+
+        if (aot_exists(lua_state, opts, 'uccmc')) then
+
+            call aot_table_open(lua_state, opts, uccmc_table, 'uccmc')
+
+            ! Optional arguments (defaults set in derived type).
+            call aot_get_val(uccmc_in%pow_trunc, err, lua_state, uccmc_table, 'pow_trunc')
+            call aot_get_val(uccmc_in%variational_energy, err, lua_state, uccmc_table, 'variational_energy')
+            call aot_get_val(uccmc_in%average_wfn, err, lua_state, uccmc_table, 'average_wfn')
+            call aot_get_val(uccmc_in%trot, err, lua_state, uccmc_table, 'trotterized')
+            call aot_get_val(uccmc_in%threshold, err, lua_state, uccmc_table, 'threshold')
+            if (err == 0 .and. uccmc_in%threshold <= 0.0_p) then
+                call stop_all('read_uccmc_in', 'threshold must be greater than 0!') 
+            end if
+            call warn_unused_args(lua_state, keys, uccmc_table)
+
+            call aot_table_close(lua_state, uccmc_table)
+
+        end if
+
+    end subroutine read_uccmc_in
 
     subroutine read_dmqmc_in(lua_state, nbasis, opts, system_name, dmqmc_in, subsys_info)
 
@@ -2132,6 +2655,45 @@ contains
 
     end subroutine get_qmc_state
 
+    subroutine get_psip_list(lua_state, have_psip_list, psip_list)
+
+        ! Get (if present) a particle_t object passed in from an MP1 calculation to initialise a FCIQMC/CCMC calculation.
+
+        ! In/Out:
+        !   lua_state: flu/Lua state to which the HANDE API is added.
+        ! Out:
+        !   have_psip_list: true if psip_list was passed in from lua.
+        !   psip_list: the particle_t object passed in if have_psip_list.
+
+        use, intrinsic :: iso_c_binding, only: c_f_pointer, c_ptr
+
+        use flu_binding, only: flu_State
+        use aot_table_module, only: aot_table_top, aot_exists, aot_get_val
+        use aot_table_ops_module, only: aot_table_open, aot_table_close
+
+        use qmc_data, only: particle_t
+        use lua_hande_utils, only: get_userdata
+
+        type(flu_State), intent(inout) :: lua_state
+        logical, intent(out) :: have_psip_list
+        type(particle_t), pointer, intent(out) :: psip_list
+
+        integer :: opts, pl_table
+        type(c_ptr) :: pl_ptr
+
+        opts = aot_table_top(lua_state)
+
+        have_psip_list = aot_exists(lua_state, opts, 'psip_list')
+        if (have_psip_list) then
+            ! Get psip_list object
+            call aot_table_open(lua_state, opts, pl_table, key='psip_list')
+            call get_userdata(lua_state, pl_table, "psip_list", pl_ptr)
+            call aot_table_close(lua_state, pl_table)
+            call c_f_pointer(pl_ptr, psip_list)
+        end if
+
+    end subroutine get_psip_list
+
     subroutine push_qmc_state(lua_state, qmc_state)
 
         ! Add a table containing the passed qmc_state to the lua stack for returning
@@ -2170,6 +2732,44 @@ contains
 
     end subroutine push_qmc_state
 
+    subroutine push_psip_list(lua_state, psip_list)
+
+        ! Add a table containing the passed psip_list to the lua stack for returning
+
+        ! In/Out:
+        !   lua_state: flu/Lua state to which the HANDE API is added.
+        ! In:
+        !   psip_list: the particle_t object to return to lua
+
+        use, intrinsic :: iso_c_binding, only: c_loc
+        use flu_binding, only: flu_State, flu_pushlightuserdata, flu_pushstring, flu_settable, flu_pushcclosure, fluL_setmetatable
+        use aot_table_ops_module, only: aot_table_open, aot_table_close
+
+        use qmc_data, only: particle_t
+
+        type(particle_t), pointer, intent(in) :: psip_list
+        type(flu_state), intent(inout) :: lua_state
+
+        integer :: table
+
+        ! Create table to become psip_list object
+        call aot_table_open(lua_state, thandle=table)
+        
+        ! Add psip_list pointer as t.psip_list
+        call flu_pushstring(lua_state, "psip_list")
+        call flu_pushlightuserdata(lua_state, c_loc(psip_list))
+        call flu_settable(lua_state, table)
+
+        ! Add deallocation function as t:free()
+        call flu_pushstring(lua_state, "free")
+        call flu_pushcclosure(lua_state, lua_dealloc_psip_list, 0)
+        call flu_settable(lua_state, table)
+
+        ! Set metatable to mark for finalisation.  Note metatable is created in register_lua_hande_api.
+        call fluL_setmetatable(lua_state, "psip_list")
+
+    end subroutine push_psip_list
+    
     function lua_dealloc_qmc_state(L) result(nresult) bind(c)
 
         ! Deallocate a qmc_state object.  Expects to be called from lua with a single argument --
@@ -2219,6 +2819,56 @@ contains
         nresult = 0
 
     end function lua_dealloc_qmc_state
+
+    function lua_dealloc_psip_list(L) result(nresult) bind(c)
+
+        ! Deallocate a particle_t object.  Expects to be called from lua with a single argument --
+        ! the particle_t object to be deallocated.
+
+        ! In/Out:
+        !   L: lua state (bare C pointer).
+
+        use, intrinsic :: iso_c_binding, only: c_ptr, c_int, c_f_pointer, c_null_ptr
+        use flu_binding, only: flu_State, flu_copyptr, flu_pushstring, flu_pushlightuserdata, flu_settable, &
+                               flu_getmetatable, flu_pop
+        use aot_table_ops_module, only: aot_table_top
+        use aot_table_module, only: aot_get_val, aot_table_close
+        use aot_top_module, only: aot_top_get_val
+
+        use qmc_data, only: particle_t
+        use particle_t_utils, only: dealloc_particle_t
+        use errors, only: stop_all
+        use lua_hande_utils, only: get_userdata
+
+        integer(c_int) :: nresult
+        type(c_ptr), value :: L
+
+        type(flu_State) :: lua_state
+        integer :: pl_table
+        type(c_ptr) :: pl_ptr
+        type(particle_t), pointer :: pl
+
+        lua_state = flu_copyptr(L)
+
+        pl_table = aot_table_top(lua_state)
+        call get_userdata(lua_state, pl_table, "psip_list", pl_ptr)
+        call c_f_pointer(pl_ptr, pl)
+
+        if (associated(pl)) then
+            call dealloc_particle_t(pl)
+            deallocate(pl)
+        end if
+
+        ! Update table with deallocated pointer.
+        call flu_pushstring(lua_state, "psip_list")
+        call flu_pushlightuserdata(lua_state, c_null_ptr)
+        call flu_settable(lua_state, pl_table)
+
+        call aot_table_close(lua_state, pl_table)
+
+        nresult = 0
+
+    end function lua_dealloc_psip_list
 
     subroutine read_logging_in_t(lua_state, opts, logging_in)
 

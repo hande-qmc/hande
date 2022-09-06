@@ -167,9 +167,11 @@ contains
         call flu_register(lua_state, 'fci', lua_fci)
         call flu_register(lua_state, 'hilbert_space', lua_hilbert_space)
         call flu_register(lua_state, 'canonical_estimates', lua_canonical_estimates)
+        call flu_register(lua_state, 'mp1_mc', lua_mp1_mc)
         call flu_register(lua_state, 'simple_fciqmc', lua_simple_fciqmc)
         call flu_register(lua_state, 'fciqmc', lua_fciqmc)
         call flu_register(lua_state, 'ccmc', lua_ccmc)
+        call flu_register(lua_state, 'uccmc', lua_uccmc)
         call flu_register(lua_state, 'dmqmc', lua_dmqmc)
 
         ! Helper functions
@@ -178,6 +180,7 @@ contains
         ! Metatables for objects returned to lua
         call create_metatable(lua_state, "sys", lua_dealloc_sys)
         call create_metatable(lua_state, "qmc_state", lua_dealloc_qmc_state)
+        call create_metatable(lua_state, "psip_list", lua_dealloc_psip_list)
 
         ! Timer table in the registry to give a break down of calculation time
         call flu_pushstring(lua_state, "timer")

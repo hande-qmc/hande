@@ -649,8 +649,8 @@ contains
         real(p) :: mu
         integer :: occ_list(sys%nel)
         integer(i0) :: f(sys%basis%tot_string_len)
-        integer :: ireplica, iorb, ipsip
-        integer(int_p) :: nspawn
+        integer :: ireplica, iorb
+        integer(int_p) :: nspawn, ipsip
         integer :: nalpha_allowed, nbeta_allowed, ngen
         logical :: found_lower_reference
         real(p) :: Hii, new_H00
@@ -727,7 +727,7 @@ contains
                     end do
                     write(6, '("},")')
                     call warning('create_initial_density_matrix', 'determinant lower in energy than reference &
-                                                                    & found, exiting after initialization completion!')
+                                                                    &found, exiting after initialization completion!')
                     if (.not. found_lower_reference) found_lower_reference = .true.
                 end if
 
