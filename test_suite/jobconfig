@@ -76,8 +76,10 @@ mpi = serial mc_hilbert_space mc_canonical_estimates *mc *mc_real_32
 
 pop64 = serial *mc_real_64/np1
 
-# This is, in fact, all the tests
 pop64_mpi = mpi *mc_real_64
+
+# This is, in fact, all the tests
+pop64_mpi_omp = pop64_mpi omp_only
 
 _default_ = quick
 
