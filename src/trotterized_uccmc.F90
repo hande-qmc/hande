@@ -446,9 +446,21 @@ contains
                 ! can't use default(none).  I *strongly* recommend turning
                 ! default(none) on when making changes and ensure that the only
                 ! errors relate to the procedure pointers...
+                cluster_pop = 1
+
+                do i = 1, qs%psip_list%nstates
+                    if (i /= D0_pos) then
+                        cluster_pop = cluster_pop * cos((real(qs%psip_list%pops(1, i))/real(qs%psip_list%pop_real_factor))&
+                                                        /real(D0_normalisation,p))           
+                    end if          
+                end do
+#ifdef PARALLEL 
+                call MPI_AllReduce(cluster_pop, cluster_pop, 1, MPI_PREAL, MPI_PROD, MPI_COMM_WORLD, ierr)
+#endif
 
                 !$omp parallel default(none) &
-                !$omp private(it, iexcip_pos, i, seen_D0, hit, pos, population, real_population, k, cluster_pop, &
+                !$omp firstprivate(cluster_pop) &
+                !$omp private(it, iexcip_pos, i, seen_D0, hit, pos, population, real_population, k, &
                 !$omp         state,annihilation_flags) &
                 !$omp shared(rng, cumulative_abs_real_pops, tot_abs_real_pop, &
                 !$omp        max_cluster_size, contrib, D0_normalisation, D0_pos, rdm, &
@@ -463,14 +475,6 @@ contains
                 it = get_thread_id()
                 iexcip_pos = 0
                 seen_D0 = .false.
-                cluster_pop = 1
-
-                do i = 1, qs%psip_list%nstates
-                    if (i /= D0_pos) then
-                        cluster_pop = cluster_pop * cos((real(qs%psip_list%pops(1, i))/real(qs%psip_list%pop_real_factor))&
-                                                        /real(D0_normalisation,p))           
-                    end if          
-                end do
 
                 !$omp do schedule(dynamic,200) 
                 do iattempt = 1, selection_data%nsingle_excitors + selection_data%nstochastic_clusters
@@ -524,7 +528,6 @@ contains
                             ! where two excitors share an elementary operator
                             if (qs%propagator%quasi_newton) contrib(it)%cdet%fock_sum = &
                                             sum_sp_eigenvalues_occ_list(sys, contrib(it)%cdet%occ_list) - qs%ref%fock_sum
-
                             call do_ccmc_accumulation(sys, qs, contrib(it)%cdet, contrib(it)%cluster, logging_info, &
                                                     D0_population_cycle, proj_energy_cycle, ccmc_in, ref_det, rdm, selection_data,&
                                                     D0_population_noncomp_cycle)
@@ -557,7 +560,6 @@ contains
                         end if
                         if (qs%propagator%quasi_newton) contrib(it)%cdet%fock_sum = &
                                             sum_sp_eigenvalues_occ_list(sys, contrib(it)%cdet%occ_list) - qs%ref%fock_sum
-
                         call do_ccmc_accumulation(sys, qs, contrib(it)%cdet, contrib(it)%cluster, logging_info, &
                                                     D0_population_cycle, proj_energy_cycle, ccmc_in, ref_det, rdm, selection_data,&
                                                     D0_population_noncomp_cycle)
@@ -935,7 +937,7 @@ contains
         ! For linked coupled cluster we keep building the cluster after a
         ! disallowed excitation so need to know if there has been a disallowed
         ! excitation at all
-        ref_real = real(psip_list%pops(1, D0_pos))/real(psip_list%pop_real_factor)
+        ref_real = normalisation !real(psip_list%pops(1, D0_pos))/real(psip_list%pop_real_factor)
 
         select case(cluster%nexcitors)
         case(0)

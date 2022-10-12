@@ -568,6 +568,7 @@ contains
         ! creates m sub-loops per cycle.
         qs%estimators%proj_energy = qs%estimators%proj_energy/(qmc_in%ncycles*qs%cheby_prop%order)
         qs%estimators%D0_population = qs%estimators%D0_population/(qmc_in%ncycles*qs%cheby_prop%order)
+        qs%estimators%D0_noncomposite_population = qs%estimators%D0_noncomposite_population/(qmc_in%ncycles*qs%cheby_prop%order)
         ! Similarly for the HFS estimator
         qs%estimators%D0_hf_population = qs%estimators%D0_hf_population/qmc_in%ncycles
         qs%estimators%proj_hf_O_hpsip = qs%estimators%proj_hf_O_hpsip/qmc_in%ncycles
