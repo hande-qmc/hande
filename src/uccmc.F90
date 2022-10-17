@@ -474,7 +474,11 @@ contains
                 iexcip_pos = 0
                 seen_D0 = .false.
 
+#ifdef OPENMP_DETERM
+                !$omp do schedule(static,200)
+#else
                 !$omp do schedule(dynamic,200) 
+#endif
                 do iattempt = 1, selection_data%nsingle_excitors + selection_data%nstochastic_clusters
                     if (iattempt <= selection_data%nsingle_excitors) then
                     ! For OpenMP scalability, have this test inside a single loop rather
@@ -535,7 +539,11 @@ contains
                 ! See comments below 'if (.not. seen_D0) then' on why this loop needs to be separate from above.
                 ! If noncomposite is turned off, this loop will be 'do i = nclusters+1, nclusters', which will be a null 
                 ! loop and ignored (as strides at +1 by default)
+#ifdef OPENMP_DETERM
+                !$omp do schedule(static,200)
+#else
                 !$omp do schedule(dynamic,200) 
+#endif
                 do iattempt = 1, selection_data%nD0_select
                     ! We just select the empty cluster.
                     ! As in the original algorithm, allow this to happen on
@@ -570,7 +578,11 @@ contains
 
                 if (ccmc_in%full_nc .and. qs%psip_list%nstates > 0) then
                     ! Do death exactly and directly for non-composite clusters
+#ifdef OPENMP_DETERM
+                    !$omp do schedule(static,200) private(dfock)
+#else
                     !$omp do schedule(dynamic,200) private(dfock) 
+#endif
                     do iattempt = 1, qs%psip_list%nstates
                         ! Note we use the (encoded) population directly in stochastic_ccmc_death_nc
                         ! (unlike the stochastic_ccmc_death) to avoid unnecessary decoding/encoding

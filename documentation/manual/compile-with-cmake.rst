@@ -78,6 +78,7 @@ The help menu for the ``cmakeconfig.py`` script shows the available options:
      --cmake-executable=<CMAKE_EXECUTABLE>  Set the CMake executable [default: cmake].
      --cmake-options=<STRING>               Define options to CMake [default: ''].
      --prefix=<PATH>                        Set the install path for make install.
+     --omp-determ                           Enable deterministic OpenMP scheduling for testing. [default: False].
      <builddir>                             Build directory.
      -h --help                              Show this screen.
 
@@ -180,6 +181,8 @@ is a translation guide between the frontend script and "bare" CMake:
   The default is a debug build.
 - ``--cmake-options="-DTHIS -DTHAT"``. Sets options to be forwarded as-is to
   CMake.
+- ``--omp-determ=``/``-DOPENMP_DETERM``. Replaces all OpenMP loop schedules to
+  the deterministic ``schedule(static, 200)``, for testing and debugging.
 
 Installation
 ------------

@@ -36,7 +36,7 @@ target_sources(hande-static
     calc.F90
     calc_system_init.f90
     canonical_estimates.F90
-    ccmc.f90
+    ccmc.F90
     ccmc_data.F90
     ccmc_death_spawning.f90
     ccmc_linked.f90
@@ -68,7 +68,7 @@ target_sources(hande-static
     excit_gen_ringium.f90
     excit_gens.f90
     excit_gen_ueg.f90
-    excit_gen_utils.f90
+    excit_gen_utils.F90
     excitations.F90
     fci_lapack.F90
     fci_davidson.F90
@@ -133,7 +133,7 @@ target_sources(hande-static
     symmetry_types.f90
     system.f90
     trotterized_uccmc.F90
-    uccmc.f90
+    uccmc.F90
     uccmc_utils.f90
     ueg.f90
     ueg_types.f90
@@ -146,6 +146,7 @@ target_compile_definitions(hande-static
     $<$<NOT:$<BOOL:${HAS_MPI3}>>:DISABLE_MPI3>
     $<$<NOT:$<BOOL:${USE_ScaLAPACK}>>:DISABLE_SCALAPACK>
     $<$<BOOL:${USE_SINGLE_PRECISION}>:SINGLE_PRECISION>
+    $<$<BOOL:${USE_OPENMP_DETERM}>:OPENMP_DETERM>
     $<$<CONFIG:Debug>:DEBUG>
     )
 target_include_directories(hande-static
