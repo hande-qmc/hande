@@ -123,8 +123,8 @@ contains
             if (rdm_energy) call write_column_title(iunit, 'RDM energy num.')
             if (rdm_energy) call write_column_title(iunit, 'RDM trace')
         end if
-        call write_column_title(iunit, '# states', int_val=.true., justify=1)
-        call write_column_title(iunit, '# spawn_events', int_val=.true., justify=1)
+        call write_column_title(iunit, '# states', int_64_val=.true., justify=1)
+        call write_column_title(iunit, '# spawn_events', int_64_val=.true., justify=1)
         if (present(nattempts)) then
             if (nattempts) call write_column_title(iunit, '# attempts', int_64_val=.true., justify=1)
         end if
