@@ -590,7 +590,8 @@ contains
                             call stochastic_trot_uccmc_death_nc(rng(it), ccmc_in%linked, sys, qs, iattempt==D0_pos, dfock, &
                                             qs%psip_list%dat(1,iattempt), qs%estimators(1)%proj_energy_old, &
                                             qs%psip_list%pops(1, iattempt), get_cluster_population(sys, qs%psip_list, D0_pos, &
-                                            iattempt, real(D0_normalisation, p), qs%ref%f0) * qs%psip_list%pops(1, D0_pos), &
+                                            iattempt, real(D0_normalisation, p), &
+                                            qs%ref%f0) * nint(abs(D0_normalisation)*qs%psip_list%pop_real_factor, int_p), &
                                             nparticles_change(1), ndeath_nc, logging_info)
                         end if
                     end do
@@ -961,15 +962,16 @@ contains
             do i = 1, cluster%nexcitors
                 ! Select nexcitors different positions in the excitors list.
                 if (i == 1) then 
-                    pop(i) = get_rand_close_open(rng)*tot_excip_pop
-                    call binary_search(cumulative_excip_pop, pop(i), 1, psip_list%nstates, hit, poses(i))
-                    do
+                     pop(i) = get_rand_close_open(rng)*tot_excip_pop
+                     call binary_search(cumulative_excip_pop, pop(i), 1, psip_list%nstates, hit, poses(i))
+                     do
                         if (poses(i) == 1) then
                             exit
                         end if
                         if (abs(cumulative_excip_pop(poses(i)) - cumulative_excip_pop(poses(i)-1)) > depsilon) exit
                         poses(i) = poses(i) - 1
-                    end do
+                     end do
+                     cluster%pselect = cluster%pselect/nprocs
                 else
                      pop(i) = get_rand_close_open(rng)*tot_excip_pop
                      call binary_search(cumulative_excip_pop, pop(i), 1, psip_list%nstates, hit, poses(i))
@@ -985,6 +987,7 @@ contains
                         allowed = .false.
                         exit
                      end if
+                     cluster%pselect = cluster%pselect/nprocs
                 end if
             end do
             tot_excip_local = tot_excip_pop
