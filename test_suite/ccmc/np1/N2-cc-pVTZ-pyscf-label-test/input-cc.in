@@ -1,5 +1,5 @@
 sys = read_in {
-    int_file = 'FCIDUMP.N2.cc-pvtz-1.4A',
+    int_file = 'N2-cc-pvtz-1.4A.FCIDUMP',
 }
 
 ccmc {
