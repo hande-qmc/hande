@@ -304,7 +304,6 @@ test-intel-mpi:
         - module load anaconda
         - module load icc
         - module load mkl
-        - module load mpi/openmpi/64/intel18/3.1.2
         - module load cmake
         - module load mpi/openmpi/64/intel
     script:
@@ -383,6 +382,7 @@ test-gcc-quick:
         - module load anaconda
         - module load mkl
         - module load cmake
+        - module load mpi/openmpi/64/gnu
     script:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-gnu --det-size=64 --pop-size=64
         - cd build && make -j 6 && cd ..
