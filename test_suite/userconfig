@@ -37,6 +37,4 @@ launch_parallel = srun -n tc.nprocs --cpus-per-task=2
 
 [user]
 diff = vimdiff
-benchmark = hande-80b97a1e.hande_omp_np1-80b97a1e.hande_omp_np2-80b97a1e hande-fc224b1c.hande_omp_np1-fc224b1c.hande_omp_np2-fc224b1c fc224b1c a7d5ca7b 9712b5a3
-tolerance = (1.e-10, 1.e-10, None, False)
-
+benchmark = hande-80b97a1e.hande_omp_np1-80b97a1e.hande_omp_np2-80b97a1e hande-fc224b1c.hande_omp_np1-fc224b1c.hande_omp_np2-fc224b1c fc224b1c a7d5ca7b 6a1fd6cd 9712b5a3
