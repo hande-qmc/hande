@@ -25,11 +25,11 @@ build-lua-hdf5:
         - wget -q -O - http://www.lua.org/ftp/lua-5.3.5.tar.gz | tar xvzf -
         - cd lua-5.3.5
         - make linux &>/dev/null
-        - make install INSTALL_TOP=/home/gitlab-runner/builds/oQzesuVK/0/ch/thom/hande-public-testing/local 
+        - make install INSTALL_TOP=/home/gitlab-runner/builds/Cf1JjyZr/0/ch/thom/hande-public-testing/local 
         - cd ..
         - wget -q -O - https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.10/hdf5-1.10.4/src/hdf5-1.10.4.tar.gz | tar xvzf -
         - cd hdf5-1.10.4
-        - ./configure --prefix=/home/gitlab-runner/builds/oQzesuVK/0/ch/thom/hande-public-testing/local/hdf5-gnu --enable-fortran --enable-fortran2003 --enable-cxx &> /dev/null
+        - ./configure --prefix=/home/gitlab-runner/builds/Cf1JjyZr/0/ch/thom/hande-public-testing/local/hdf5-gnu --enable-fortran --enable-fortran2003 --enable-cxx &> /dev/null
         - make -j 6 &> /dev/null
         - make install &> /dev/null
         - cd .. && rm -r hdf5-1.10.4
@@ -38,7 +38,7 @@ build-lua-hdf5:
         - export FC=ifort
         - export CC=icc
         - export CXX=icpc
-        - ./configure --prefix=/home/gitlab-runner/builds/oQzesuVK/0/ch/thom/hande-public-testing/local/hdf5-intel --enable-fortran --enable-fortran2003 --enable-cxx  &> /dev/null
+        - ./configure --prefix=/home/gitlab-runner/builds/Cf1JjyZr/0/ch/thom/hande-testing/local/hdf5-intel --enable-fortran --enable-fortran2003 --enable-cxx  &> /dev/null
         - make -j 6 &> /dev/null
         - make install &> /dev/null
         - cd ..
@@ -56,7 +56,7 @@ test-gcc:
         - hande-testing
     before_script:
         - module load cmake
-        - module load anaconda/python3/5.3.1
+        - module load anaconda
     script:
         - ./cmakeconfig.py --fc=gfortran --cc=gcc --lua=./local/ --hdf5=./local/hdf5-gnu --det-size=64 --pop-size=64
         - cd build && make -j 6 && cd ..
@@ -78,8 +78,8 @@ test-gcc-mpi:
     tags: 
         - hande-testing
     before_script:
-        - module load anaconda/python3/5.3.1
-        - module load mpi/openmpi/64/gnu/3.1.2
+        - module load anaconda
+        - module load mpi/openmpi/64/gnu
         - module load mkl
         - module load cmake
     script:
@@ -103,8 +103,8 @@ test-gcc-mpi-64:
     tags: 
         - hande-testing
     before_script:
-        - module load anaconda/python3/5.3.1
-        - module load mpi/openmpi/64/gnu/3.1.2
+        - module load anaconda
+        - module load mpi/openmpi/64/gnu
         - module load mkl
         - module load cmake
     script:
@@ -128,7 +128,7 @@ test-gcc-dbg:
     tags: 
         - hande-testing
     before_script:
-        - module load anaconda/python3/5.3.1
+        - module load anaconda
         - module load cmake
     script:
         - ./cmakeconfig.py --fc=gfortran --cc=gcc --lua=./local/ --hdf5=./local/hdf5-gnu --det-size=64 --pop-size=64 --type=debug
@@ -151,8 +151,8 @@ test-gcc-mpi-dbg:
     tags: 
         - hande-testing
     before_script:
-        - module load anaconda/python3/5.3.1
-        - module load mpi/openmpi/64/gnu/3.1.2
+        - module load anaconda
+        - module load mpi/openmpi/64/gnu
         - module load mkl
         - module load cmake
     script:
@@ -176,8 +176,8 @@ test-gcc-mpi-64-dbg:
     tags: 
         - hande-testing
     before_script:
-        - module load anaconda/python3/5.3.1
-        - module load mpi/openmpi/64/gnu/3.1.2
+        - module load anaconda
+        - module load mpi/openmpi/64/gnu
         - module load mkl
         - module load cmake
     script:
@@ -201,7 +201,7 @@ test-intel:
     tags: 
         - hande-testing
     before_script:
-        - module load anaconda/python3/5.3.1
+        - module load anaconda
         - module load icc
         - module load cmake
     script:
@@ -225,7 +225,7 @@ test-intel-dbg:
     tags: 
         - hande-testing
     before_script:
-        - module load anaconda/python3/5.3.1
+        - module load anaconda
         - module load icc
         - module load cmake
     script:
@@ -249,11 +249,11 @@ test-intel-mpi-pop64:
     tags: 
         - hande-testing
     before_script:
-        - module load anaconda/python3/5.3.1
+        - module load anaconda
         - module load icc
         - module load mkl
-        - module load mpi/openmpi/64/intel18/3.1.2
         - module load cmake
+        - module load mpi/openmpi/64/intel
     script:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack --lua=./local/ --hdf5=./local/hdf5-intel --pop-size=64 --det-size=64
         - cd build && make -j 6 && cd ..
@@ -275,11 +275,11 @@ test-intel-mpi-pop64-dbg:
     tags: 
         - hande-testing
     before_script:
-        - module load anaconda/python3/5.3.1
+        - module load anaconda
         - module load icc
-        - module load mpi/openmpi/64/intel18/3.1.2
         - module load mkl
         - module load cmake
+        - module load mpi/openmpi/64/intel
     script:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-intel  --type=debug --pop-size=64 --det-size=64
         - cd build && make -j 6 && cd ..
@@ -301,11 +301,11 @@ test-intel-mpi:
     tags: 
         - hande-testing
     before_script:
-        - module load anaconda/python3/5.3.1
+        - module load anaconda
         - module load icc
         - module load mkl
-        - module load mpi/openmpi/64/intel18/3.1.2
         - module load cmake
+        - module load mpi/openmpi/64/intel
     script:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack --lua=./local/ --hdf5=./local/hdf5-intel
         - cd build && make -j 6 && cd ..
@@ -327,11 +327,11 @@ test-intel-mpi-dbg:
     tags: 
         - hande-testing
     before_script:
-        - module load anaconda/python3/5.3.1
+        - module load anaconda
         - module load icc
-        - module load mpi/openmpi/64/intel18/3.1.2
         - module load mkl
         - module load cmake
+        - module load mpi/openmpi/64/intel
     script:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-intel  --type=debug 
         - cd build && make -j 6 && cd ..
@@ -353,11 +353,11 @@ test-intel-quick:
     tags: 
         - hande-testing
     before_script:
-        - module load anaconda/python3/5.3.1
+        - module load anaconda
         - module load icc
-        - module load mpi/openmpi/64/intel18/3.1.2
         - module load mkl
         - module load cmake
+        - module load mpi/openmpi/64/intel
     script:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-intel  --pop-size=64 --det-size=64
         - cd build && make -j 6 && cd ..
@@ -379,10 +379,10 @@ test-gcc-quick:
     tags: 
         - hande-testing
     before_script:
-        - module load anaconda/python3/5.3.1
-        - module load mpi/openmpi/64/gnu/3.1.2
+        - module load anaconda
         - module load mkl
         - module load cmake
+        - module load mpi/openmpi/64/gnu
     script:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-gnu --det-size=64 --pop-size=64
         - cd build && make -j 6 && cd ..
@@ -404,7 +404,7 @@ test-pyhande:
     tags:
         - hande-testing
     before_script:
-        - module load anaconda/python3/5.3.1
+        - module load anaconda
         - conda activate pyhandeenv
         - export PYTHONPATH=$PYTHONPATH:$pwd/tools/pyhande
     script:
@@ -413,4 +413,3 @@ test-pyhande:
     except:
         - schedules
     resource_group: pyhande
-
