@@ -38,7 +38,7 @@ build-lua-hdf5:
         - export FC=ifort
         - export CC=icc
         - export CXX=icpc
-        - ./configure --prefix=/home/gitlab-runner/builds/Cf1JjyZr/0/ch/thom/hande-testing/local/hdf5-intel --enable-fortran --enable-fortran2003 --enable-cxx  &> /dev/null
+        - ./configure --prefix=/home/gitlab-runner/builds/Cf1JjyZr/0/ch/thom/hande-public-testing/local/hdf5-intel --enable-fortran --enable-fortran2003 --enable-cxx  &> /dev/null
         - make -j 6 &> /dev/null
         - make install &> /dev/null
         - cd ..
