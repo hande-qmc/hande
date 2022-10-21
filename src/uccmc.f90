@@ -173,10 +173,9 @@ contains
  
         real(p), allocatable :: time_avg_psip_list_ci_pops(:), time_avg_psip_list_pops(:),time_avg_psip_list_sq(:,:)
         integer(i0), allocatable :: time_avg_psip_list_ci_states(:,:), time_avg_psip_list_states(:,:)
-        integer :: semi_stoch_it, pos, k, nstates_ci, nstates_sq
-        logical :: hit
+        integer :: semi_stoch_it, nstates_ci, nstates_sq
         real(p) :: population
-        real(p) :: real_population, var_energy
+        real(p) :: var_energy
         ! old_vary encodes whether the shift started varying before the current iteration. Used to determine when
         ! to start taking averages of the wavefunction.
         logical :: old_vary

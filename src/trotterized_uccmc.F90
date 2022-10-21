@@ -169,9 +169,9 @@ contains
  
         real(p), allocatable :: time_avg_psip_list_sq(:,:), time_avg_psip_list_pops(:), time_avg_psip_list_ci_pops(:)
         integer(i0), allocatable :: time_avg_psip_list_states(:,:), time_avg_psip_list_ci_states(:,:), state(:)
-        integer :: nstates_sq, nstates_ci, semi_stoch_it, pos, j, k, avg_start
-        logical :: hit, old_vary, variational
-        real(p) :: population, cluster_pop, real_population, var_energy
+        integer :: nstates_sq, nstates_ci, semi_stoch_it, j, avg_start
+        logical :: old_vary, variational
+        real(p) :: population, cluster_pop, var_energy
 
         variational = .false.
         if (uccmc_in%variational_energy) variational = .true.
@@ -460,8 +460,7 @@ contains
 
                 !$omp parallel default(none) &
                 !$omp firstprivate(cluster_pop) &
-                !$omp private(it, iexcip_pos, i, seen_D0, hit, pos, population, real_population, k, &
-                !$omp         state,annihilation_flags) &
+                !$omp private(it, iexcip_pos, seen_D0, state) &
                 !$omp shared(rng, cumulative_abs_real_pops, tot_abs_real_pop, &
                 !$omp        max_cluster_size, contrib, D0_normalisation, D0_pos, rdm, &
                 !$omp        qs, sys, bloom_stats, min_cluster_size, ref_det, &
@@ -938,7 +937,7 @@ contains
         ! For linked coupled cluster we keep building the cluster after a
         ! disallowed excitation so need to know if there has been a disallowed
         ! excitation at all
-        ref_real = normalisation !real(psip_list%pops(1, D0_pos))/real(psip_list%pop_real_factor)
+        ref_real = real(normalisation)
 
         select case(cluster%nexcitors)
         case(0)
