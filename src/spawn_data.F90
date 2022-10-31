@@ -239,9 +239,11 @@ contains
         ! for each thread on each processor (ie the last position spawned
         ! to).  We need to know where to start though...
         spawn%block_size = array_len / nprocs
-        forall (i=0:nprocs-1)
-            forall (j=0:nthreads-1) spawn%head_start(j,i) = i*spawn%block_size + j - nthreads + 1
-        end forall
+        do concurrent (i=0:nprocs-1)
+            do concurrent (j=0:nthreads-1)
+                spawn%head_start(j,i) = i*spawn%block_size + j - nthreads + 1
+            end do
+        end do
 
         spawn%head = spawn%head_start
 
@@ -686,9 +688,9 @@ contains
         ! numbers of particles maybe MPI_AlltoAll would be more efficient?
 
         ! Find out how many particles we are going to send and receive.
-        forall (i=0:nprocs-1)
+        do concurrent (i=0:nprocs-1)
             send_counts(i) = spawn%head(thread_id,i) - spawn%head_start(nthreads-1,i)
-        end forall
+        end do
 
         call MPI_AlltoAll(send_counts, 1, MPI_INTEGER, receive_counts, 1, MPI_INTEGER, MPI_COMM_WORLD, ierr)
 

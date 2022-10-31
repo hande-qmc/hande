@@ -442,7 +442,9 @@ contains
             ! and hence create a string from it.
             excit_level = 0
             if (init) then
-                forall(i=1:nel_spin) comb(i) = i-1
+                do concurrent (i=1:nel_spin)
+                    comb(i) = i-1
+                end do
             else
                 call next_comb(norb_spin, nel_spin, comb(1:nel_spin), ierr)
                 if (ierr /= 0) &
@@ -482,15 +484,21 @@ contains
                         ! No more combinations at this excitation level.  Go to the
                         ! next excitation level.
                         excit_level = excit_level + 1
-                        forall (i=1:excit_level) comb(i) = i - 1
+                        do concurrent (i=1:excit_level)
+                            comb(i) = i - 1
+                        end do
                     end if
                     ! Reset combination of the virtuals.
-                    forall (i=1:excit_level) comb(i+excit_level) = i - 1
+                    do concurrent (i=1:excit_level)
+                        comb(i+excit_level) = i - 1
+                    end do
                 end if
                 ! Form string by exciting electrons from selected core orbitals
                 ! into selected virtual orbitals.
                 string = occ_spin(:nel_spin)
-                forall (i=1:excit_level) string(comb(i)+1) = unocc_spin(comb(i+excit_level)+1)
+                do concurrent (i=1:excit_level)
+                    string(comb(i)+1) = unocc_spin(comb(i+excit_level)+1)
+                end do
             end if
         end if
 

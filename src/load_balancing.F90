@@ -167,7 +167,9 @@ contains
         pm%nslots = nslots
         allocate(pm%map(0:nslots*pm_np-1), stat=ierr)
         call check_allocate('pm%map', nslots*pm_np, ierr)
-        forall (i=0:nslots*pm_np-1) pm%map(i) = modulo(i,pm_np)
+        do concurrent (i=0:nslots*pm_np-1)
+            pm%map(i) = modulo(i,pm_np)
+        end do
 
     end subroutine init_proc_map_t
 
@@ -272,7 +274,9 @@ contains
         ! Note: these populations are calculated from the main list and do not
         ! include walkers in the received list which have not been introduced
         ! yet.
-        forall (i=1:nprocs) psip_list%nparticles_proc(1,i) = sum(slot_list, MASK=proc_map%map==i-1)
+        do concurrent (i=1:nprocs)
+            psip_list%nparticles_proc(1,i) = sum(slot_list, MASK=proc_map%map==i-1)
+        end do
         pop_av = real(sum(psip_list%nparticles_proc(1,:nprocs))/nprocs,p)
 
         ! As stated above we only initially determine when to do load balancing

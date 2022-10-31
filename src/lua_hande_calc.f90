@@ -564,7 +564,7 @@ contains
 
         if (t2 < t1) t2 = t2 + count_max
 
-        call register_timing(lua_state, "CCMC calculation", real(t2-t1)/count_rate)
+        call register_timing(lua_state, "CCMC calculation", real((t2-t1)/count_rate))
 
     end function lua_ccmc
 
@@ -1772,7 +1772,7 @@ contains
         type (sys_t), intent(in) :: sys
         type(ccmc_in_t), intent(out) :: ccmc_in
 
-        integer :: ccmc_table, err, i, ir, ios, nel, iel, bit_string_len, ierr
+        integer :: ccmc_table, err, i, ir, ios, nel, iel, ierr
         integer(i0) :: test_arr(50)
         integer(i0), allocatable :: bstring(:)
         character(255) :: err_msg, test_line
