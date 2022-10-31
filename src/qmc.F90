@@ -203,10 +203,10 @@ contains
         ! So, we only turn it on from the start if shift_harmonic_forcing_two_stage is false.
         if (qmc_in%shift_harmonic_crit_damp) then
             qmc_state%shift_harmonic_forcing = real((qmc_state%shift_damping**2)/4.0_p, p)
-        else if (abs(qmc_state%shift_harmonic_forcing) .le. 0.00_p) then 
+        else if (abs(qmc_state%shift_harmonic_forcing) .gt. 0.00_p) then 
             qmc_state%shift_harmonic_forcing = qmc_in%shift_harmonic_forcing
         end if
-        if (abs(qmc_state%shift_harmonic_forcing) .le. 0.00_p) then
+        if (abs(qmc_state%shift_harmonic_forcing) .gt. 0.00_p) then
             ! Turn on harmonic forcing right now or only when target population is reached?
             if (.not. qmc_in%shift_harmonic_forcing_two_stage) qmc_state%vary_shift = .true. 
         end if
