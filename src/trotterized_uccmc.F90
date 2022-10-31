@@ -169,9 +169,9 @@ contains
  
         real(p), allocatable :: time_avg_psip_list_sq(:,:), time_avg_psip_list_pops(:), time_avg_psip_list_ci_pops(:)
         integer(i0), allocatable :: time_avg_psip_list_states(:,:), time_avg_psip_list_ci_states(:,:), state(:)
-        integer :: nstates_sq, nstates_ci, semi_stoch_it, pos, j, k, avg_start
-        logical :: hit, old_vary, variational
-        real(p) :: population, cluster_pop, real_population, var_energy
+        integer :: nstates_sq, nstates_ci, semi_stoch_it, j, avg_start
+        logical :: old_vary, variational
+        real(p) :: population, cluster_pop, var_energy
 
         variational = .false.
         if (uccmc_in%variational_energy) variational = .true.
