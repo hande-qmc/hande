@@ -872,10 +872,11 @@ contains
             ! When restarting a non-blocking calculation this sum will not equal
             ! tot_nparticles as some walkers have been communicated around the report
             ! loop. The correct total is in the restart file so get it from there.
-            if (.not. have_tot_nparticles) &
+            if (.not. have_tot_nparticles) then
                 do concurrent (i=1:pl%nspaces)
                     pl%tot_nparticles(i) = sum(pl%nparticles_proc(i,:))
                 end do
+            end if
 #else
             pl%tot_nparticles = pl%nparticles
             pl%nparticles_proc(:pl%nspaces,1) = pl%nparticles(:pl%nspaces)
