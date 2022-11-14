@@ -4,23 +4,23 @@
  ================================================================
 Version information
 -------------------
-Version       | v1.5-509-gcf07666
-Commit hash   | cf076667d9f540506f71c35bc4a3f4eb8557039d
-Commit author | Brian Zhao
-Commit date   | Mon Jun 20 18:11:28 2022 +0100
-Branch        | main
+Version       | v1.5-549-gbe2cfe1
+Commit hash   | be2cfe1a7be2271a0e9ca9587aa117ea8eb35055
+Commit author | Marie-Andreea Filip
+Commit date   | Tue Oct 4 09:37:12 2022 +0100
+Branch        | he/openmp_determ
 
 Configuration and build information
 -----------------------------------
 Who compiled             | maf63
-Compilation hostname     | serenity
-Operating system         | Linux-5.4.0-110-generic
+Compilation hostname     | carpathia
+Operating system         | Linux-5.4.0-131-generic
 CMake version            | 3.16.3
 CMake generator          | Unix Makefiles
-Build type               | debug
-Configuration time       | 2022-06-20 17:24:01 [UTC]
-Python version           | 3.7.0
-Fortran compiler         | /usr/local/shared/ubuntu-20.04/x86_64/openmpi-4.1.2-gnu/bin/mpif90
+Build type               | release
+Configuration time       | 2022-10-31 18:00:42 [UTC]
+Python version           | 3.9.12
+Fortran compiler         | /usr/local/shared/ubuntu-20.04/x86_64/openmpi-4.1.2-gnu/bin/mpifort
 C compiler               | /usr/local/shared/ubuntu-20.04/x86_64/openmpi-4.1.2-gnu/bin/mpicc
 DET_SIZE set to          | 64
 POP_SIZE set to          | 64
@@ -28,7 +28,7 @@ dSFMT Mersenne exponent  | 19937
 MPI parallelization      | ON
 MPI launcher             | /usr/local/shared/ubuntu-20.04/x86_64/openmpi-4.1.2-gnu/bin/mpiexec
 OpenMP parallelization   | OFF
-Lua version              | 5.3.5
+Lua version              | 5.3.4
 HDF5 library version     | 1.10.4
 
 Further components
@@ -45,11 +45,11 @@ USE_POPCNT not defined. Internal POPCNT procedure used.
 Runtime information
 -------------------
 Hostname:
-    serenity
+    carpathia
 Current working dir:
-    /home/maf63/hande-release/test_suite/fci/Ne-RHF-cc-pVDZ_davidson
-Started running on 20/06/2022 at 21:52:19
- Calculation UUID: 4ec1645a-5149-4d02-89e0-751de30d53c0.
+    /home/maf63/hande-dev/test_suite/fci/Ne-RHF-cc-pVDZ_davidson
+Started running on 14/11/2022 at 17:12:50
+ Calculation UUID: aeba9262-3cda-4ca8-9b28-738c7dcec1f8.
  ================================================================
 
  Input options
@@ -70,7 +70,7 @@ fci {
         ndavidson_eigv = 4,
         ndavidson_trialvec = 8,
         davidson_maxsize = 100,
-        davidson_tol = 1e-8,
+        davidson_tol = 1e-10,
         davidson_maxiter = 200,
     },
 }
@@ -196,7 +196,7 @@ fci {
          "ndavidson_eigv": 4,   
          "ndavidson_trialvec": 8,   
          "davidson_maxsize": 100,   
-         "davidson_tol": 0.00000001,   
+         "davidson_tol": 0.00000000,   
          "hamiltonian_diagonal_only": false,   
      },
      "reference": {
@@ -227,81 +227,93 @@ fci {
  Performing Davidson diagonalisation...
 
  Davidson initialisation done!
- Time taken for Davidson initialisation 0.003050 s
+ Time taken for Davidson initialisation 0.002770 s
 
  Iteration   Basis size    delta rmsE      Time  
-         1            8   2.512777E+02    0.023247
-         2           16   3.123764E+00    0.053830
-         3           24   7.891979E-02    0.060966
-         4           32   9.517917E-03    0.062867
-         5           40   5.539860E-01    0.064703
-         6           48   5.483261E-01    0.066756
-         7           56   3.441023E-01    0.073970
-         8           64   3.476063E-02    0.081618
-         9           72   1.196645E-01    0.088937
-        10           80   9.113612E-02    0.085490
-        11           88   6.275315E-02    0.081411
-        12           96   1.651369E-02    0.077871
+         1            8   2.512777E+02    0.042268
+         2           16   3.123764E+00    0.136790
+         3           24   7.891979E-02    0.125215
+         4           32   9.517917E-03    0.154604
+         5           40   5.539860E-01    0.151164
+         6           48   5.483261E-01    0.166187
+         7           56   3.441023E-01    0.186990
+         8           64   3.476063E-02    0.206181
+         9           72   1.196645E-01    0.200522
+        10           80   9.113612E-02    0.212085
+        11           88   6.275315E-02    0.209463
+        12           96   1.917659E-02    0.156364
  Collapsing subspace...
-        13            8   2.688820E-13    0.013748
-        14           16   4.873721E-02    0.054438
-        15           24   3.561685E-02    0.061157
-        16           32   2.180278E-02    0.063197
-        17           40   7.300709E-03    0.065375
-        18           48   7.728789E-03    0.067221
-        19           56   8.099904E-03    0.074803
-        20           64   5.867092E-03    0.082298
-        21           72   1.031031E-02    0.089647
-        22           80   5.192965E-03    0.086348
-        23           88   3.416865E-03    0.082595
-        24           96   3.605577E-03    0.078885
+        13            8   2.597128E-13    0.047165
+        14           16   4.837175E-02    0.154630
+        15           24   3.477154E-02    0.144188
+        16           32   2.163031E-02    0.144375
+        17           40   6.863259E-03    0.169719
+        18           48   8.162978E-03    0.148129
+        19           56   7.755493E-03    0.167202
+        20           64   6.536044E-03    0.188872
+        21           72   1.033875E-02    0.233722
+        22           80   4.976603E-03    0.205321
+        23           88   3.572924E-03    0.195707
+        24           96   3.345595E-03    0.178313
  Collapsing subspace...
-        25            8   3.093922E-13    0.013739
-        26           16   1.367416E-03    0.054480
-        27           24   2.753408E-03    0.061073
-        28           32   3.124969E-03    0.063280
-        29           40   3.965116E-03    0.065360
-        30           48   9.729462E-03    0.067313
-        31           56   5.141055E-03    0.074790
-        32           64   4.135568E-03    0.082263
-        33           72   4.503316E-03    0.089769
-        34           80   9.710415E-04    0.086267
-        35           88   8.803948E-04    0.082414
-        36           96   3.206009E-04    0.078865
+        25            8   3.332741E-13    0.028241
+        26           16   1.442194E-03    0.135506
+        27           24   2.600126E-03    0.161098
+        28           32   3.210163E-03    0.169965
+        29           40   4.251918E-03    0.176685
+        30           48   9.386593E-03    0.136476
+        31           56   5.612160E-03    0.213176
+        32           64   4.153938E-03    0.225843
+        33           72   4.062639E-03    0.209787
+        34           80   1.090810E-03    0.197691
+        35           88   7.972209E-04    0.175616
+        36           96   4.347965E-04    0.162885
  Collapsing subspace...
-        37            8   2.029716E-13    0.013724
-        38           16   1.454362E-04    0.054581
-        39           24   1.305298E-04    0.061136
-        40           32   1.192283E-04    0.063258
-        41           40   5.801127E-05    0.065340
-        42           48   4.117030E-05    0.067177
-        43           56   1.766363E-05    0.075023
-        44           64   9.549618E-06    0.082370
-        45           72   7.087099E-06    0.089705
-        46           80   2.533092E-06    0.086342
-        47           88   1.436787E-06    0.082475
-        48           96   4.971836E-07    0.078752
+        37            8   1.780615E-13    0.033929
+        38           16   1.029200E-04    0.106553
+        39           24   1.238597E-04    0.125777
+        40           32   8.096225E-05    0.139351
+        41           40   5.011416E-05    0.161236
+        42           48   4.124156E-05    0.163812
+        43           56   1.339997E-05    0.177690
+        44           64   6.027444E-06    0.193650
+        45           72   8.626155E-06    0.234753
+        46           80   1.649987E-06    0.231378
+        47           88   1.532902E-06    0.209618
+        48           96   3.731018E-07    0.167077
  Collapsing subspace...
-        49            8   1.994589E-13    0.013705
-        50           16   5.008925E-07    0.054570
-        51           24   3.933802E-07    0.061107
-        52           32   3.866301E-07    0.063374
-        53           40   1.845653E-07    0.065420
-        54           48   1.258560E-07    0.067246
-        55           56   8.008898E-08    0.074764
-        56           64   2.083177E-08    0.082225
-        57           72   2.711763E-08    0.089757
-        58           80   1.068460E-08    0.086299
-        59           88   8.374961E-09    0.082467
- Eigenvalue tolerance of 1.0000E-08 reached, printing results...
+        49            8   2.849268E-13    0.045160
+        50           16   4.192154E-07    0.134856
+        51           24   3.324125E-07    0.270870
+        52           32   3.885466E-07    0.143785
+        53           40   1.353206E-07    0.148467
+        54           48   1.455739E-07    0.170151
+        55           56   5.541286E-08    0.167715
+        56           64   1.643506E-08    0.181401
+        57           72   2.775794E-08    0.224374
+        58           80   5.734233E-09    0.194680
+        59           88   4.993267E-09    0.182574
+        60           96   2.451809E-09    0.188269
+ Collapsing subspace...
+        61            8   4.169863E-13    0.050590
+        62           16   3.001973E-09    0.107343
+        63           24   2.060250E-09    0.164251
+        64           32   2.737539E-09    0.160310
+        65           40   9.910855E-10    0.177009
+        66           48   5.579420E-10    0.155555
+        67           56   5.234994E-10    0.180925
+        68           64   1.955580E-10    0.203121
+        69           72   2.331077E-10    0.242795
+        70           80   7.430289E-11    0.212611
+ Eigenvalue tolerance of 1.0000E-10 reached, printing results...
  Davidson diagonalisation results
  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
   State     Energy
       1  -128.676399416807
-      2  -127.037283769802
-      3  -126.907544389847
-      4  -126.907544375829
+      2  -127.037283769805
+      3  -126.907544390004
+      4  -126.907544389818
 
  Timing breakdown
  ----------------
@@ -309,11 +321,11 @@ fci {
  Wall time for each calculation section (seconds):
 
  Generic system initialisation: .01
- FCI calculation              : 50.97
+ FCI calculation              : 131.27
 
  ================================================================
- Finished running on 20/06/2022 at 21:52:26
- Wall time (seconds):                               6.57
- CPU time (per processor, seconds):                50.98
+ Finished running on 14/11/2022 at 17:13:03
+ Wall time (seconds):                              13.57
+ CPU time (per processor, seconds):               131.28
  ================================================================
 
