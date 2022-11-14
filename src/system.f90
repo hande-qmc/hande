@@ -507,17 +507,23 @@ contains
                         sl%box_length = sys%ueg%r_s*((4*pi*sys%nel)/3)**(1.0_p/3.0_p)
                     end select
                     sl%rlattice = 0.0_p
-                    forall (ivec=1:sl%ndim) sl%rlattice(ivec,ivec) = 1.0_p/sl%box_length(ivec)
+                    do concurrent (ivec=1:sl%ndim)
+                        sl%rlattice(ivec,ivec) = 1.0_p/sl%box_length(ivec)
+                    end do
 
                 case(ringium)
                 case default
 
                     ! Lattice-model specific information.
 
-                    forall (ivec=1:sl%ndim) sl%box_length(ivec) = sqrt(real(dot_product(sl%lattice(:,ivec),sl%lattice(:,ivec)),p))
+                    do concurrent (ivec=1:sl%ndim)
+                        sl%box_length(ivec) = sqrt(real(dot_product(sl%lattice(:,ivec),sl%lattice(:,ivec)),p))
+                    end do
                     sl%nsites = nint(product(sl%box_length))
 
-                    forall (ivec=1:sl%ndim) sl%rlattice(:,ivec) = sl%lattice(:,ivec)/sl%box_length(ivec)**2
+                    do concurrent (ivec=1:sl%ndim)
+                        sl%rlattice(:,ivec) = sl%lattice(:,ivec)/sl%box_length(ivec)**2
+                    end do
 
                     ! If performing a calculation in all symmetry sectors, set Ms to be its maximum value
                     ! so that the necessary arrays will be allocated to their maximum size.
@@ -607,7 +613,9 @@ contains
             in_FBZ = .true.
         case default
             ! Convert to cartesian units.
-            forall (i=1:sl%ndim) kc(i) = sum(k*sl%rlattice(i,:))
+            do concurrent (i=1:sl%ndim)
+                kc(i) = sum(k*sl%rlattice(i,:))
+            end do
 
             ! This test only works because the underlying lattice is orthogonal.
             ! The asymmetry of the boundary conditions prevent the acceptance of

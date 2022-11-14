@@ -124,8 +124,12 @@ contains
             case(hub_k,read_in,ueg,ringium)
                 ! Orbitals are ordered by their single-particle eigenvalues.
                 ! Occupy the Fermi sphere/HF det.
-                forall (i=1:sys%nalpha) occ_list(i) = 2*i-1
-                forall (i=1:sys%nbeta) occ_list(i+sys%nalpha) = 2*i
+                do concurrent (i=1:sys%nalpha)
+                    occ_list(i) = 2*i-1
+                end do
+                do concurrent (i=1:sys%nbeta)
+                    occ_list(i+sys%nalpha) = 2*i
+                end do
 
                 ! Symmetry only implemented for these systems.  Do we need
                 ! to find a determinant of different symmetry?
@@ -222,23 +226,33 @@ contains
                 ! Sites 1, 3, 5, ... (occupy every other alpha orbital first, ie
                 ! place a max of nsites/2 electrons.  (nsites+1)/2 accounts for
                 ! the possibility that we have an odd number of sites.)
-                forall (i=1:min(sys%nalpha,(sys%lattice%nsites+1)/2)) occ_list(i) = 4*i-3
+                do concurrent (i=1:min(sys%nalpha,(sys%lattice%nsites+1)/2))
+                    occ_list(i) = 4*i-3
+                end do
                 ! now occupy the alternate alpha orbitals
-                forall (i=1:sys%nalpha-min(sys%nalpha,(sys%lattice%nsites+1)/2)) &
+                do concurrent (i=1:sys%nalpha-min(sys%nalpha,(sys%lattice%nsites+1)/2))
                     occ_list(i+min(sys%nalpha,(sys%lattice%nsites+1)/2)) = 4*i-1
+                end do
                 ! Similarly for beta, but now occupying orbitals sites 2, 4,
                 ! ..., preferentially.
-                forall (i=1:min(sys%nbeta,sys%lattice%nsites/2)) occ_list(i+sys%nalpha) = 4*i
-                forall (i=1:sys%nbeta-min(sys%nbeta,sys%lattice%nsites/2)) &
+                do concurrent (i=1:min(sys%nbeta,sys%lattice%nsites/2))
+                    occ_list(i+sys%nalpha) = 4*i
+                end do
+                do concurrent (i=1:sys%nbeta-min(sys%nbeta,sys%lattice%nsites/2))
                     occ_list(i+sys%nalpha+min(sys%nbeta,sys%lattice%nsites/2)) = 4*i-2
+                end do
             case(chung_landau)
                 ! As with the hub_real, attempt to keep fermions not on
                 ! neighbouring sites.
-                forall (i=1:sys%nel) occ_list(i) = 2*i-1
+                do concurrent (i=1:sys%nel)
+                    occ_list(i) = 2*i-1
+                end do
             case(heisenberg)
                 ! Ferromagnetic case is easy: group identical spins together!
                 if (sys%heisenberg%J >= 0) then
-                    forall (i=1:sys%nel) occ_list(i) = i
+                    do concurrent (i=1:sys%nel)
+                        occ_list(i) = i
+                    end do
                 ! For the antiferromagnetic case, below. This is messy but should
                 ! give a reasonable reference determinant for general cases, even
                 ! for bizarre lattices. For bipartite lattices (eg 4x4, 6x6...)
