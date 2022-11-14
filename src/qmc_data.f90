@@ -828,9 +828,9 @@ type estimators_t
     ! various purposes.
     real(p) :: proj_energy_old = 0.0_p
     ! Total number of occupied states across all processors.
-    integer(int_64) :: tot_nstates = 0
+    integer(int_64) :: tot_nstates = 0_int_64
     ! The total number of successful spawning events, across all processors.
-    integer(int_64) :: tot_nspawn_events = 0
+    integer(int_64) :: tot_nspawn_events = 0_int_64
 
     ! If performing calculations with real and imaginary walkers must be able to
     ! accumulate complex values. When broadcasting between processors within

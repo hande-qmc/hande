@@ -342,8 +342,8 @@ contains
         end if
 
         call write_column_title(iunit, '# particles')
-        call write_column_title(iunit, '# states', int_val=.true., justify=1)
-        call write_column_title(iunit, '# spawn_events', int_val=.true., justify=1)
+        call write_column_title(iunit, '# states', int_64_val=.true., justify=1)
+        call write_column_title(iunit, '# spawn_events', int_64_val=.true., justify=1)
         call write_column_title(iunit, 'R_spawn', low_prec_val=.true.)
         call write_column_title(iunit, '  time', low_prec_val=.true., justify=2)
 
