@@ -80,6 +80,10 @@ def parse_arguments(arguments):
 def plot_state_histograms(list_of_results, pdf_name):
     ''' Plot the user provided state histograms if they requested it.
 
+    NB: This code cannot be unit tested (because it uses pdf files), as such
+    it is anticipated that this routine is only used for consistency checking
+    rather than generating final figures.
+
     Parameters
     ----------
     list_of_results : list of :class:`pandas.DataFrame`
