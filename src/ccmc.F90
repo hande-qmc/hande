@@ -935,7 +935,7 @@ contains
 
             if (parent) then
                 if (bloom_stats%nblooms_curr > 0) call bloom_stats_warning(bloom_stats, io_unit=io_unit)
-                call write_qmc_report(qmc_in, qs, ireport, nparticles_old, real(t2-t1)/count_rate, .false., .false., &
+                call write_qmc_report(qmc_in, qs, ireport, nparticles_old, real((t2-t1)/count_rate), .false., .false., &
                                         io_unit=io_unit, cmplx_est=sys%read_in%comp, rdm_energy=ccmc_in%density_matrices, &
                                         nattempts=.true.)
                 if (blocking_in%blocking_on_the_fly) then

@@ -357,13 +357,12 @@ contains
             ! [Does it show that I've been writing a lot of python recently?]
             nmax = 0 ! Set nmax(i) to be 0 for unused higher dimensions.
             limits = 0
-            ! forall is a poor substitute for list comprehension. ;-)
-            forall (i=1:sys%lattice%ndim)
-                forall (j=1:sys%lattice%ndim, sys%lattice%lattice(i,j) /= 0)
+            do concurrent (i=1:sys%lattice%ndim)
+                do concurrent (j=1:sys%lattice%ndim, sys%lattice%lattice(i,j) /= 0)
                     limits(i,j) = abs(nint(sys%lattice%box_length(i)**2/(2*sys%lattice%lattice(i,j))))
-                end forall
+                end do
                 nmax(i) = maxval(limits(:,i))
-            end forall
+            end do
         case(ueg)
             ! UEG has 2 spin-orbitals per wavevector.  We include all
             ! wavevectors up to an energy cutoff, so we won't precisely count
@@ -372,7 +371,9 @@ contains
             ! line/square/cube which encloses all wavevectors within the cutoff
             ! and discard those outside the cutoff.
             nmax = 0
-            forall (i=1:sys%lattice%ndim) nmax(i) = ceiling(sqrt(2*sys%ueg%ecutoff))
+            do concurrent (i=1:sys%lattice%ndim)
+                nmax(i) = ceiling(sqrt(2*sys%ueg%ecutoff))
+            end do
             nspatial = (2*nmax(1)+1)**sys%lattice%ndim
         case(ringium)
             nspatial = sys%ringium%maxlz + 1
@@ -456,7 +457,9 @@ contains
         case(hub_k, ueg, ringium)
             call insertion_rank(tmp_basis_fns(:nspatial)%sp_eigv, basis_fns_ranking, tolerance=depsilon)
         case(hub_real, heisenberg, chung_landau)
-            forall (i=1:sys%lattice%nsites) basis_fns_ranking(i) = i
+            do concurrent (i=1:sys%lattice%nsites)
+                basis_fns_ranking(i) = i
+            end do
         end select
 
         allocate(sys%basis%basis_fns(sys%basis%nbasis), stat=ierr)

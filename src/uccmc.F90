@@ -173,10 +173,9 @@ contains
  
         real(p), allocatable :: time_avg_psip_list_ci_pops(:), time_avg_psip_list_pops(:),time_avg_psip_list_sq(:,:)
         integer(i0), allocatable :: time_avg_psip_list_ci_states(:,:), time_avg_psip_list_states(:,:)
-        integer :: semi_stoch_it, pos, k, nstates_ci, nstates_sq
-        logical :: hit
+        integer :: semi_stoch_it, nstates_ci, nstates_sq
         real(p) :: population
-        real(p) :: real_population, var_energy
+        real(p) :: var_energy
         ! old_vary encodes whether the shift started varying before the current iteration. Used to determine when
         ! to start taking averages of the wavefunction.
         logical :: old_vary
@@ -459,7 +458,7 @@ contains
                 ! errors relate to the procedure pointers...
 
                 !$omp parallel default(none) &
-                !$omp private(it, iexcip_pos, i, seen_D0, hit, pos, population, real_population, k, annihilation_flags) &
+                !$omp private(it, iexcip_pos, i, seen_D0, population, annihilation_flags) &
                 !$omp shared(rng, cumulative_abs_real_pops, tot_abs_real_pop, &
                 !$omp        max_cluster_size, contrib, D0_normalisation, D0_pos, rdm, &
                 !$omp        qs, sys, bloom_stats, min_cluster_size, ref_det, selection_data, &
