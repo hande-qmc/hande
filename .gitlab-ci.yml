@@ -83,7 +83,7 @@ test-gcc-mpi:
         - module load mkl
         - module load cmake
     script:
-        - ./cmakeconfig.py --mpi --omp --omp-determ --fc=mpif90 --cc=mpicc --mpi --omp --omp-determ-with-scalapack --lua=./local/ --hdf5=./local/hdf5-gnu
+        - ./cmakeconfig.py --mpi --omp --omp-determ --fc=mpif90 --cc=mpicc --mpi-with-scalapack --lua=./local/ --hdf5=./local/hdf5-gnu
         - cd build && make -j 6 && cd ..
         - cd test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c mpi --processors=4
@@ -108,7 +108,7 @@ test-gcc-mpi-64:
         - module load mkl
         - module load cmake
     script:
-        - ./cmakeconfig.py --mpi --omp --omp-determ --fc=mpif90 --cc=mpicc --mpi --omp --omp-determ-with-scalapack --lua=./local/ --hdf5=./local/hdf5-gnu --det-size=64 --pop-size=64
+        - ./cmakeconfig.py --mpi --omp --omp-determ --fc=mpif90 --cc=mpicc --mpi-with-scalapack --lua=./local/ --hdf5=./local/hdf5-gnu --det-size=64 --pop-size=64
         - cd build && make -j 6 && cd ..
         - cd test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c pop64_mpi --processors=4
@@ -156,7 +156,7 @@ test-gcc-mpi-dbg:
         - module load mkl
         - module load cmake
     script:
-        - ./cmakeconfig.py --mpi --omp --omp-determ --fc=mpif90 --cc=mpicc --mpi --omp --omp-determ-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-gnu --type=debug
+        - ./cmakeconfig.py --mpi --omp --omp-determ --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-gnu --type=debug
         - cd build && make -j 6 && cd ..
         - cd test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c mpi --processors=4
@@ -181,7 +181,7 @@ test-gcc-mpi-64-dbg:
         - module load mkl
         - module load cmake
     script:
-        - ./cmakeconfig.py --mpi --omp --omp-determ --fc=mpif90 --cc=mpicc --mpi --omp --omp-determ-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-gnu --det-size=64 --pop-size=64 --type=debug
+        - ./cmakeconfig.py --mpi --omp --omp-determ --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-gnu --det-size=64 --pop-size=64 --type=debug
         - cd build && make -j 6 && cd ..
         - cd test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c pop64_mpi --processors=4
@@ -255,7 +255,7 @@ test-intel-mpi-pop64:
         - module load cmake
         - module load mpi/openmpi/64/intel
     script:
-        - ./cmakeconfig.py --mpi --omp --omp-determ --fc=mpif90 --cc=mpicc --mpi --omp --omp-determ-with-scalapack --lua=./local/ --hdf5=./local/hdf5-intel --pop-size=64 --det-size=64
+        - ./cmakeconfig.py --mpi --omp --omp-determ --fc=mpif90 --cc=mpicc --mpi-with-scalapack --lua=./local/ --hdf5=./local/hdf5-intel --pop-size=64 --det-size=64
         - cd build && make -j 6 && cd ..
         - cd test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c pop64_mpi --processors=4
@@ -281,7 +281,7 @@ test-intel-mpi-pop64-dbg:
         - module load cmake
         - module load mpi/openmpi/64/intel
     script:
-        - ./cmakeconfig.py --mpi --omp --omp-determ --fc=mpif90 --cc=mpicc --mpi --omp --omp-determ-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-intel  --type=debug --pop-size=64 --det-size=64
+        - ./cmakeconfig.py --mpi --omp --omp-determ --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-intel  --type=debug --pop-size=64 --det-size=64
         - cd build && make -j 6 && cd ..
         - cd test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c pop64_mpi --processors=4
@@ -307,7 +307,7 @@ test-intel-mpi:
         - module load cmake
         - module load mpi/openmpi/64/intel
     script:
-        - ./cmakeconfig.py --mpi --omp --omp-determ --fc=mpif90 --cc=mpicc --mpi --omp --omp-determ-with-scalapack --lua=./local/ --hdf5=./local/hdf5-intel
+        - ./cmakeconfig.py --mpi --omp --omp-determ --fc=mpif90 --cc=mpicc --mpi-with-scalapack --lua=./local/ --hdf5=./local/hdf5-intel
         - cd build && make -j 6 && cd ..
         - cd test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c mpi --processors=4
@@ -333,7 +333,7 @@ test-intel-mpi-dbg:
         - module load cmake
         - module load mpi/openmpi/64/intel
     script:
-        - ./cmakeconfig.py --mpi --omp --omp-determ --fc=mpif90 --cc=mpicc --mpi --omp --omp-determ-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-intel  --type=debug 
+        - ./cmakeconfig.py --mpi --omp --omp-determ --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-intel  --type=debug 
         - cd build && make -j 6 && cd ..
         - cd test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c mpi --processors=4
@@ -359,7 +359,7 @@ test-intel-quick:
         - module load cmake
         - module load mpi/openmpi/64/intel
     script:
-        - ./cmakeconfig.py --mpi --omp --omp-determ --fc=mpif90 --cc=mpicc --mpi --omp --omp-determ-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-intel  --pop-size=64 --det-size=64
+        - ./cmakeconfig.py --mpi --omp --omp-determ --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-intel  --pop-size=64 --det-size=64
         - cd build && make -j 6 && cd ..
         - cd test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c quick --processors=4
@@ -384,7 +384,7 @@ test-gcc-quick:
         - module load cmake
         - module load mpi/openmpi/64/gnu
     script:
-        - ./cmakeconfig.py --mpi --omp --omp-determ --fc=mpif90 --cc=mpicc --mpi --omp --omp-determ-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-gnu --det-size=64 --pop-size=64
+        - ./cmakeconfig.py --mpi --omp --omp-determ --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-gnu --det-size=64 --pop-size=64
         - cd build && make -j 6 && cd ..
         - cd test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c quick --processors=4
