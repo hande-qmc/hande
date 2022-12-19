@@ -72,7 +72,11 @@ contains
             if (fci_in%write_hamiltonian) then
                 call write_hamil(fci_in%hamiltonian_file, ndets, proc_blacs_info, hamil)
             end if
-            call davidson_diagonalisation(fci_in, dets, hamil, eigv)
+            if (hamil%comp) then
+                call davidson_diagonalisation_comp(fci_in, dets, hamil, eigv)
+            else
+                call davidson_diagonalisation(fci_in, dets, hamil, eigv)
+            endif
         end if
 
         if (parent) then
@@ -307,4 +311,219 @@ contains
 
     end subroutine davidson_diagonalisation
 
+    subroutine davidson_diagonalisation_comp(fci_in, dets, hamil, eigv)
+
+        ! Perform a Davidson diagonalisation of the current (spin) block of the
+        ! Hamiltonian matrix.
+        ! Note that this destroys the Hamiltonian matrix stored in hamil.
+        ! Brief notes on Davidson diagonalisation:
+        !   To diagonalise a sparse, (ndets x ndets) matrix A and get nEig lowest eigenpairs, we form ntrial guesses, 
+        !   where ntrial is conventionally about double nEigs, and guess vectors are usually just ntrial lowest unit vectors. 
+        !   We collect these vectors into a rectangular (ndets x ntrial) matrix V.
+        !   Further parameters include:
+        !       maxguess: max number of guess vectors V can hold, after it's exceeded we need to collapse the subspace (see below)
+        !       maxiter: max number of iterations of the process
+        !       nactive: number of guess vectors currently being held in the matrix V
+        !   Algorithm:
+        !       initialise V
+        !       nactive = ntrial
+        !       if iter < maxiter do       
+        !       1. Orthonormalise V(:,1:nactive) (we use the QR decomposition)
+        !       2. Compute T = V^T A V, the Rayleigh matrix / subspace Hamiltonian
+        !       3. Diagonalise the subspace Hamiltonian: TC = Ct
+        !       4. if nactive < maxguess - ntrial, then
+        !           for i in {1..ntrial}
+        !           4.1 r^{(i)} = V C^{(i)} where r is the Ritz vector
+        !           4.2 w^{(i)} = A r^{(i)}, the residual vector
+        !           4.3 Convergence test: if norm(w) < tol then this residual has converged
+        !           4.4 q^{(i)} = w^{(i)} / (t_j - A(j,j)), with the denominator the preconditioner and q the new guess vector
+        !           4.5 V(:,nactive+i) = q^{(i)}
+        !           4.6 nactive += ntrial
+        !       5. Else, collapse subspace
+        !           5.1 V(:,:ntrial) = V(:,:maxguess) T(:maxguess,:ntrial)
+        !           5.2 nactive = ntrial
+        !       
+        ! In:
+        !    sys: system being studied.  Only used if the wavefunction is
+        !        analysed.
+        !    fci_in: fci input options.
+        !    dets: list of determinants in the Hilbert space in the bit
+        !        string representation.
+        !    proc_blacs_info: BLACS description of distribution of the Hamiltonian.
+        !        Used only if running on multiple processors.
+        ! In/Out:
+        !    hamil: hamil_t derived type containing Hamiltonian matrix of the system
+        !        in the Hilbert space used in appropriate format.
+        !        On output contains the eigenvectors, if requested, or is
+        !        otherwise destroyed.
+        ! Out:
+        !    eigv: fci_in%ndavidson_eigv lowest eigenvalues of the current block of the
+        !        Hamiltonian matrix.
+
+        use checking, only: check_allocate, check_deallocate
+        use linalg, only: syev_wrapper, heev_wrapper, gemm, gemv, qr_wrapper
+        use linalg, only: qr_wrapper_comp
+        use parallel, only: parent, nprocs
+        use errors, only: stop_all, warning
+
+        use fci_utils, only: fci_in_t, hamil_t
+        use operators
+
+        type(fci_in_t), intent(in) :: fci_in
+        integer(i0), intent(in) :: dets(:,:)
+        type(hamil_t), intent(inout) :: hamil
+        real(p), intent(out) :: eigv(:)
+        integer :: info, ierr, i, j, ndets
+        integer :: iunit, maxguess, nactive
+        complex(p), allocatable :: V(:,:), tmp(:,:), T(:,:), tmpV(:), w(:), V_coll(:,:)
+        real(p), allocatable :: theta(:), theta_old(:), rwork(:)
+        logical, allocatable :: normconv(:)
+        logical :: conv, just_collapsed
+        real(p) :: norm
+        integer(i0) :: c_max, c_rate, t0, t1
+
+        call system_clock(count=t0, count_rate=c_rate, count_max=c_max)
+
+        iunit = 6
+
+        ndets = ubound(dets, dim=2)
+        
+        just_collapsed = .false.
+
+        if (parent) then
+            write (iunit,'(1X,A,/)') 'Performing Davidson diagonalisation...'
+        end if
+
+        if (nprocs > 1) then
+            call stop_all('davidson_diagonalisation_comp', 'ScaLAPACK not yet supported for Davidson diagonalisation!')
+        end if
+
+        if (.not.hamil%comp) then
+            call stop_all('davidson_diagonalisation_comp', 'Complex Davidson called on real Hamiltonian.')
+        end if
+
+        associate(nEig=>fci_in%ndavidson_eigv, ntrial=>fci_in%ndavidson_trialvec, maxsize=>fci_in%davidson_maxsize, A=>hamil%cmat, &
+                  maxiter=>fci_in%davidson_maxiter, tol=>fci_in%davidson_tol)
+
+        if (nprocs == 1) then
+
+            allocate(theta_old(nEig), source=0.0_p, stat=ierr)
+            call check_allocate('theta_old', nEig, ierr)
+
+            ! Integer division always rounds towards zero, i.e 8*50/8 = 48
+            maxguess = ntrial*(maxsize/ntrial)
+            allocate(theta(maxguess))
+            allocate(V(ndets,maxguess+ntrial),source=(0.0_p, 0.0_p),stat=ierr)
+            call check_allocate('V',ndets*(maxguess+ntrial),ierr)
+
+            allocate(V_coll(ndets,ntrial),source=(0.0_p, 0.0_p),stat=ierr)
+            call check_allocate('V',ndets*ntrial,ierr)
+
+            allocate(T(maxguess,maxguess),source=(0.0_p, 0.0_p),stat=ierr)
+            call check_allocate('T',maxguess**2,ierr)
+
+            allocate(tmp,source=V,stat=ierr)
+            call check_allocate('tmp',ndets*maxguess,ierr)
+
+            allocate(tmpV(ndets),source=(0.0_p, 0.0_p),stat=ierr)
+            call check_allocate('tmpV',ndets,ierr)
+
+            allocate(w(ndets),source=(0.0_p, 0.0_p),stat=ierr)
+            call check_allocate('w',ndets,ierr)
+
+            allocate(rwork(max(1,3*ndets-2)), stat = ierr)
+            call check_allocate('rwork',max(1, 3*ndets - 2), ierr)
+
+            ! Initial guesses are ntrial lowest unit vectors
+            do i = 1, ntrial
+                V(i,i) = (1.0_p, 0.0_p)
+            end do
+
+            nactive = ntrial
+            conv = .false.
+
+            call system_clock(t1)
+            write(iunit, '(1X, A)') 'Davidson initialisation done!'
+            write(iunit, '(1X, A, 1X, F8.6, A)') 'Time taken for Davidson initialisation', real(t1-t0, kind=dp)/c_rate, " s"
+            t0=t1
+            write(iunit, *)
+            write(iunit, '(1X, A, 3X, A, 3X, A, 3X, A)') &
+                    'Iteration', 'Basis size', ' delta rmsE ', '  Time  '
+
+            do i = 1, maxiter
+                ! Orthonormalise the current set of guess vectors
+                call qr_wrapper_comp(ndets, nactive, V, ndets, info)
+                
+                ! Form the subspace Hamiltonian / Rayleigh matrix
+                ! T = V^T A V
+                call gemm('N', 'N', ndets, nactive, ndets, (1.0_p, 0.0_p), A, ndets, V, ndets, (0.0_p, 0.0_p), tmp, ndets)
+                call gemm('T', 'N', nactive, nactive, ndets, (1.0_p, 0.0_p), V, ndets, tmp, ndets, (0.0_p, 0.0_p), T, nactive)
+                ! Diagonalise the subspace Hamiltonian
+                ! T C = C t (T gets overwritten by C in syev, theta is the diagonal of t)
+                call heev_wrapper('V', 'U', nactive, T, nactive, theta, rwork, info)
+
+                ! We don't use this norm for convergence checking as after each subspace collapse the change in norm is 
+                ! essentially zero, but we report it nonetheless as during each restart-block it is still 
+                ! a useful measure of convergence.
+                norm = sqrt(sum((theta(1:nEig)-theta_old)**2))
+                
+                call system_clock(t1)
+                write(iunit,'(1X,I9,3X,I10,3X,ES12.6,3X,F9.6)')&
+                    i,nactive,norm,real(t1-t0,kind=dp)/c_rate
+                t0=t1
+
+                theta_old = theta(1:nEig)
+                if (.not. just_collapsed .and. norm < tol) then
+                    write(iunit,'(1X, A, ES10.4, A)') 'Eigenvalue tolerance of ', tol,' reached, printing results...'
+                    conv = .true.
+                    exit
+                end if
+
+                if (nactive <= (maxguess-ntrial)) then
+                    ! If the number of guess vectors can be grown by at least another lot of ntrial
+                    do j = 1, ntrial
+                        ! Residue vector w = (A-theta(j)*I) V T(:,j)
+                        ! Storing a diagonal matrix as large as A is obviously a bad idea, so we use a tmp vector
+                        ! Technically speaking, tmpV is the 'Ritz vector' and w is the residue vector
+                        call gemv('N', ndets, nactive, (1.0_p, 0.0_p), V, ndets, T(:,j), 1, (0.0_p, 0.0_p), tmpV, 1)
+                        call gemv('N', ndets, ndets, (1.0_p, 0.0_p), A, ndets, tmpV, 1, (0.0_p, 0.0_p), w, 1)
+                        w = w - theta(j)*tmpV
+                        ! Precondition the residue vector to form the correction vector,
+                        ! if preconditioner = 1, we recover the Lanczos algorithm.
+                        if (abs((theta(j)-A(j,j))) < 1e-6) then
+                            w = w/(theta(j) - A(j,j) + 0.01)
+                        else
+                            w = w/(theta(j)-A(j,j))
+                        end if
+                        V(:,(nactive+j)) = w
+                    end do
+                    nactive = nactive + ntrial
+                    just_collapsed = .false.
+                else
+                    ! We need to collapse the subspace into ntrial best guesses and restart the iterations
+                    ! V holds the approximate eigenvectors and T holds the CI coefficients,
+                    ! so one call to gemm gives us the actual guess vectors.
+                    write(iunit, '(1X, A)') 'Collapsing subspace...'
+                    ! Matrix multiplication requires the matrices throughout the calculation, so a temporary array is needed
+                    ! to avoid compilers deciding to overwrite the original V array during the multiplication.
+                    call gemm('N', 'N', ndets, ntrial, maxguess, (1.0_p, 0.0_p), V,&
+                              ndets, T, maxguess, (0.0_p, 0.0_p), V_coll, ndets)
+                    V(:,:ntrial) = V_coll
+                    nactive = ntrial
+                    just_collapsed = .true.
+                end if
+
+            end do
+
+            if (.not. conv) then
+                call warning('davidson_diagonalisation',&
+                    'Davidson diagonalisation did not converge, choose a larger maxiter or tolerance.')
+            end if
+
+            eigv = theta(1:nEig)
+            deallocate(V, V_coll, T, tmpV, w, tmp, theta, rwork)
+        end if
+        end associate
+
+    end subroutine davidson_diagonalisation_comp
 end module fci_davidson
