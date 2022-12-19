@@ -329,7 +329,7 @@ contains
         !       nactive = ntrial
         !       if iter < maxiter do       
         !       1. Orthonormalise V(:,1:nactive) (we use the QR decomposition)
-        !       2. Compute T = V^T A V, the Rayleigh matrix / subspace Hamiltonian
+        !       2. Compute T = V^H A V, the Rayleigh matrix / subspace Hamiltonian
         !       3. Diagonalise the subspace Hamiltonian: TC = Ct
         !       4. if nactive < maxguess - ntrial, then
         !           for i in {1..ntrial}
@@ -455,9 +455,9 @@ contains
                 call qr_wrapper_comp(ndets, nactive, V, ndets, info)
                 
                 ! Form the subspace Hamiltonian / Rayleigh matrix
-                ! T = V^T A V
+                ! T = V^H A V
                 call gemm('N', 'N', ndets, nactive, ndets, (1.0_p, 0.0_p), A, ndets, V, ndets, (0.0_p, 0.0_p), tmp, ndets)
-                call gemm('T', 'N', nactive, nactive, ndets, (1.0_p, 0.0_p), V, ndets, tmp, ndets, (0.0_p, 0.0_p), T, nactive)
+                call gemm('C', 'N', nactive, nactive, ndets, (1.0_p, 0.0_p), V, ndets, tmp, ndets, (0.0_p, 0.0_p), T, nactive)
                 ! Diagonalise the subspace Hamiltonian
                 ! T C = C t (T gets overwritten by C in syev, theta is the diagonal of t)
                 call heev_wrapper('V', 'U', nactive, T, nactive, theta, rwork, info)
