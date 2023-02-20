@@ -458,7 +458,7 @@ contains
                 ! errors relate to the procedure pointers...
 
                 !$omp parallel default(none) &
-                !$omp private(it, iexcip_pos, i, seen_D0, hit, pos, population, real_population, k, annihilation_flags) &
+                !$omp private(it, iexcip_pos, i, seen_D0, population, annihilation_flags) &
                 !$omp shared(rng, cumulative_abs_real_pops, tot_abs_real_pop, &
                 !$omp        max_cluster_size, contrib, D0_normalisation, D0_pos, rdm, &
                 !$omp        qs, sys, bloom_stats, min_cluster_size, ref_det, selection_data, &
