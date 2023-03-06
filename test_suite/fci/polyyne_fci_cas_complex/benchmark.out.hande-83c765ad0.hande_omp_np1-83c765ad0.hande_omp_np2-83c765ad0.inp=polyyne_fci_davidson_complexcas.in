@@ -1,0 +1,306 @@
+
+   HANDE
+
+ ================================================================
+Version information
+-------------------
+Version       | v1.5-588-g83c765a
+Commit hash   | 83c765ad09d6fc2937397258701d713d9b1b7b77
+Commit author | Alex Thom
+Commit date   | Mon Dec 19 19:43:02 2022 +0000
+Branch        | feature/complex_davidson
+
+Configuration and build information
+-----------------------------------
+Who compiled             | ajwt3
+Compilation hostname     | liminal
+Operating system         | Linux-5.4.0-139-generic
+CMake version            | Not built using CMake
+CMake generator          | Not built using CMake
+Build type               | optimised
+Configuration time       | 2023-03-06 18:28:13 [UTC]
+Python version           | 3.9.12
+Fortran compiler         | gfortran
+C compiler               | gcc
+DET_SIZE set to          | 64
+POP_SIZE set to          | 64
+dSFMT Mersenne exponent  | 19937
+MPI parallelization      | OFF
+OpenMP parallelization   | ON
+Lua version              | unknown
+HDF5 library version     | unknown
+
+Further components
+------------------
+DISABLE_HDF5 not defined.  HDF5 enabled.
+DISABLE_UUID not defined.  UUID enabled.
+PARALLEL not defined.  MPI parallelization disabled.
+PARALLEL not defined. MPI-3 functionality disabled.
+Neither POSIX shared memory nor MPI-3 are in use.
+DISABLE_SCALAPACK not defined.  ScaLAPACK enabled.
+SINGLE_PRECISION not defined.  Double precision used throughout.
+USE_POPCNT not defined. Internal POPCNT procedure used.
+
+Runtime information
+-------------------
+Hostname:
+    liminal
+Current working dir:
+    /home/ajwt3/code/HANDE/test_suite/fci/polyyne_fci_cas_complex
+Started running on 06/03/2023 at 18:59:54
+ Calculation UUID: 5d99266c-2b3c-4bd9-b451-0a99b7450542.
+ ================================================================
+
+ Input options
+ -------------
+
+sys = read_in {
+    int_file = "FCIDUMP",
+    nel = 24,
+    ms = 0,
+    sym = "tot_sym",
+    CAS = {8,8},
+    complex = true,
+}
+
+fci {
+    sys = sys,
+    davidson = {
+      ndavidson_eigv = 2,
+      ndavidson_trialvec = 10,
+      davidson_maxsize = 80,
+      davidson_tol = 1e-8,
+      davidson_maxiter = 500,
+    },
+}
+
+ -------------
+
+ Memory required for all two body integrals (MB) on each processor: 0
+ It is left to the user to ensure that this does not exceed available resources.
+
+ Basis functions
+ ---------------
+
+ Spin given in units of 1/2.
+ k-points given in terms of the reciprocal lattice vectors of the crystal cell.
+
+ index   k-point            ms       <i|f|i>
+     1   (  0,  0,  0)      1       -1.00236005E+00
+     2   (  0,  0,  0)     -1       -1.00236005E+00
+     3   (  1,  0,  0)      1       -9.26018339E-01
+     4   (  1,  0,  0)     -1       -9.26018339E-01
+     5   (  2,  0,  0)      1       -9.26018339E-01
+     6   (  2,  0,  0)     -1       -9.26018339E-01
+     7   (  2,  0,  0)      1       -7.28383055E-01
+     8   (  2,  0,  0)     -1       -7.28383055E-01
+     9   (  1,  0,  0)      1       -7.28383055E-01
+    10   (  1,  0,  0)     -1       -7.28383055E-01
+    11   (  0,  0,  0)      1       -5.97827871E-01
+    12   (  0,  0,  0)     -1       -5.97827871E-01
+    13   (  0,  0,  0)      1       -4.42755448E-01
+    14   (  0,  0,  0)     -1       -4.42755448E-01
+    15   (  0,  0,  0)      1       -4.42755446E-01
+    16   (  0,  0,  0)     -1       -4.42755446E-01
+    17   (  1,  0,  0)      1       -2.63091309E-01
+    18   (  1,  0,  0)     -1       -2.63091309E-01
+    19   (  2,  0,  0)      1       -2.63091308E-01
+    20   (  2,  0,  0)     -1       -2.63091308E-01
+    21   (  1,  0,  0)      1       -2.63091308E-01
+    22   (  1,  0,  0)     -1       -2.63091308E-01
+    23   (  2,  0,  0)      1       -2.63091305E-01
+    24   (  2,  0,  0)     -1       -2.63091305E-01
+    25   (  1,  0,  0)      1        4.24212132E-01
+    26   (  1,  0,  0)     -1        4.24212132E-01
+    27   (  1,  0,  0)      1        4.24212136E-01
+    28   (  1,  0,  0)     -1        4.24212136E-01
+    29   (  2,  0,  0)      1        4.24212136E-01
+    30   (  2,  0,  0)     -1        4.24212136E-01
+    31   (  2,  0,  0)      1        4.24212141E-01
+    32   (  2,  0,  0)     -1        4.24212141E-01
+    33   (  0,  0,  0)      1        5.87812296E-01
+    34   (  0,  0,  0)     -1        5.87812296E-01
+    35   (  0,  0,  0)      1        7.92184979E-01
+    36   (  0,  0,  0)     -1        7.92184979E-01
+    37   (  0,  0,  0)      1        7.92184982E-01
+    38   (  0,  0,  0)     -1        7.92184982E-01
+    39   (  2,  0,  0)      1        8.74608188E-01
+    40   (  2,  0,  0)     -1        8.74608188E-01
+    41   (  1,  0,  0)      1        8.74608188E-01
+    42   (  1,  0,  0)     -1        8.74608188E-01
+    43   (  1,  0,  0)      1        1.55775862E+00
+    44   (  1,  0,  0)     -1        1.55775862E+00
+    45   (  2,  0,  0)      1        1.55775862E+00
+    46   (  2,  0,  0)     -1        1.55775862E+00
+    47   (  0,  0,  0)      1        2.00066738E+00
+    48   (  0,  0,  0)     -1        2.00066738E+00
+
+ Freezing...
+ Using complete active space: (8,8)
+
+ Basis functions
+ ---------------
+
+ Spin given in units of 1/2.
+ k-points given in terms of the reciprocal lattice vectors of the crystal cell.
+
+ index   k-point            ms       <i|f|i>
+     1   (  1,  0,  0)      1       -2.63091309E-01
+     2   (  1,  0,  0)     -1       -2.63091309E-01
+     3   (  2,  0,  0)      1       -2.63091308E-01
+     4   (  2,  0,  0)     -1       -2.63091308E-01
+     5   (  1,  0,  0)      1       -2.63091308E-01
+     6   (  1,  0,  0)     -1       -2.63091308E-01
+     7   (  2,  0,  0)      1       -2.63091305E-01
+     8   (  2,  0,  0)     -1       -2.63091305E-01
+     9   (  1,  0,  0)      1        4.24212132E-01
+    10   (  1,  0,  0)     -1        4.24212132E-01
+    11   (  1,  0,  0)      1        4.24212136E-01
+    12   (  1,  0,  0)     -1        4.24212136E-01
+    13   (  2,  0,  0)      1        4.24212136E-01
+    14   (  2,  0,  0)     -1        4.24212136E-01
+    15   (  2,  0,  0)      1        4.24212141E-01
+    16   (  2,  0,  0)     -1        4.24212141E-01
+
+ E_core =   11.133891034100
+ Number of electrons: 8
+ Number of basis functions: 16
+
+ Bit-length of integers used to store determinant bit-strings: 64
+ Number of integers used to store determinant bit-strings: 1
+
+ Symmetry information
+ --------------------
+
+ The table below gives the label and inverse of each wavevector.
+
+ Index    k-point         Inverse
+   1      (  0,  0,  0)        1
+   2      (  1,  0,  0)        3
+   3      (  2,  0,  0)        2
+
+ The matrix below gives the result of k_i+k_j to within a reciprocal lattice vector.
+
+  1  2  3
+  2  3  1
+  3  1  2
+
+ FCI
+ ---
+
+ -- Start JSON block --
+ {
+     "system": {
+         "nbasis": 16,   
+         "nel": 8,   
+         "nvirt": 8,   
+         "Ms": 0,   
+         "nalpha": 4,   
+         "nbeta": 4,   
+         "nvirt_alpha": 4,   
+         "nvirt_beta": 4,   
+         "nsym": 3,   
+         "sym0": 1,   
+         "sym_max": 3,   
+         "nsym_tot": 3,   
+         "sym0_tot": 1,   
+         "sym_max_tot": 3,   
+         "symmetry": 1,   
+         "tot_sym": true,   
+         "aufbau_sym": false,   
+         "max_number_excitations": 8,   
+         "read_in": {
+             "int_file":  "FCIDUMP",   
+             "uhf": false,   
+             "Ecore": 11.13389103,   
+             "CAS": [ 8, 8],
+             "useLz": false,   
+             "complex": true    
+         }
+     },
+     "fci_in": {
+         "write_hamiltonian": false,   
+         "hamiltonian_file":  "HAMIL",   
+         "write_determinants": false,   
+         "determinant_file":  "DETS",   
+         "print_fci_wfn": 0,   
+         "print_fci_wfn_file":  "FCI_WFN",   
+         "analyse_fci_wfn": 0,   
+         "block_size": 64,   
+         "ndavidson_eigv": 2,   
+         "ndavidson_trialvec": 10,   
+         "davidson_maxsize": 80,   
+         "davidson_tol": 0.00000001,   
+         "hamiltonian_diagonal_only": false,   
+     },
+     "reference": {
+         "ex_level": 8    
+     }
+ }
+ -- End JSON block --
+
+ The table below gives the number of determinants for each symmetry with Ms=0.
+
+ Symmetry index      # dets
+         1             1874
+         2             1513
+         3             1513
+
+ Performing Davidson diagonalisation...
+
+ Davidson initialisation done!
+ Time taken for Davidson initialisation 0.004435 s
+
+ Iteration   Basis size    delta rmsE      Time  
+         1           10   3.152023E-01    0.037432
+         2           20   1.248498E-01    0.105674
+         3           30   2.441750E-02    0.140413
+         4           40   1.301680E-02    0.155745
+         5           50   3.577319E-02    0.130619
+         6           60   5.215204E-03    0.129052
+         7           70   2.465157E-03    0.127857
+         8           80   3.744824E-03    0.142598
+ Collapsing subspace...
+         9           10   7.952832E-16    0.021308
+        10           20   3.263905E-02    0.107258
+        11           30   1.808392E-02    0.102675
+        12           40   8.391665E-03    0.109309
+        13           50   2.493234E-03    0.120138
+        14           60   5.613026E-04    0.126919
+        15           70   1.212965E-04    0.128665
+        16           80   3.001118E-05    0.158037
+ Collapsing subspace...
+        17           10   1.091327E-15    0.019363
+        18           20   7.004062E-06    0.101953
+        19           30   3.686767E-06    0.102079
+        20           40   1.280019E-06    0.115797
+        21           50   4.655275E-07    0.100518
+        22           60   1.979262E-07    0.103905
+        23           70   9.751885E-08    0.108448
+        24           80   4.180202E-08    0.115396
+ Collapsing subspace...
+        25           10   1.224081E-15    0.016961
+        26           20   1.296762E-08    0.082637
+        27           30   6.535663E-09    0.088550
+ Eigenvalue tolerance of 1.0000E-08 reached, printing results...
+ Davidson diagonalisation results
+ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+  State     Energy
+      1    -0.145010801071
+      2     0.162064480817
+
+ Timing breakdown
+ ----------------
+
+ Wall time for each calculation section (seconds):
+
+ Generic system initialisation: .59
+ FCI calculation              : 3.29
+
+ ================================================================
+ Finished running on 06/03/2023 at 18:59:58
+ Wall time (seconds):                               3.95
+ CPU time (per processor, seconds):                 3.88
+ ================================================================
+
