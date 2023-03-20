@@ -303,7 +303,7 @@ contains
 
     subroutine cgemm_f90(transA, transB, M, N, K, alpha, A, lda, B, ldb, beta, C, ldc)
 
-        ! See LAPACK dgemm procedure for details
+        ! See LAPACK cgemm procedure for details
 
         use const, only: sp
 
@@ -319,7 +319,7 @@ contains
 
     subroutine zgemm_f90(transA, transB, M, N, K, alpha, A, lda, B, ldb, beta, C, ldc)
 
-        ! See LAPACK dgemm procedure for details
+        ! See LAPACK zgemm procedure for details
 
         use const, only: dp
 
@@ -369,7 +369,7 @@ contains
     
     subroutine cgemv_f90(trans, M, N, alpha, A, lda, x, incx, beta, y, incy)
 
-        ! See LAPACK sgemv procedure for details
+        ! See LAPACK cgemv procedure for details
 
         use const, only: sp
 
@@ -385,7 +385,7 @@ contains
 
     subroutine zgemv_f90(trans, M, N, alpha, A, lda, x, incx, beta, y, incy)
 
-        ! See LAPACK dgemv procedure for details
+        ! See LAPACK zgemv procedure for details
 
         use const, only: dp
 
