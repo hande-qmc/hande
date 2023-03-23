@@ -13,7 +13,7 @@ fci {
       ndavidson_eigv = 2,
       ndavidson_trialvec = 10,
       davidson_maxsize = 80,
-      davidson_tol = 1e-8,
+      davidson_tol = 1e-10,
       davidson_maxiter = 500,
     },
 }

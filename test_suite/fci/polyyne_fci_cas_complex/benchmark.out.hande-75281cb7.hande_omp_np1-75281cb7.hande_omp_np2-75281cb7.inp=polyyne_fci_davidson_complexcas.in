@@ -4,31 +4,31 @@
  ================================================================
 Version information
 -------------------
-Version       | v1.5-588-g83c765a
-Commit hash   | 83c765ad09d6fc2937397258701d713d9b1b7b77
-Commit author | Alex Thom
-Commit date   | Mon Dec 19 19:43:02 2022 +0000
-Branch        | feature/complex_davidson
+Version       | v1.5-593-g75281cb
+Commit hash   | 75281cb7c94321fa026872ddc360b7c7b3e0087b
+Commit author | Andreea Filip
+Commit date   | Tue Mar 21 18:31:20 2023 +0000
+Branch        | bugfix/complex_davidson_test
 
 Configuration and build information
 -----------------------------------
-Who compiled             | ajwt3
-Compilation hostname     | liminal
+Who compiled             | maf63
+Compilation hostname     | serenity
 Operating system         | Linux-5.4.0-139-generic
-CMake version            | Not built using CMake
-CMake generator          | Not built using CMake
-Build type               | optimised
-Configuration time       | 2023-03-06 18:28:13 [UTC]
+CMake version            | 3.23.2
+CMake generator          | Unix Makefiles
+Build type               | release
+Configuration time       | 2023-03-23 15:23:36 [UTC]
 Python version           | 3.9.12
-Fortran compiler         | gfortran
-C compiler               | gcc
-DET_SIZE set to          | 64
-POP_SIZE set to          | 64
+Fortran compiler         | /usr/local/shared/oneapi/compiler/2022.0.1/linux/bin/intel64/ifort
+C compiler               | /usr/local/shared/oneapi/compiler/2022.0.1/linux/bin/intel64/icc
+DET_SIZE set to          | 32
+POP_SIZE set to          | 32
 dSFMT Mersenne exponent  | 19937
 MPI parallelization      | OFF
-OpenMP parallelization   | ON
-Lua version              | unknown
-HDF5 library version     | unknown
+OpenMP parallelization   | OFF
+Lua version              | 5.4.4
+HDF5 library version     | 1.10.4
 
 Further components
 ------------------
@@ -44,11 +44,11 @@ USE_POPCNT not defined. Internal POPCNT procedure used.
 Runtime information
 -------------------
 Hostname:
-    liminal
+    serenity
 Current working dir:
-    /home/ajwt3/code/HANDE/test_suite/fci/polyyne_fci_cas_complex
-Started running on 06/03/2023 at 18:59:54
- Calculation UUID: 5d99266c-2b3c-4bd9-b451-0a99b7450542.
+    /home/maf63/code/hande-run-test/test_suite/fci/polyyne_fci_cas_complex
+Started running on 23/03/2023 at 15:42:26
+ Calculation UUID: 9ce5a17e-41ae-4aa8-a31f-b211a152a1bf.
  ================================================================
 
  Input options
@@ -166,7 +166,7 @@ fci {
  Number of electrons: 8
  Number of basis functions: 16
 
- Bit-length of integers used to store determinant bit-strings: 64
+ Bit-length of integers used to store determinant bit-strings: 32
  Number of integers used to store determinant bit-strings: 1
 
  Symmetry information
@@ -249,58 +249,58 @@ fci {
  Performing Davidson diagonalisation...
 
  Davidson initialisation done!
- Time taken for Davidson initialisation 0.004435 s
-
+ Time taken for Davidson initialisation 0.021900 s
+ 
  Iteration   Basis size    delta rmsE      Time  
-         1           10   3.152023E-01    0.037432
-         2           20   1.248498E-01    0.105674
-         3           30   2.441750E-02    0.140413
-         4           40   1.301680E-02    0.155745
-         5           50   3.577319E-02    0.130619
-         6           60   5.215204E-03    0.129052
-         7           70   2.465157E-03    0.127857
-         8           80   3.744824E-03    0.142598
+         1           10   3.152023E-01    0.057200
+         2           20   1.248498E-01    0.135900
+         3           30   2.441750E-02    0.157100
+         4           40   1.301680E-02    0.183000
+         5           50   3.577319E-02    0.197000
+         6           60   5.215204E-03    0.182800
+         7           70   2.465157E-03    0.266400
+         8           80   3.023372E-03    0.276500
  Collapsing subspace...
-         9           10   7.952832E-16    0.021308
-        10           20   3.263905E-02    0.107258
-        11           30   1.808392E-02    0.102675
-        12           40   8.391665E-03    0.109309
-        13           50   2.493234E-03    0.120138
-        14           60   5.613026E-04    0.126919
-        15           70   1.212965E-04    0.128665
-        16           80   3.001118E-05    0.158037
+         9           10   1.273434E-15    0.046000
+        10           20   3.331336E-02    0.139100
+        11           30   1.790705E-02    0.125600
+        12           40   8.538768E-03    0.147500
+        13           50   2.573570E-03    0.212000
+        14           60   5.537523E-04    0.239500
+        15           70   1.219608E-04    0.290000
+        16           80   3.227166E-05    0.349300
  Collapsing subspace...
-        17           10   1.091327E-15    0.019363
-        18           20   7.004062E-06    0.101953
-        19           30   3.686767E-06    0.102079
-        20           40   1.280019E-06    0.115797
-        21           50   4.655275E-07    0.100518
-        22           60   1.979262E-07    0.103905
-        23           70   9.751885E-08    0.108448
-        24           80   4.180202E-08    0.115396
+        17           10   1.640164E-15    0.040400
+        18           20   7.779145E-06    0.106100
+        19           30   3.939725E-06    0.132600
+        20           40   1.368345E-06    0.157900
+        21           50   5.017230E-07    0.175300
+        22           60   2.206823E-07    0.214700
+        23           70   1.130712E-07    0.256100
+        24           80   4.846875E-08    0.274900
  Collapsing subspace...
-        25           10   1.224081E-15    0.016961
-        26           20   1.296762E-08    0.082637
-        27           30   6.535663E-09    0.088550
+        25           10   7.114312E-16    0.033700
+        26           20   1.564533E-08    0.106900
+        27           30   8.040468E-09    0.150500
  Eigenvalue tolerance of 1.0000E-08 reached, printing results...
  Davidson diagonalisation results
  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
   State     Energy
       1    -0.145010801071
-      2     0.162064480817
+      2     0.162064482225
 
  Timing breakdown
  ----------------
 
  Wall time for each calculation section (seconds):
 
- Generic system initialisation: .59
- FCI calculation              : 3.29
+ Generic system initialisation: .76
+ FCI calculation              : 16.59
 
  ================================================================
- Finished running on 06/03/2023 at 18:59:58
- Wall time (seconds):                               3.95
- CPU time (per processor, seconds):                 3.88
+ Finished running on 23/03/2023 at 15:42:34
+ Wall time (seconds):                               7.28
+ CPU time (per processor, seconds):                17.35
  ================================================================
 
