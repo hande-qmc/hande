@@ -26,7 +26,7 @@ contains
         use system, only: sys_t, copy_sys_spin_info, heisenberg
 
         use checking, only: check_allocate
-        use errors, only: warning
+        use errors, only: warning, stop_all
         use parallel, only: parent, nprocs, blacs_info, get_blacs_info
         use check_input, only: check_fci_opts
         use hamiltonian_data
@@ -65,9 +65,7 @@ contains
             if (nprocs == 1) then
                 call generate_hamil(sys, ndets, dets, hamil, full_mat=.true.)
             else
-                ! Use as square a processor grid as possible.
-                proc_blacs_info = get_blacs_info(ndets, fci_in%block_size)
-                call generate_hamil(sys, ndets, dets, hamil, proc_blacs_info=proc_blacs_info)
+                call stop_all('do_fci_davidson', 'MPI not available for the Davidson solver!')
             end if
             if (fci_in%write_hamiltonian) then
                 call write_hamil(fci_in%hamiltonian_file, ndets, proc_blacs_info, hamil)
