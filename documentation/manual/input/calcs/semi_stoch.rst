@@ -48,7 +48,7 @@ stochastic error in many cases.
     Defines the deterministic space to be a range of excitations that does not necessarily start 
     at 0. For example, ``ci_range = {2,2}`` generates a deterministic space of only doubly excited 
     determinants (we always add in the reference), while ``ci_range = {1,3}`` or ``{0,3}`` being identical 
-    to specifying ``ci_space = {ex_level = 2}``.
+    to specifying ``ci_space = {ex_level = 3}``.
 ``cas``
     type: 2D-vector of integers.
 

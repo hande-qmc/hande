@@ -880,14 +880,13 @@ contains
         ! In:
         !    idet: index of the determinant (in determ%flags, also matches that in the main
         !        determinant list).
-        !    real_pop: (decoded) population on the determinant.
+        !    contrib: information on the current cluster under consideration.
+        !    cmplx: whether we're doing a complex calculation
         ! In/Out:
         !    ndeterm_found: number of determinants in the deterministic space found.
         !        Incremented if idet corresponds to a determinant in the deterministic space.
         !    determ: semi_stoch_t object.  vector and indices components are updated if the
         !        determinant is in the deterministic space.
-        ! Out:
-        !    determ_parent: true if the determinant is in the deterministic space.
 
         use qmc_data, only: semi_stoch_separate_annihilation
         use search, only: binary_search
@@ -932,14 +931,12 @@ contains
         ! In:
         !    idet: index of the determinant (in determ%flags, also matches that in the main
         !        determinant list).
-        !    real_pop: (decoded) population on the determinant.
+        !    contrib: information on the current cluster under consideration.
+        !    cmplx: whether we're doing a complex calculation
+        !    spawn: the spawn array containing information for assigning determinants to processors.
         ! In/Out:
-        !    ndeterm_found: number of determinants in the deterministic space found.
-        !        Incremented if idet corresponds to a determinant in the deterministic space.
         !    determ: semi_stoch_t object.  vector and indices components are updated if the
         !        determinant is in the deterministic space.
-        ! Out:
-        !    determ_parent: true if the determinant is in the deterministic space.
 
         use qmc_data, only: semi_stoch_separate_annihilation
         use ccmc_data, only: wfn_contrib_t

@@ -469,7 +469,7 @@ contains
 
                 !$omp parallel default(none) &
                 !$omp private(it, iexcip_pos, i, seen_D0, hit, pos, population, real_population, k, &
-                !$omp         annihilation_flags, determ_parent) &
+                !$omp         annihilation_flags) &
                 !$omp shared(rng, cumulative_abs_real_pops, tot_abs_real_pop, &
                 !$omp        max_cluster_size, contrib, D0_normalisation, D0_pos, rdm, &
                 !$omp        qs, sys, bloom_stats, min_cluster_size, ref_det, selection_data, &
@@ -484,7 +484,6 @@ contains
                 it = get_thread_id()
                 iexcip_pos = 0
                 seen_D0 = .false.
-                determ_parent = .false.
 
                 !$omp do schedule(dynamic,200) 
                 do iattempt = 1, selection_data%nsingle_excitors + selection_data%nstochastic_clusters
@@ -497,7 +496,7 @@ contains
                             ! Deterministically select each excip as a non-composite cluster.
                             call select_nc_cluster(sys, qs%psip_list, qs%ref%f0, &
                                         iattempt, qmc_in%initiator_pop, .false., &
-                                        contrib(it)%cdet, contrib(it)%cluster, qs%excit_gen_data, determ, determ_parent)
+                                        contrib(it)%cdet, contrib(it)%cluster, qs%excit_gen_data, determ)
 
                             if (qs%propagator%quasi_newton) contrib(it)%cdet%fock_sum = &
                                             sum_sp_eigenvalues_occ_list(sys, contrib(it)%cdet%occ_list) - qs%ref%fock_sum
@@ -507,7 +506,7 @@ contains
                             call do_ccmc_accumulation(sys, qs, contrib(it)%cdet, contrib(it)%cluster, logging_info, &
                                                     D0_population_cycle, proj_energy_cycle, &
                                                     proj_energy_cycle_determ, proj_energy_cycle_stoch, ccmc_in, ref_det, rdm, &
-                                                    selection_data, determ, determ_parent, .false., &
+                                                    selection_data, determ, .false., &
                                                     D0_population_noncomp_cycle)
                             if (uccmc_in%variational_energy .and. all(qs%vary_shift) .and. & 
                                 contrib(it)%cluster%excitation_level <= qs%ref%ex_level)  then
@@ -515,7 +514,7 @@ contains
                                 time_avg_psip_list_ci_states, time_avg_psip_list_ci_pops, nstates_ci)
                             end if
                             call do_nc_ccmc_propagation(rng(it), sys, qs, ccmc_in, logging_info, bloom_stats, &
-                                                        contrib(it), nattempts_spawn, ps_stats(it), determ, determ_parent, uccmc_in)
+                                                        contrib(it), nattempts_spawn, ps_stats(it), determ, uccmc_in)
                         end if
                     else
                         call select_ucc_cluster(rng(it), sys, qs%psip_list, qs%ref%f0, qs%ref%max_ex_level, &
@@ -538,12 +537,12 @@ contains
                             call do_ccmc_accumulation(sys, qs, contrib(it)%cdet, contrib(it)%cluster, logging_info, &
                                                     D0_population_cycle, proj_energy_cycle, &
                                                     proj_energy_cycle_determ, proj_energy_cycle_stoch, ccmc_in, ref_det, rdm, &
-                                                    selection_data, determ, determ_parent, .false., &
+                                                    selection_data, determ, .false., &
                                                     D0_population_noncomp_cycle)
                             call do_stochastic_ccmc_propagation(rng(it), sys, qs, &
                                                                 ccmc_in, logging_info, ms_stats(it), bloom_stats, &
                                                                 contrib(it), nattempts_spawn, ndeath, ps_stats(it), &
-                                                                determ, determ_parent, uccmc_in)
+                                                                determ, uccmc_in)
                         end if
                     end if
                 end do
@@ -578,11 +577,11 @@ contains
                         call do_ccmc_accumulation(sys, qs, contrib(it)%cdet, contrib(it)%cluster, logging_info, &
                                                     D0_population_cycle, proj_energy_cycle, &
                                                     proj_energy_cycle_determ, proj_energy_cycle_stoch, ccmc_in, ref_det, rdm, &
-                                                    selection_data, determ, determ_parent, .false., D0_population_noncomp_cycle)
+                                                    selection_data, determ, .false., D0_population_noncomp_cycle)
                         nattempts_spawn = nattempts_spawn + 1
                        
                         call perform_ccmc_spawning_attempt(rng(it), sys, qs, ccmc_in, logging_info, bloom_stats, contrib(it), 1, &
-                                                        ps_stats(it), determ, .false., uccmc_in)
+                                                        ps_stats(it), determ, uccmc_in)
                 end do
                 !$omp end do
 

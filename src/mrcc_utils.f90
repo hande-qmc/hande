@@ -34,6 +34,8 @@ contains
         integer :: ierr, nelements
         logical :: fciqmc_set, ss_set
 
+        call stop_all('init_highest_dets_t', 'Tailoring will be enabled in a future PR!')
+
         fciqmc_set = .false.
         ss_set = .false.
         if (present(fciqmc_in)) fciqmc_set = .true.

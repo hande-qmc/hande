@@ -30,6 +30,7 @@ contains
         !    nattempts: Print out number of attempts made each iteration
         !       (for CCMC).
         !    io_unit: io unit to write to.
+        !    semi_stoch_sep_stats: separate projected energy into deterministic and stochastic contributions.
 
         use calc, only: doing_calc, hfs_fciqmc_calc, uccmc_calc, trot_uccmc_calc
 

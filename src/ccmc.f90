@@ -374,7 +374,7 @@ contains
         type(logging_t) :: logging_info
         type(selection_data_t) :: selection_data
         type(semi_stoch_t) :: determ
-        logical :: determ_parent, semi_stoch_average_done
+        logical :: semi_stoch_average_done, determ_parent
 
         logical :: soft_exit, dump_restart_shift, restarting, restart_proj_est
 
@@ -639,7 +639,14 @@ contains
                     qs%spawn_store%spawn%hash_shift = qs%spawn_store%spawn%hash_shift + 1
 
                     ! Should we turn on semistochastic CCMC?
-                    if (((iter == semi_stoch_iter .and. semi_stoch_in%space_type /= empty_determ_space) &
+                    ! We turn on semistoch 
+                    ! ... if we're at the specified semi_stoch_iter (given we're using semistoch at all, which
+                    ! is checked by space_type)
+                    ! ... OR we speficied an averaging procedure to be carried out (in which case semi_stoch_iter is overidden
+                    ! by a specified number of iterations after convergence)
+                    ! If we're using the Chebyshev projector, we need to initialize semi_stoch only before the first sub-iteration,
+                    ! where the wavefunction is physically meaningful.
+                    if (((iter >= semi_stoch_iter .and. semi_stoch_in%space_type /= empty_determ_space) &
                         .or. semi_stoch_average_done) .and. icheb == 1) then
                         ! If semi_stoch_average_done, it implies semi_stoch_in%average == true and qs%averaging == true
                         if (semi_stoch_in%average .and. .not. qs%averaging) then
@@ -762,7 +769,9 @@ contains
                         ! an OpenMP parallel region.
                         if (sys%read_in%comp) then
                             call set_determ_info(D0_pos, [real((D0_normalisation),p),aimag(D0_normalisation)], &
-                                                 ndeterm_found, determ, determ_parent)
+                                                 ndeterm_found, determ, determ_parent) 
+                            ! determ_parent here is never used, unlike in FCIQMC. The equivalent variable in CCMC is stored in 
+                            ! contrib%cdet%is_determ
                         else
                             call set_determ_info(D0_pos, [real((D0_normalisation),p)], &
                                                  ndeterm_found, determ, determ_parent)
@@ -776,7 +785,7 @@ contains
                     ! default(none) on when making changes and ensure that the only
                     ! errors relate to the procedure pointers...
                     !$omp parallel default(none) &
-                    !$omp private(it, iexcip_pos, i, seen_D0, determ_parent) &
+                    !$omp private(it, iexcip_pos, i, seen_D0) &
                     !$omp shared(rng, cumulative_abs_real_pops, tot_abs_real_pop,  &
                     !$omp        max_cluster_size, contrib, D0_normalisation, D0_pos, rdm,    &
                     !$omp        qs, sys, bloom_stats, min_cluster_size, ref_det,             &
@@ -791,7 +800,6 @@ contains
                     it = get_thread_id()
                     iexcip_pos = 0
                     seen_D0 = .false.
-                    determ_parent = .false.
                         
                     !$omp do schedule(dynamic,200) 
                     do iattempt = 1, selection_data%nsingle_excitors + selection_data%nstochastic_clusters
@@ -802,9 +810,9 @@ contains
                                 ! Deterministically select each excip as a non-composite cluster.
                                 call select_nc_cluster(sys, qs%psip_list, qs%ref%f0, &
                                             iattempt, qmc_in%initiator_pop, ccmc_in%even_selection, &
-                                            contrib(it)%cdet, contrib(it)%cluster, qs%excit_gen_data, determ, determ_parent)
+                                            contrib(it)%cdet, contrib(it)%cluster, qs%excit_gen_data, determ)
                                 
-                                if (determ_parent) call set_determ_info_ccmc(iattempt, contrib(it), &
+                                if (contrib(it)%cdet%is_determ) call set_determ_info_ccmc(iattempt, contrib(it), &
                                                                              ndeterm_found, determ, sys%read_in%comp)
 
                                 if (qs%propagator%quasi_newton) contrib(it)%cdet%fock_sum = &
@@ -817,9 +825,9 @@ contains
                                                         D0_population_cycle, proj_energy_cycle, &
                                                         proj_energy_cycle_determ, proj_energy_cycle_stoch, &
                                                         ccmc_in, ref_det, rdm, selection_data, &
-                                                        determ, determ_parent, semi_stoch_in%separate_stats)
+                                                        determ, semi_stoch_in%separate_stats)
                                 call do_nc_ccmc_propagation(rng(it), sys, qs, ccmc_in, logging_info, bloom_stats, &
-                                                            contrib(it), nattempts_spawn, ps_stats(it), determ, determ_parent)
+                                                            contrib(it), nattempts_spawn, ps_stats(it), determ)
                             end if
 
                         ! For OpenMP scalability, have this test inside a single loop rather
@@ -836,11 +844,11 @@ contains
                                                 selection_data%nstochastic_clusters, D0_normalisation, qmc_in%initiator_pop, &
                                                 cumulative_abs_real_pops, tot_abs_real_pop, min_cluster_size, max_cluster_size, &
                                                 logging_info, contrib(it)%cdet, contrib(it)%cluster, qs%excit_gen_data, &
-                                                determ, determ_parent, ccmc_in%discard_threshold, count_discard)
+                                                determ, ccmc_in%discard_threshold, count_discard)
                             end if
 
-                            if (determ_parent) call set_determ_info_ccmc_stochastic(contrib(it), determ, sys%read_in%comp, &
-                                                                                    qs%spawn_store%spawn)
+                            if (contrib(it)%cdet%is_determ) call set_determ_info_ccmc_stochastic(contrib(it), determ, &
+                                                                                    sys%read_in%comp, qs%spawn_store%spawn)
 
                             if (contrib(it)%cluster%excitation_level <= qs%ref%max_ex_level+2 .or. &
                                 (ccmc_in%linked .and. contrib(it)%cluster%excitation_level == huge(0))) then
@@ -854,11 +862,10 @@ contains
                                                         D0_population_cycle, proj_energy_cycle, &
                                                         proj_energy_cycle_determ, proj_energy_cycle_stoch, &
                                                         ccmc_in, ref_det, rdm, selection_data, &
-                                                        determ, determ_parent, semi_stoch_in%separate_stats)
+                                                        determ, semi_stoch_in%separate_stats)
                                 call do_stochastic_ccmc_propagation(rng(it), sys, qs, &
                                                                     ccmc_in, logging_info, ms_stats(it), bloom_stats, &
-                                                                    contrib(it), nattempts_spawn, ndeath, ps_stats(it), &
-                                                                    determ, determ_parent)
+                                                                    contrib(it), nattempts_spawn, ndeath, ps_stats(it), determ)
                             end if
                         end if
                     end do
@@ -893,11 +900,11 @@ contains
                                                 D0_population_cycle, proj_energy_cycle, &
                                                 proj_energy_cycle_determ, proj_energy_cycle_stoch, &
                                                 ccmc_in, ref_det, rdm, selection_data, &
-                                                determ, determ_parent, semi_stoch_in%separate_stats)
+                                                determ, semi_stoch_in%separate_stats)
                         nattempts_spawn = nattempts_spawn + 1
                        
                         call perform_ccmc_spawning_attempt(rng(it), sys, qs, ccmc_in, logging_info, bloom_stats, &
-                                contrib(it), 1, ps_stats(it), determ, (nD0_proc == 1))
+                                contrib(it), 1, ps_stats(it), determ)
 
                     end do
                     !$omp end do
@@ -912,7 +919,7 @@ contains
                             ! Note we use the (encoded) population directly in stochastic_ccmc_death_nc
                             ! (unlike the stochastic_ccmc_death) to avoid unnecessary decoding/encoding
                             ! steps (cf comments in stochastic_death for FCIQMC).
-                            ! If the noncomposite excitor is deterministic, death will be handled elsewhere.
+                            ! If the noncomposite excitor is deterministic, death will be handled in determ_projection.
                             if (determ%doing_semi_stoch .and. determ%flags(iattempt) == 0) then
                                 cycle
                             else
@@ -1107,7 +1114,7 @@ contains
 
     subroutine do_ccmc_accumulation(sys, qs, cdet, cluster, logging_info, D0_population_cycle, proj_energy_cycle, &
                                     proj_energy_cycle_determ, proj_energy_cycle_stoch, ccmc_in, ref_det, rdm, selection_data, &
-                                    determ, determ_parent, semi_stoch_sep_stats, D0_population_noncomp_cycle)
+                                    determ, semi_stoch_sep_stats, D0_population_noncomp_cycle)
 
         ! Performs all accumulation of values required for given ccmc clusters.
         ! Updates projected energy and any RDMs with the contribution from the
@@ -1123,7 +1130,6 @@ contains
         !   cluster: information on cluster currently under consideration.
         !   logging_info: current logging settings in use.
         !   determ: the semi_stoch_t object holding information relevant to semi-stochastic CCMC.
-        !   determ_parent: true if the excitor formed from the cluster is in the deterministic space (for semistochastic CCMC).
         !   semi_stoch_sep_stats: True if doing semi-stochastic and report 
         !       deterministic and stochastic contributions to E_proj separately.
 
@@ -1161,7 +1167,7 @@ contains
         real(p), intent(inout), optional :: D0_population_noncomp_cycle
         type(selection_data_t), intent(inout) :: selection_data
         type(semi_stoch_t), intent(in) :: determ
-        logical, intent(in) :: determ_parent, semi_stoch_sep_stats
+        logical, intent(in) :: semi_stoch_sep_stats
 
         type(excit_t) :: connection
         type(hmatel_t) :: hmatel
@@ -1218,7 +1224,7 @@ contains
     end subroutine do_ccmc_accumulation
 
     subroutine do_stochastic_ccmc_propagation(rng, sys, qs, ccmc_in, logging_info, ms_stats, bloom_stats, &
-                                              contrib, nattempts_spawn_tot, ndeath, ps_stat, determ, determ_parent, uccmc_in)
+                                              contrib, nattempts_spawn_tot, ndeath, ps_stat, determ, uccmc_in)
 
         ! Perform stochastic propogation of a cluster in an appropriate manner
         ! for the given inputs. For multireference systems, it allows death for
@@ -1231,7 +1237,6 @@ contains
         !   logging_info: logging_t object with info about current logging
         !        when debug is true. 
         !   determ: the semi_stoch_t object holding information relevant to semi-stochastic CCMC.
-        !   determ_parent: true if the excitor formed from the cluster is in the deterministic space (for semi-stochastic CCMC).
 
         !
         ! In/Out:
@@ -1275,7 +1280,6 @@ contains
         type(multispawn_stats_t), intent(inout) :: ms_stats
         type(p_single_double_coll_t), intent(inout) :: ps_stat
         type(semi_stoch_t), intent(in) :: determ
-        logical, intent(in) :: determ_parent
 
         integer :: nspawnings_cluster
         logical :: attempt_death
@@ -1295,21 +1299,21 @@ contains
         if (qs%multiref) then
             if (multiref_check_ex_level(sys, contrib, qs, 2)) then
                 ! If the ket is in deterministic space, death will be performed deterministically.       
-                attempt_death = multiref_check_ex_level(sys, contrib, qs, 0) .and. (.not. determ_parent)
+                attempt_death = multiref_check_ex_level(sys, contrib, qs, 0) .and. (.not. contrib%cdet%is_determ)
                 call do_spawning_death(rng, sys, qs, ccmc_in, logging_info, bloom_stats, contrib, ndeath, ps_stat, &
-                                       nspawnings_cluster, attempt_death, determ, determ_parent, uccmc_in)
+                                       nspawnings_cluster, attempt_death, determ, uccmc_in)
             end if
         else
-            attempt_death = (contrib%cluster%excitation_level <= qs%ref%ex_level) .and. (.not. determ_parent)
+            attempt_death = (contrib%cluster%excitation_level <= qs%ref%ex_level) .and. (.not. contrib%cdet%is_determ)
 
             call do_spawning_death(rng, sys, qs, ccmc_in, logging_info, bloom_stats, contrib, ndeath, ps_stat, &
-                                   nspawnings_cluster, attempt_death, determ, determ_parent, uccmc_in)
+                                   nspawnings_cluster, attempt_death, determ, uccmc_in)
         end if
 
     end subroutine do_stochastic_ccmc_propagation  
 
     subroutine do_spawning_death(rng, sys, qs, ccmc_in, logging_info, bloom_stats, contrib, &
-                                 ndeath, ps_stat, nspawnings_cluster, attempt_death, determ, determ_parent, uccmc_in)
+                                 ndeath, ps_stat, nspawnings_cluster, attempt_death, determ, uccmc_in)
 
         ! For stochastically selected clusters this
         ! attempts spawning and death, adding any created particles to the
@@ -1328,7 +1332,6 @@ contains
         !   attempt_death: logical variable that encodes whether the selected 
         !        cluster is within the desired CC truncation. 
         !   determ: the semi_stoch_t object holding information relevant to semi-stochastic CCMC.
-        !   determ_parent: true if the excitor formed from the cluster is in the deterministic space (for semistochastic CCMC).
         !
         ! In/Out:
         !   rng: random number generator.
@@ -1370,20 +1373,19 @@ contains
         logical, intent(in) :: attempt_death
 
         type(semi_stoch_t), intent(in) :: determ
-        logical, intent(in) :: determ_parent
 
         integer :: i
 
         do i = 1, nspawnings_cluster
             call perform_ccmc_spawning_attempt(rng, sys, qs, ccmc_in, logging_info, bloom_stats, contrib, &
-                                               nspawnings_cluster, ps_stat, determ, determ_parent, uccmc_in)
+                                               nspawnings_cluster, ps_stat, determ, uccmc_in)
         end do
         
         ! Does the cluster collapsed onto D0 produce
         ! a determinant is in the truncation space?  If so, also
         ! need to attempt a death/cloning step.
         ! optimisation: call only once per iteration for clusters of size 0 or 1 for ccmc_in%full_nc.
-        ! If the ket is in the deterministic space (i.e. determ_parent is true), 
+        ! If the ket is in the deterministic space (i.e. cdet%is_determ is true), 
         ! attempt death is set to false in do_stochastic_ccmc_propagation
         if (attempt_death) then
            ! Clusters above size 2 can't die in linked ccmc.
@@ -1398,7 +1400,7 @@ contains
     end subroutine do_spawning_death
  
     subroutine do_nc_ccmc_propagation(rng, sys, qs, ccmc_in, logging_info, bloom_stats, &
-                                      contrib, nattempts_spawn_tot, ps_stat, determ, determ_parent, uccmc_in)
+                                      contrib, nattempts_spawn_tot, ps_stat, determ, uccmc_in)
 
         ! Perform stochastic propogation of a cluster selected deterministically
         ! in full non-composite selection. This performs all spawning attempts
@@ -1421,7 +1423,6 @@ contains
         !   logging_info: logging_t object with info about current logging
         !        when debug is true.
         !   determ: the semi_stoch_t object holding information relevant to semi-stochastic CCMC.
-        !   determ_parent: true if the excitor formed from the cluster is in the deterministic space (for semistochastic CCMC).
         !
         ! In/Out:
         !   rng: random number generator.
@@ -1458,7 +1459,6 @@ contains
         type(bloom_stats_t), intent(inout) :: bloom_stats
         type(logging_t), intent(in) :: logging_info
         type(semi_stoch_t), intent(in) :: determ
-        logical, intent(in) :: determ_parent
 
         integer(int_64), intent(inout) :: nattempts_spawn_tot
         type(p_single_double_coll_t), intent(inout) :: ps_stat
@@ -1484,13 +1484,13 @@ contains
         
         do i = 1, nspawnings_cluster
             call perform_ccmc_spawning_attempt(rng, sys, qs, ccmc_in, logging_info, bloom_stats, contrib, 1, ps_stat, &
-                                               determ, determ_parent, uccmc_in)
+                                               determ, uccmc_in)
         end do
 
     end subroutine do_nc_ccmc_propagation
 
     subroutine perform_ccmc_spawning_attempt(rng, sys, qs, ccmc_in, logging_info, bloom_stats, contrib, nspawnings_total, &
-                                             ps_stat, determ, determ_parent, uccmc_in)
+                                             ps_stat, determ, uccmc_in)
 
         ! Performs a single ccmc spawning attempt, as appropriate for a
         ! given setting combination of linked, complex or none of the above.
@@ -1504,7 +1504,6 @@ contains
         !   logging_info: input settings related to logging.
         !   nspawnings_total: number of spawning attempts made
         !       from the same cluster if using multispawn.
-        !   determ_parent: true if the ket excitor is in deterministic space
         !   uccmc_in: input settings related to uccmc.
         !
         ! In/Out:
@@ -1546,13 +1545,12 @@ contains
         integer, intent(in) :: nspawnings_total
         type(p_single_double_coll_t), intent(inout) :: ps_stat
         type(semi_stoch_t), intent(in) :: determ
-        logical, intent(in) :: determ_parent
 
         integer(int_p) :: nspawned, nspawned_im
         integer(i0) :: fexcit(sys%basis%tot_string_len)
-        logical :: determ_child, trot
+        logical :: spawn_is_determ, trot
 
-        determ_child = .false.
+        spawn_is_determ = .false.
 
         if (present(uccmc_in)) then
             trot = uccmc_in%trot
@@ -1575,20 +1573,15 @@ contains
         else
             call spawner_ccmc(rng, sys, qs, qs%spawn_store%spawn%cutoff, &
                       ccmc_in%linked, contrib%cdet, contrib%cluster, gen_excit_ptr, logging_info, &
-                      nspawned, connection, nspawnings_total, ps_stat, determ, determ_child)
+                      nspawned, connection, nspawnings_total, ps_stat, determ, spawn_is_determ)
             nspawned_im = 0_int_p
 
         end if
 
         if (nspawned /= 0_int_p) then
-            if (determ_parent .and. determ_child) then
-                ! This spawn will be done in deterministic projection, skip
-                continue
-            else
-                call create_spawned_particle_ccmc(sys, qs%ref, contrib%cdet, connection, &
-                                            nspawned, 1, contrib%cluster%excitation_level, &
-                                            ccmc_in%even_selection, fexcit, qs%spawn_store%spawn, bloom_stats, trot)
-            end if
+            call create_spawned_particle_ccmc(sys, qs%ref, contrib%cdet, connection, &
+                                        nspawned, 1, contrib%cluster%excitation_level, &
+                                        ccmc_in%even_selection, fexcit, qs%spawn_store%spawn, bloom_stats, trot)
         end if
 
         ! Brian - [todo]: add semistoch support for complex systems

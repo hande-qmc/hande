@@ -978,7 +978,7 @@ contains
                                                   excitation%perm)
                 estimators%proj_energy = estimators%proj_energy + hmatel%r*pop(1)
                 if (estimators%semi_stoch_sep_stats) then
-                    if (cdet%determ) then
+                    if (cdet%is_determ) then
                         estimators%proj_energy_determ = estimators%proj_energy_determ + hmatel%r*pop(1)
                     else
                         estimators%proj_energy_stoch = estimators%proj_energy_stoch + hmatel%r*pop(1)
@@ -999,7 +999,7 @@ contains
                                                       excitation%perm)
                     estimators%proj_energy = estimators%proj_energy + hmatel%r*pop(1)
                     if (estimators%semi_stoch_sep_stats) then
-                        if (cdet%determ) then
+                        if (cdet%is_determ) then
                             estimators%proj_energy_determ = estimators%proj_energy_determ + hmatel%r*pop(1)
                         else
                             estimators%proj_energy_stoch = estimators%proj_energy_stoch + hmatel%r*pop(1)

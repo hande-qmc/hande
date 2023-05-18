@@ -191,13 +191,8 @@ contains
             ! combinations are allowed.
             allocate(nalpha_combinations(0:0), stat=ierr)
             call check_allocate('nalpha_combinations',1,ierr)
-            if (cas_set) then
-                nbeta_combinations = binom_i(cas(2), cas(1)/2)
-                nalpha_combinations = binom_i(cas(2), cas(1)/2)
-            else
-                nbeta_combinations = binom_i(nbasis_loc/2, nbeta_loc)
-                nalpha_combinations = binom_i(nbasis_loc/2, nalpha_loc)
-            end if
+            nbeta_combinations = binom_i(nbasis_loc/2, nbeta_loc)
+            nalpha_combinations = binom_i(nbasis_loc/2, nalpha_loc)
         end if
         allocate(comb(2*ex_level_loc, 2), stat=ierr)
         call check_allocate('comb', 4*ex_level_loc, ierr)

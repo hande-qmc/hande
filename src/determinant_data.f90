@@ -59,7 +59,7 @@ type det_info_t
     ! space i.
     integer :: initiator_flag
     ! is the determinant in the deterministic space? Currently only used in CCMC.
-    logical :: determ = .false.
+    logical :: is_determ = .false.
     ! 
     ! \sum_i F_i - F_0, where F_i is the single-particle eigenvalue of the i-th occupied orbital 
     ! and F_0 is the corresponding sum for the reference determinant.

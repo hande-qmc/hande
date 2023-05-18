@@ -363,6 +363,7 @@ type semi_stoch_in_t
     logical :: separate_stats = .false.
     ! Instead of generating CI space up to ex_level, only generate a certain range?
     logical :: use_ci_range = .false.
+    ! The range of excitations to use in the SS space. E.g. [2,3] will give all doubles and triples, plus the reference.
     integer :: ci_range(2) = (/-1, -1/)
     ! Used if a CAS is used to create the deterministic space.
     integer :: cas(2) = (/-1, -1/)
@@ -902,7 +903,9 @@ type estimators_t
     ! For semi-stochastic calculations, we can collect the deterministic and stochastic contributions 
     ! to the projected energy separately.
     logical :: semi_stoch_sep_stats = .false.
+    ! The deterministic part of the projected energy
     real(p) :: proj_energy_determ = 0.0_p
+    ! The stochastic part of the projected energy
     real(p) :: proj_energy_stoch = 0.0_p
 end type estimators_t
 
