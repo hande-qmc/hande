@@ -172,13 +172,14 @@ contains
             ! This is the same process as excitor to determinant and hence we
             ! can reuse code...
             call create_excited_det(sys%basis, cdet%f, connection, fexcit)
+
             if (determ%doing_semi_stoch) then
                 spawn_is_determ = check_if_determ(determ%hash_table, determ%dets, fexcit)
             end if
+
             if (spawn_is_determ .and. cdet%is_determ) then
                 ! No deterministic to deterministic spawns
                 nspawn = 0_int_p
-                continue
             else
                 !AJWT: Even safer (but perhaps for another day) is to create a det_string derived type which
                 !AJWT: get_excitation_level accepts.
@@ -207,11 +208,9 @@ contains
                         nspawn = 0
                     end if
                 end if
+                if (excitor_sign < 0) nspawn = -nspawn
             end if
 
-            
-
-            if (excitor_sign < 0) nspawn = -nspawn
             if (debug) call write_logging_spawn(logging_info, hmatel_save, pgen, invdiagel, [nspawn], &
                         real(cluster%amplitude,p), sys%read_in%comp, spawn_pgen, cdet%f, fexcit, connection)
         else

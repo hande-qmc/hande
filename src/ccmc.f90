@@ -889,7 +889,8 @@ contains
                             seen_D0 = .true.
                             call create_null_cluster(sys, qs%ref%f0, nprocs*real(selection_data%nD0_select,p),&
                                                     D0_normalisation, qmc_in%initiator_pop, contrib(it)%cdet,&
-                                                    contrib(it)%cluster, qs%excit_gen_data)
+                                                    contrib(it)%cluster, qs%excit_gen_data, &
+                                                    (determ%doing_semi_stoch .and. nD0_proc == 1))
                         end if
 
                         if (qs%propagator%quasi_newton) contrib(it)%cdet%fock_sum = &

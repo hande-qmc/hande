@@ -412,7 +412,7 @@ contains
 
     end subroutine select_cluster
 
-    subroutine create_null_cluster(sys, f0, prob, D0_normalisation, initiator_pop, cdet, cluster, excit_gen_data)
+    subroutine create_null_cluster(sys, f0, prob, D0_normalisation, initiator_pop, cdet, cluster, excit_gen_data, is_determ)
 
         ! Create a cluster with no excitors in it, and set it to have
         ! probability of generation prob.
@@ -425,6 +425,9 @@ contains
         !        will become the amplitude of this cluster)
         !    initiator_pop: the population above which a determinant is an initiator.
         !    excit_gen_data: info for excitation generators.
+        !    is_determ (optional): whether this null cluster is deterministic.
+        !        in semistochastic CCMC, only the processor that D0 is actually on 
+        !        can have a deterministic null cluster
 
         ! In/Out:
         !    cdet: information about the cluster of excitors applied to the
@@ -452,6 +455,7 @@ contains
         type(excit_gen_data_t), intent(in) :: excit_gen_data
         type(det_info_t), intent(inout) :: cdet
         type(cluster_t), intent(inout) :: cluster
+        logical, optional :: is_determ
 
         ! Note only one null cluster to choose => p_clust = 1.
         cluster%pselect = prob
@@ -475,6 +479,8 @@ contains
         ! approximation is (most likely) not suitably for this system.
         ! Let the user be an idiot if they want to be...
         if (abs(D0_normalisation) <= initiator_pop) cdet%initiator_flag = 3
+
+        if (present(is_determ)) cdet%is_determ = is_determ
 
         call decoder_ptr(sys, cdet%f, cdet, excit_gen_data)
 
