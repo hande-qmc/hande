@@ -646,7 +646,7 @@ contains
                     ! by a specified number of iterations after convergence)
                     ! If we're using the Chebyshev projector, we need to initialize semi_stoch only before the first sub-iteration,
                     ! where the wavefunction is physically meaningful.
-                    if (((iter >= semi_stoch_iter .and. semi_stoch_in%space_type /= empty_determ_space) &
+                    if (((iter == semi_stoch_iter .and. semi_stoch_in%space_type /= empty_determ_space) &
                         .or. semi_stoch_average_done) .and. icheb == 1) then
                         ! If semi_stoch_average_done, it implies semi_stoch_in%average == true and qs%averaging == true
                         if (semi_stoch_in%average .and. .not. qs%averaging) then
