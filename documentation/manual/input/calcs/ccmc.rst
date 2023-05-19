@@ -239,9 +239,7 @@ ccmc options
 
     Optional. 
 
-    Number of secondary references used. Must be in the range 1-999. This only needs to be specified if 
-    the secondary references are speficied via ``secondary_refX``. If using ``mr_secref_file``, the number 
-    of secondary references will be automatically deduced.
+    Number of secondary references used. Must be in the range 1-999.
  
 ``secondary_refX``
     type: lua table.
@@ -290,11 +288,22 @@ ccmc options
     to span the active space uniquely) are generated, without the flag every single determinant 
     in the active space is generated.
 
+    The ``--nfrozen`` option is used to minimize the size of the ``secref`` file, where the frozen 
+    core electrons are not included in the bitstrings, and instead the `mr_n_frozen` option is written into the Lua input file and 
+    passed to HANDE, to be added back in when secondary references are initialised.
+
     The ``-l`` option is related to the size of the active space, such that a l-fold excitation 
     can reach the 'middle' determinant (for a :math:`(6e,6o)` active space for 
     nitrogen molecule, this would be a 
     three-fold excitation from the ground into all six orbitals being singly occupied 
     (:math:`M_s = 0` of course).
+
+``mr_n_frozen``
+    type: integer.
+
+    Optional. Default: 0.
+
+    Number of frozen core electrons, i.e., number of electrons that never move in the secondary references.
 
 ``mr_excit_lvl``
     type: integer.

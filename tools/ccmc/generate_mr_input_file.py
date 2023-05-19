@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import numpy as np
 import string
 import itertools
@@ -20,14 +22,12 @@ def k_set_bits_in_n_bits(k,n):
     powers = [1 << e for e in range(n)]
     return [sum(bits) for bits in itertools.combinations(powers, k)]
 
-def interleave_tuple(abtuple):
-    return interleave(*abtuple)
-
-def interleave(alpha, beta):
+def interleave(abtuple):
     """
     interleave((1011,1101)) = 11011011
     https://stackoverflow.com/a/39490836
     """
+    alpha, beta = abtuple
     # Works for a max CAS of (8,8)
     #masks = [0x5555,0x3333,0xF0F]
     #powers = [1,2,4]
@@ -165,40 +165,92 @@ def bit_reflect(blength,bstring):
         r_bstring+= ((bstring >> i) & 1) << (blength - 1 - i)
     return r_bstring
 
-def uncompressed(e,o,exlvl):
+def uncompressed(e,o,nfrozen,exlvl):
     n = int(o)
     k = int(e/2)
     bit_8 = k_set_bits_in_n_bits(k,n)
-    ref_list = list(map(interleave_tuple,itertools.product(bit_8,repeat=2)))[1:]
+    ref_list = list(map(interleave,itertools.product(bit_8,repeat=2)))[1:]
     return ref_list
 
-def compressed(e,o,exlvl):
+def compressed(e,o,nfrozen,exlvl):
     return excit_generator(exlvl,e,o)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Generates mrccmc HANDE input files.')
+    parser.add_argument("-i","--intdump", dest="intdumpname")
     parser.add_argument("-e","--nel", dest='e', help='number of electrons')
     parser.add_argument("-r","--norb", dest='o', help='number of spatial orbitals')
+    parser.add_argument("-o", dest='inputname')
     parser.add_argument("--compress",dest='compress',action='store_true')
     parser.set_defaults(compress=False)
-    parser.add_argument("-o","--secref_file",dest='secref_file',help='name of the file storing secondary references')
-    parser.add_argument("-l","--cclvl",dest='cclvl',help='reference CC level, 3 for CCSDT(N2), 4 for CCSDTQ(C2), 6 for CCSDTQ56(Cr2). Should be half the number of CAS orbitals for half filled CASes.')
+    parser.add_argument("-f","--nfrozen",dest='nfrozen')
+    parser.add_argument("--secref_file",dest='secref_file',help='Name of separate secondary reference file')
+    parser.add_argument("--mr_excit_lvl",dest='mr_excit_lvl',help='Allowable excitation level from each reference.')
+    parser.add_argument("-l","--cclvl",dest='cclvl',help='Reference CC level, 3 for CCSDT(N2), 4 for CCSDTQ(C2), 6 for CCSDTQ56(Cr2). Should be half the number of CAS orbitals.')
     args = parser.parse_args()
+    intdumpname = args.intdumpname
+    inputname = args.inputname
     e = int(args.e)
     o = int(args.o)
     genlvl = int(args.cclvl)-2
     compress = args.compress
     print(compress)
+    mr_n_frozen = int(args.nfrozen)
     secref_file = args.secref_file
+    mr_excit_lvl = int(args.mr_excit_lvl)
     if compress:
         ref_gen = compressed
     else:
         ref_gen = uncompressed
 
-    ref_list = ref_gen(e,o,genlvl)
+    template = string.Template(
+"""sys = read_in {
+    int_file = "${intdumpname}",
+    sym = tot_sym,
+    Lz = true,
+}
+ 
+ccmc {
+    sys = sys,
+    qmc = {
+        tau = 0.005,
+        real_amplitudes = true,
+        init_pop = 2000,
+        mc_cycles = 2,
+        nreports = 1e5,
+        target_population = 1e5,
+        state_size = -4000,
+        spawned_state_size = -4000,
+        vary_shift = false,
+        vary_shift_from = 'proje',
+        shift_damping = 0.01
+        },
+    restart = {
+        write = 9,
+        },
+    reference = {
+        ex_level = 2,
+        },
+    ccmc = {
+        full_non_composite = true,
+        even_selection = true,
+        multiref = true,
+        mr_read_in = true,
+        mr_secref_file = "${mr_secref_file}",
+        mr_excit_lvl = ${mr_excit_lvl},
+        mr_n_frozen = ${mr_n_frozen},
+        n_secondary_ref = ${nref},
+     },
+}
+    """)
+
+    ref_list = ref_gen(e,o,mr_n_frozen,genlvl)
 
     with open(secref_file,'w') as f:
         for item in ref_list:
             f.write(f'{item}\n')
 
-
+    d = {'nref': len(ref_list),'mr_secref_file': secref_file ,'mr_excit_lvl': mr_excit_lvl, 'mr_n_frozen':mr_n_frozen, 'intdumpname':intdumpname}
+    a = template.substitute(d)
+    with open(inputname,'w') as f:
+        f.write(a)
