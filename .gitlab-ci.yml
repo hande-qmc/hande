@@ -21,7 +21,7 @@ build-lua-hdf5:
     tags: 
         - hande-testing
     script:
-        - module load icc
+        - module load compilers
         - wget -q -O - http://www.lua.org/ftp/lua-5.3.5.tar.gz | tar xvzf -
         - cd lua-5.3.5
         - make linux &>/dev/null
@@ -206,7 +206,7 @@ test-intel:
         - hande-testing
     before_script:
         - module load anaconda
-        - module load icc
+        - module load compilers
         - module load cmake
     script:
         - ./cmakeconfig.py --fc=ifort --cc=icc --lua=./local/ --hdf5=./local/hdf5-intel --pop-size=64 --det-size=64 
@@ -230,7 +230,7 @@ test-intel-dbg:
         - hande-testing
     before_script:
         - module load anaconda
-        - module load icc
+        - module load compilers
         - module load cmake
     script:
         - ./cmakeconfig.py --fc=ifort --cc=icc --lua=./local/ --hdf5=./local/hdf5-intel --pop-size=64 --det-size=64  --type=debug
@@ -254,8 +254,8 @@ test-intel-mpi-pop64:
         - hande-testing
     before_script:
         - module load anaconda
-        - module load icc
-        - module load mkl
+        - module load compilers
+        - module load mkl/64
         - module load cmake
         - module load mpi/openmpi/64/intel
     script:
@@ -281,8 +281,8 @@ test-intel-mpi-pop64-dbg:
         - hande-testing
     before_script:
         - module load anaconda
-        - module load icc
-        - module load mkl
+        - module load compilers
+        - module load mkl/64
         - module load cmake
         - module load mpi/openmpi/64/intel
     script:
@@ -308,8 +308,8 @@ test-intel-mpi:
         - hande-testing
     before_script:
         - module load anaconda
-        - module load icc
-        - module load mkl
+        - module load compilers
+        - module load mkl/64
         - module load cmake
         - module load mpi/openmpi/64/intel
     script:
@@ -335,8 +335,8 @@ test-intel-mpi-dbg:
         - hande-testing
     before_script:
         - module load anaconda
-        - module load icc
-        - module load mkl
+        - module load compilers
+        - module load mkl/64
         - module load cmake
         - module load mpi/openmpi/64/intel
     script:
@@ -362,8 +362,8 @@ test-intel-quick:
         - hande-testing
     before_script:
         - module load anaconda
-        - module load icc
-        - module load mkl
+        - module load compilers
+        - module load mkl/64
         - module load cmake
         - module load mpi/openmpi/64/intel
     script:
