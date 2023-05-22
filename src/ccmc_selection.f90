@@ -187,6 +187,7 @@ contains
 
         cdet%is_determ = .false.
 
+        if (.not. determ%doing_semi_stoch) nprocs_apparent = nprocs
         if (nprocs == 1) nprocs_apparent = 1
         
         ! We shall accumulate the factors which comprise cluster%pselect as we go.
@@ -318,7 +319,7 @@ contains
                 ! which means deterministic excitors do not contribute the 1/nprocs factor. 
                 ! The line below is modified to reduce branching (i.e. if statements)
                 ! if flag=1 (not deterministic), denominator=nprocs, if flag=0 (deterministic), denominator=1
-                if (nprocs > 1) nprocs_apparent = (nprocs-1)*determ%flags(pos)+1
+                if (determ%doing_semi_stoch .and. nprocs > 1) nprocs_apparent = (nprocs-1)*determ%flags(pos)+1
 
                 if (sys%read_in%comp) then
                     excitor_pop = cmplx(psip_list%pops(1,pos), psip_list%pops(2,pos),p)/psip_list%pop_real_factor
