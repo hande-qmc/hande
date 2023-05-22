@@ -1,0 +1,1257 @@
+
+   HANDE
+
+ ================================================================
+Version information
+-------------------
+Version       | v1.5-545-g80b97a1
+Commit hash   | 80b97a1e8097348eb5c60e8d16103a785f92286f
+Commit author | Alex Thom
+Commit date   | Mon Oct 3 19:08:48 2022 +0100
+Branch        | he/openmp_determ
+
+Configuration and build information
+-----------------------------------
+Who compiled             | ajwt3
+Compilation hostname     | cerebro.ch.private.cam.ac.uk
+Operating system         | Linux-3.10.0-1160.76.1.el7.x86_64
+CMake version            | Not built using CMake
+CMake generator          | Not built using CMake
+Build type               | optimised
+Configuration time       | 2022-10-03 18:09:29 [UTC]
+Python version           | 3.9.12
+Fortran compiler         | mpif90
+C compiler               | mpicc
+DET_SIZE set to          | 64
+POP_SIZE set to          | 64
+dSFMT Mersenne exponent  | 19937
+MPI parallelization      | ON
+MPI launcher             | unknown
+OpenMP parallelization   | OFF
+Lua version              | unknown
+HDF5 library version     | unknown
+
+Further components
+------------------
+DISABLE_HDF5 not defined.  HDF5 enabled.
+DISABLE_UUID not defined.  UUID enabled.
+PARALLEL defined.  MPI parallelization enabled.
+DISABLE_MPI3 not defined.  MPI-3 functionality enabled.
+PARALLEL defined. DISABLE_MPI3 and ENABLE_SHMEM_POSIX not defined. MPI-3 in use.
+DISABLE_SCALAPACK defined.  ScaLAPACK disabled.
+SINGLE_PRECISION not defined.  Double precision used throughout.
+USE_POPCNT not defined. Internal POPCNT procedure used.
+
+Runtime information
+-------------------
+Hostname:
+    node-0-3
+Current working dir:
+    /home/ajwt3/code/HANDE/test_suite/ccmc_real_64/np1_omp/ueg_n10_rs2_e4_ccmc_even_ex_pp_qmc_restart
+Started running on 03/10/2022 at 19:17:17
+ Calculation UUID: 2abdbadb-ae7c-49d1-89dc-922c4f956f1e.
+ ================================================================
+
+ Number of MPI processes running on: 1
+ Running with 4 threads.
+
+ Input options
+ -------------
+
+sys = ueg {
+    electrons = 6,
+    ms = 0,
+    dim = 3,
+    cutoff = 2,
+    rs = 2.0,
+}
+
+calc1 = ccmc {
+    sys = sys,
+    qmc = {
+        tau = 0.005, 
+        rng_seed = 46326,
+        init_pop = 50,
+        mc_cycles = 20,
+        nreports = 50,
+        target_population = 10000,
+        real_amplitudes = true,
+        spawn_cutoff = 0.01,
+        state_size = 75000,
+        spawned_state_size = 75000,
+        vary_shift_from = 'proje',
+        excit_gen = "no_renorm",
+    },
+    reference = {
+        ex_level = 4,
+    },
+    ccmc = {
+        full_non_composite = true,
+        even_selection = true,
+    },
+}
+
+
+calc2 = ccmc {
+    sys = sys,
+    qmc = {
+        tau = 0.005, 
+        rng_seed = 46326,
+        init_pop = 50,
+        mc_cycles = 10,
+        nreports = 500,
+        target_population = 10000,
+        real_amplitudes = true,
+        spawn_cutoff = 0.01,
+        state_size = 75000,
+        spawned_state_size = 75000,
+        vary_shift_from = 'proje',
+        excit_gen = "power_pitzer",
+    },
+    qmc_state = calc1,
+    reference = {
+        ex_level = 4,
+    },
+    ccmc = {
+        full_non_composite = true,
+        even_selection = true,
+    },
+    restart = {
+        rng = false,
+    },
+}
+
+ -------------
+
+ Basis functions
+ ---------------
+
+ Spin given in units of 1/2.
+ k-points given in terms of the reciprocal lattice vectors of the crystal cell.
+
+ index   k-point            ms       <i|f|i>
+     1   (  0,  0,  0)      1        0.00000000E+00
+     2   (  0,  0,  0)     -1        0.00000000E+00
+     3   (  0,  0, -1)      1        5.75143889E-01
+     4   (  0,  0, -1)     -1        5.75143889E-01
+     5   (  0, -1,  0)      1        5.75143889E-01
+     6   (  0, -1,  0)     -1        5.75143889E-01
+     7   ( -1,  0,  0)      1        5.75143889E-01
+     8   ( -1,  0,  0)     -1        5.75143889E-01
+     9   (  1,  0,  0)      1        5.75143889E-01
+    10   (  1,  0,  0)     -1        5.75143889E-01
+    11   (  0,  1,  0)      1        5.75143889E-01
+    12   (  0,  1,  0)     -1        5.75143889E-01
+    13   (  0,  0,  1)      1        5.75143889E-01
+    14   (  0,  0,  1)     -1        5.75143889E-01
+    15   (  0, -1, -1)      1        1.15028778E+00
+    16   (  0, -1, -1)     -1        1.15028778E+00
+    17   ( -1,  0, -1)      1        1.15028778E+00
+    18   ( -1,  0, -1)     -1        1.15028778E+00
+    19   (  1,  0, -1)      1        1.15028778E+00
+    20   (  1,  0, -1)     -1        1.15028778E+00
+    21   (  0,  1, -1)      1        1.15028778E+00
+    22   (  0,  1, -1)     -1        1.15028778E+00
+    23   ( -1, -1,  0)      1        1.15028778E+00
+    24   ( -1, -1,  0)     -1        1.15028778E+00
+    25   (  1, -1,  0)      1        1.15028778E+00
+    26   (  1, -1,  0)     -1        1.15028778E+00
+    27   ( -1,  1,  0)      1        1.15028778E+00
+    28   ( -1,  1,  0)     -1        1.15028778E+00
+    29   (  1,  1,  0)      1        1.15028778E+00
+    30   (  1,  1,  0)     -1        1.15028778E+00
+    31   (  0, -1,  1)      1        1.15028778E+00
+    32   (  0, -1,  1)     -1        1.15028778E+00
+    33   ( -1,  0,  1)      1        1.15028778E+00
+    34   ( -1,  0,  1)     -1        1.15028778E+00
+    35   (  1,  0,  1)      1        1.15028778E+00
+    36   (  1,  0,  1)     -1        1.15028778E+00
+    37   (  0,  1,  1)      1        1.15028778E+00
+    38   (  0,  1,  1)     -1        1.15028778E+00
+    39   ( -1, -1, -1)      1        1.72543167E+00
+    40   ( -1, -1, -1)     -1        1.72543167E+00
+    41   (  1, -1, -1)      1        1.72543167E+00
+    42   (  1, -1, -1)     -1        1.72543167E+00
+    43   ( -1,  1, -1)      1        1.72543167E+00
+    44   ( -1,  1, -1)     -1        1.72543167E+00
+    45   (  1,  1, -1)      1        1.72543167E+00
+    46   (  1,  1, -1)     -1        1.72543167E+00
+    47   ( -1, -1,  1)      1        1.72543167E+00
+    48   ( -1, -1,  1)     -1        1.72543167E+00
+    49   (  1, -1,  1)      1        1.72543167E+00
+    50   (  1, -1,  1)     -1        1.72543167E+00
+    51   ( -1,  1,  1)      1        1.72543167E+00
+    52   ( -1,  1,  1)     -1        1.72543167E+00
+    53   (  1,  1,  1)      1        1.72543167E+00
+    54   (  1,  1,  1)     -1        1.72543167E+00
+    55   (  0,  0, -2)      1        2.30057556E+00
+    56   (  0,  0, -2)     -1        2.30057556E+00
+    57   (  0, -2,  0)      1        2.30057556E+00
+    58   (  0, -2,  0)     -1        2.30057556E+00
+    59   ( -2,  0,  0)      1        2.30057556E+00
+    60   ( -2,  0,  0)     -1        2.30057556E+00
+    61   (  2,  0,  0)      1        2.30057556E+00
+    62   (  2,  0,  0)     -1        2.30057556E+00
+    63   (  0,  2,  0)      1        2.30057556E+00
+    64   (  0,  2,  0)     -1        2.30057556E+00
+    65   (  0,  0,  2)      1        2.30057556E+00
+    66   (  0,  0,  2)     -1        2.30057556E+00
+
+ Number of electrons: 6
+ Number of basis functions: 66
+
+ Bit-length of integers used to store determinant bit-strings: 64
+ Number of integers used to store determinant bit-strings: 2
+
+
+ Reference determinant and so symmetry sector selected using the Aufbau principle.
+ Selected symmetry  0.
+
+ CCMC
+ ----
+
+ Memory allocated per core for main walker list (MB):      3.30
+ Number of elements per core in main walker list: 75000
+ Memory allocated per core for spawned walker lists (MB):      4.80
+ Number of elements per core in spawned walker list: 75000
+
+ # Starting the excitation generator initialisation.
+ # Finishing the excitation generator initialisation, time taken:  1.5450119972E-03
+ -- Start JSON block --
+ {
+     "system": {
+         "nbasis": 66,   
+         "nel": 6,   
+         "nvirt": 60,   
+         "Ms": 0,   
+         "nalpha": 3,   
+         "nbeta": 3,   
+         "nvirt_alpha": 30,   
+         "nvirt_beta": 30,   
+         "nsym": 33,   
+         "sym0": 1,   
+         "sym_max": 33,   
+         "nsym_tot": 33,   
+         "sym0_tot": 1,   
+         "sym_max_tot": 33,   
+         "symmetry": 0,   
+         "tot_sym": false,   
+         "aufbau_sym": true,   
+         "max_number_excitations": 6,   
+         "ueg": {
+             "r_s": 2.00000000,   
+             "ecutoff": 2.00000000,   
+             "k_fermi": 0.95957915,   
+             "E_fermi": 0.46039607,   
+             "ktwist": [0.00000000,0.00000000,0.00000000],
+             "L": [5.85836755,5.85836755,5.85836755]
+         }
+     },
+     "qmc": {
+         "rng_seed": 46326,   
+         "real_amplitudes": true,   
+         "real_amplitude_force_32": false,   
+         "spawn_cutoff": 0.01000000,   
+         "excit_gen":  "no_renorm",   
+         "pattempt_update": false,   
+         "pattempt_zero_accum_data": false,   
+         "pattempt_single": 0.00000000,   
+         "pattempt_double": 1.00000000,   
+         "pattempt_parallel": 0.00000000,   
+         "tau": 0.00500000,   
+         "tau_search": false,   
+         "vary_shift_from": 0.00000000,   
+         "vary_shift_from_proje": true,   
+         "initial_shift": 0.00000000,   
+         "shift_damping": 0.05000000,   
+         "shift_harmonic_forcing_two_stage": false,   
+         "shift_harmonic_forcing": 0.00000000,   
+         "shift_harmonic_crit_damp": false,   
+         "walker_length": 75000,   
+         "spawned_walker_length": 75000,   
+         "D0_population": 50.00000000,   
+         "target_particles": 10000.00000000,   
+         "target_reference": false,   
+         "initiator_approx": false,   
+         "initiator_pop": 3.00000000,   
+         "ncycles": 20,   
+         "nreport": 50,   
+         "power_pitzer_min_weight": 0.01000000,   
+         "chebyshev": false,   
+         "quasi_newton": false,   
+         "quasi_newton_threshold": 0.00000000,   
+         "quasi_newton_value": 0.00000000,   
+         "quasi_newton_pop_control": 1.00000000    
+     },
+     "ccmc": {
+         "move_freq": 5,   
+         "cluster_multispawn_threshold": 1.79769313E+308,   
+         "full_nc": true,   
+         "linked": false,   
+         "vary_shift_reference": false,   
+         "density_matrices": false,   
+         "density_matrix_file":  "RDM",   
+         "even_selection": true,   
+         "multiref": false,   
+         "discard_threshold": 1.79769313E+308    
+     },
+     "semi_stoch": {
+         "start_iter": 1,   
+         "shift_iter": -1,   
+         "space_type":  "none",   
+         "target_size": 0,   
+         "write_determ_space": false,   
+         "projection_mode":  "separate",   
+         "read_id": 2147483647,   
+         "write_id": 2147483647,   
+         "ci_space": {
+             "ex_level": -1    
+         }
+     },
+     "restart": {
+         "read_restart": false,   
+         "read_id": 2147483647,   
+         "write_restart": false,   
+         "write_id": 2147483647,   
+         "write_freq": 2147483647,   
+         "write_restart_shift": false,   
+         "write_shift_id": 2147483647,   
+         "restart_rng": true    
+     },
+     "reference": {
+         "det": [ 1, 2, 3, 4, 5, 6],
+         "det_ms": 0,   
+         "det_symmetry": 0,   
+         "H00": 2.02890441,   
+         "F0": 0.30428740,   
+         "hilbert_space_det": [ 1, 2, 3, 4, 5, 6],
+         "hilbert_space_det_ms": 0,   
+         "hilbert_space_det_symmetry": 0,   
+         "ex_level": 4    
+     },
+     "blocking": {
+         "blocking_on_the_fly": false,   
+         "start_save_frequency": -1,   
+         "start_point_number": -1,   
+         "filename":  "BLOCKING",   
+         "start_point": -1,   
+         "error_limit": 0.00000000,   
+         "blocks_used": 2147483647,   
+         "min_blocks_used": 10,   
+         "auto_shift_damping": false,   
+         "shift_damping_precision": 2.00000000,   
+         "force_shift_damping_opt": false    
+     },
+     "logging_in": {
+         "calc": 0,   
+         "calc_file":  "CALC",   
+         "spawn": 0,   
+         "spawn_file":  "SPAWN",   
+         "death": 0,   
+         "death_file":  "DEATH",   
+         "start_iter": 0,   
+         "end_iter": 9223372036854775807    
+     },
+     "logging": {
+         "write_highlevel_values": false,   
+         "calc_unit": 2147483647,   
+         "write_successful_spawn": false,   
+         "write_failed_spawn": false,   
+         "spawn_unit": 2147483647,   
+         "write_successful_death": false,   
+         "write_failed_death": false,   
+         "death_unit": 2147483647    
+     }
+ }
+ -- End JSON block --
+
+ Truncated Selection Initialisation
+ ----------------------------------
+
+ Setting up required data storage to sample all composite clusters of size <= 6, 
+ cluster excitation level <= 6 using excitors of excitation level <= 4.
+
+ Found 8 possible excitation level combinations for a cluster of size 2.
+ Combinations are:
+
+            |     N_excitors @ excitation level:
+      Combo |-----------------------------------------
+     Number |  ex level= 1  ex level= 2  ex level= 3  ex level= 4
+    --------------------------------------------------
+          1 |        0            0            2            0
+          2 |        0            1            0            1
+          3 |        0            1            1            0
+          4 |        0            2            0            0
+          5 |        1            0            0            1
+          6 |        1            0            1            0
+          7 |        1            1            0            0
+          8 |        2            0            0            0
+
+ Found 7 possible excitation level combinations for a cluster of size 3.
+ Combinations are:
+
+            |     N_excitors @ excitation level:
+      Combo |-----------------------------------------
+     Number |  ex level= 1  ex level= 2  ex level= 3  ex level= 4
+    --------------------------------------------------
+          1 |        0            3            0            0
+          2 |        1            1            1            0
+          3 |        1            2            0            0
+          4 |        2            0            0            1
+          5 |        2            0            1            0
+          6 |        2            1            0            0
+          7 |        3            0            0            0
+
+ Found 4 possible excitation level combinations for a cluster of size 4.
+ Combinations are:
+
+            |     N_excitors @ excitation level:
+      Combo |-----------------------------------------
+     Number |  ex level= 1  ex level= 2  ex level= 3  ex level= 4
+    --------------------------------------------------
+          1 |        2            2            0            0
+          2 |        3            0            1            0
+          3 |        3            1            0            0
+          4 |        4            0            0            0
+
+ Found 2 possible excitation level combinations for a cluster of size 5.
+ Combinations are:
+
+            |     N_excitors @ excitation level:
+      Combo |-----------------------------------------
+     Number |  ex level= 1  ex level= 2  ex level= 3  ex level= 4
+    --------------------------------------------------
+          1 |        4            1            0            0
+          2 |        5            0            0            0
+
+ Found 1 possible excitation level combinations for a cluster of size 6.
+ Combinations are:
+
+            |     N_excitors @ excitation level:
+      Combo |-----------------------------------------
+     Number |  ex level= 1  ex level= 2  ex level= 3  ex level= 4
+    --------------------------------------------------
+          1 |        6            0            0            0
+
+ Information printed out every QMC report loop:
+
+ Shift: the energy offset calculated at the end of the report loop.
+ H_0j: <D_0|H|D_j>, Hamiltonian matrix element.
+ N_j: population of Hamiltonian particles on determinant D_j.
+ # H psips: current total population of Hamiltonian particles.
+ # states: number of many-particle states occupied.
+ spawn_events: number of successful spawning events across all processors.
+ R_spawn: average rate of spawning across all processors.
+ time: average time per Monte Carlo cycle.
+
+ Note that all particle populations are averaged over the report loop.
+
+ #     iterations   Shift                 \sum H_0j N_j         N_0                   # H psips                  # states  # spawn_events            # attempts   R_spawn    time   
+ #              0   0.0000000000E+00      0.0000000000E+00      5.0000000000E+01      5.0000000000E+01                  1               0                    50    0.0000    0.0000 
+               20   0.0000000000E+00     -3.0638180187E-01      5.0026487937E+01      7.1578989926E+01                 22              56                    76    0.8122    0.0002 
+               40   0.0000000000E+00     -1.0144066562E+00      5.0155514753E+01      1.1414494191E+02                 63              98                   154    0.7887    0.0002 
+               60   0.0000000000E+00     -1.7819363049E+00      5.0390226559E+01      1.5969564183E+02                106             129                   262    0.7696    0.0004 
+               80   0.0000000000E+00     -2.2308821261E+00      5.0609544263E+01      1.9943411856E+02                144             155                   373    0.7253    0.0005 
+              100   0.0000000000E+00     -2.5810659755E+00      5.0852520145E+01      2.3152120451E+02                173             202                   487    0.7030    0.0005 
+              120   0.0000000000E+00     -2.8004099060E+00      5.1125668951E+01      2.5317989882E+02                192             176                   556    0.6831    0.0005 
+              140   0.0000000000E+00     -3.0772552449E+00      5.1354883349E+01      2.7318298792E+02                210             211                   655    0.6664    0.0005 
+              160   0.0000000000E+00     -3.2788786539E+00      5.1780130195E+01      3.1758222385E+02                252             269                   799    0.6700    0.0006 
+              180   0.0000000000E+00     -3.5139700694E+00      5.2127580613E+01      3.4700438777E+02                278             274                   931    0.6513    0.0006 
+              200   0.0000000000E+00     -3.8563592957E+00      5.2663584391E+01      3.7772381176E+02                307             318                  1053    0.6399    0.0007 
+              220   0.0000000000E+00     -3.9619009866E+00      5.3016342852E+01      4.2430749875E+02                351             355                  1283    0.6325    0.0008 
+              240   0.0000000000E+00     -4.2823954185E+00      5.3465451451E+01      4.6158827627E+02                384             349                  1417    0.6195    0.0008 
+              260   0.0000000000E+00     -4.6012245686E+00      5.3856188733E+01      4.9964762985E+02                420             405                  1683    0.6214    0.0008 
+              280   0.0000000000E+00     -4.8982642724E+00      5.4205265423E+01      5.4989096898E+02                468             400                  1907    0.6169    0.0010 
+              300   0.0000000000E+00     -5.0978085714E+00      5.5081792003E+01      5.9381976607E+02                508             436                  2094    0.6002    0.0010 
+              320   0.0000000000E+00     -5.3250709162E+00      5.5661874424E+01      6.2114565563E+02                534             457                  2216    0.5904    0.0010 
+              340   0.0000000000E+00     -5.5297428203E+00      5.6179332714E+01      6.5175916252E+02                562             485                  2399    0.5895    0.0011 
+              360   0.0000000000E+00     -5.6763486081E+00      5.6836460715E+01      6.7368099153E+02                582             511                  2514    0.5924    0.0011 
+              380   0.0000000000E+00     -5.7066170595E+00      5.7540228662E+01      7.0694220537E+02                612             511                  2656    0.5780    0.0012 
+              400   0.0000000000E+00     -5.7121882163E+00      5.8090171224E+01      7.3935776196E+02                643             560                  2819    0.5769    0.0012 
+              420   0.0000000000E+00     -5.8130359442E+00      5.8664470445E+01      7.4131811523E+02                642             535                  2803    0.5576    0.0012 
+              440   0.0000000000E+00     -5.8888647856E+00      5.9270612921E+01      7.6348998307E+02                662             581                  2872    0.5670    0.0013 
+              460   0.0000000000E+00     -5.9745040405E+00      6.0153500000E+01      7.7490737093E+02                670             572                  2945    0.5625    0.0013 
+              480   0.0000000000E+00     -6.0753675171E+00      6.0583001895E+01      8.3387155727E+02                727             619                  3194    0.5665    0.0013 
+              500   0.0000000000E+00     -6.1251179030E+00      6.0935794046E+01      8.2972685390E+02                721             599                  3229    0.5622    0.0013 
+              520   0.0000000000E+00     -6.1182582485E+00      6.1523709889E+01      8.2183714853E+02                711             579                  3057    0.5550    0.0013 
+              540   0.0000000000E+00     -6.2148573249E+00      6.2028776221E+01      8.6260292332E+02                752             633                  3271    0.5566    0.0013 
+              560   0.0000000000E+00     -6.3108375250E+00      6.2605822716E+01      8.7159670419E+02                759             577                  3322    0.5490    0.0013 
+              580   0.0000000000E+00     -6.4666777844E+00      6.3126145974E+01      8.9272882812E+02                777             636                  3402    0.5570    0.0013 
+              600   0.0000000000E+00     -6.5093703463E+00      6.3881811154E+01      8.8523565995E+02                767             631                  3381    0.5552    0.0014 
+              620   0.0000000000E+00     -6.5455122909E+00      6.4429466229E+01      8.8259456433E+02                763             662                  3364    0.5572    0.0014 
+              640   0.0000000000E+00     -6.6192896846E+00      6.5099407278E+01      9.1867141344E+02                798             691                  3595    0.5520    0.0015 
+              660   0.0000000000E+00     -6.6966656834E+00      6.5703108109E+01      9.3060050250E+02                808             675                  3570    0.5532    0.0015 
+              680   0.0000000000E+00     -6.7036560354E+00      6.6717847385E+01      9.4903769962E+02                824             661                  3699    0.5516    0.0015 
+              700   0.0000000000E+00     -6.7411710808E+00      6.7295076721E+01      9.7143443063E+02                846             690                  3785    0.5442    0.0015 
+              720   0.0000000000E+00     -6.8019269104E+00      6.8025832786E+01      1.0010132294E+03                873             689                  3864    0.5401    0.0016 
+              740   0.0000000000E+00     -6.8510582970E+00      6.8772925043E+01      9.7960135772E+02                851             678                  3764    0.5456    0.0016 
+              760   0.0000000000E+00     -6.9936307299E+00      6.9121043468E+01      1.0190274734E+03                888             719                  4042    0.5481    0.0016 
+              780   0.0000000000E+00     -7.0295134181E+00      6.9829635814E+01      1.0113211662E+03                878             698                  3939    0.5443    0.0016 
+              800   0.0000000000E+00     -7.0994747025E+00      7.0586762478E+01      1.0086625180E+03                873             717                  4000    0.5486    0.0016 
+              820   0.0000000000E+00     -7.1507992344E+00      7.1103067954E+01      1.0062080064E+03                868             691                  3929    0.5459    0.0016 
+              840   0.0000000000E+00     -7.3494764344E+00      7.1870601500E+01      1.0329323180E+03                891             740                  3970    0.5536    0.0016 
+              860   0.0000000000E+00     -7.3470431704E+00      7.2556034415E+01      1.0439400424E+03                902             712                  4006    0.5462    0.0016 
+              880   0.0000000000E+00     -7.3067681059E+00      7.3288355806E+01      1.0349388677E+03                891             740                  3972    0.5445    0.0016 
+              900   0.0000000000E+00     -7.3052847324E+00      7.4164837079E+01      1.0380246361E+03                892             738                  4011    0.5505    0.0017 
+              920   0.0000000000E+00     -7.3324322659E+00      7.5050989487E+01      1.0446719177E+03                898             814                  4059    0.5560    0.0017 
+              940   0.0000000000E+00     -7.4583991024E+00      7.5726667534E+01      1.0694157538E+03                921             782                  4253    0.5583    0.0017 
+              960   0.0000000000E+00     -7.6405592309E+00      7.6662271956E+01      1.0528051604E+03                900             798                  4113    0.5584    0.0017 
+              980   0.0000000000E+00     -7.6516068710E+00      7.7447681730E+01      1.0530227276E+03                898             723                  4034    0.5550    0.0017 
+             1000   0.0000000000E+00     -7.7109737805E+00      7.8396073819E+01      1.0493076846E+03                893             723                  3989    0.5494    0.0017 
+
+ Number of discard events: 0
+ CCMC
+ ----
+
+ # Starting the excitation generator initialisation.
+ # Starting the Power Pitzer excitation generator initialisation.
+ # Finishing the Power Pitzer excitation generator initialisation, time taken:  3.6621093750E-04
+ # Finishing the excitation generator initialisation, time taken:  7.4100494385E-04
+ -- Start JSON block --
+ {
+     "system": {
+         "nbasis": 66,   
+         "nel": 6,   
+         "nvirt": 60,   
+         "Ms": 0,   
+         "nalpha": 3,   
+         "nbeta": 3,   
+         "nvirt_alpha": 30,   
+         "nvirt_beta": 30,   
+         "nsym": 33,   
+         "sym0": 1,   
+         "sym_max": 33,   
+         "nsym_tot": 33,   
+         "sym0_tot": 1,   
+         "sym_max_tot": 33,   
+         "symmetry": 0,   
+         "tot_sym": false,   
+         "aufbau_sym": true,   
+         "max_number_excitations": 6,   
+         "ueg": {
+             "r_s": 2.00000000,   
+             "ecutoff": 2.00000000,   
+             "k_fermi": 0.95957915,   
+             "E_fermi": 0.46039607,   
+             "ktwist": [0.00000000,0.00000000,0.00000000],
+             "L": [5.85836755,5.85836755,5.85836755]
+         }
+     },
+     "qmc": {
+         "rng_seed": 46326,   
+         "real_amplitudes": true,   
+         "real_amplitude_force_32": false,   
+         "spawn_cutoff": 0.01000000,   
+         "excit_gen":  "power_pitzer",   
+         "pattempt_update": false,   
+         "pattempt_zero_accum_data": false,   
+         "pattempt_single": 0.00000000,   
+         "pattempt_double": 1.00000000,   
+         "pattempt_parallel": 0.00000000,   
+         "tau": 0.00500000,   
+         "tau_search": false,   
+         "vary_shift_from": 0.00000000,   
+         "vary_shift_from_proje": true,   
+         "initial_shift": 0.00000000,   
+         "shift_damping": 0.05000000,   
+         "shift_harmonic_forcing_two_stage": false,   
+         "shift_harmonic_forcing": 0.00000000,   
+         "shift_harmonic_crit_damp": false,   
+         "walker_length": 75000,   
+         "spawned_walker_length": 75000,   
+         "D0_population": 50.00000000,   
+         "target_particles": 10000.00000000,   
+         "target_reference": false,   
+         "initiator_approx": false,   
+         "initiator_pop": 3.00000000,   
+         "ncycles": 10,   
+         "nreport": 500,   
+         "power_pitzer_min_weight": 0.01000000,   
+         "chebyshev": false,   
+         "quasi_newton": false,   
+         "quasi_newton_threshold": 0.00000000,   
+         "quasi_newton_value": 0.00000000,   
+         "quasi_newton_pop_control": 1.00000000    
+     },
+     "ccmc": {
+         "move_freq": 5,   
+         "cluster_multispawn_threshold": 1.79769313E+308,   
+         "full_nc": true,   
+         "linked": false,   
+         "vary_shift_reference": false,   
+         "density_matrices": false,   
+         "density_matrix_file":  "RDM",   
+         "even_selection": true,   
+         "multiref": false,   
+         "discard_threshold": 1.79769313E+308    
+     },
+     "semi_stoch": {
+         "start_iter": 1,   
+         "shift_iter": -1,   
+         "space_type":  "none",   
+         "target_size": 0,   
+         "write_determ_space": false,   
+         "projection_mode":  "separate",   
+         "read_id": 2147483647,   
+         "write_id": 2147483647,   
+         "ci_space": {
+             "ex_level": -1    
+         }
+     },
+     "restart": {
+         "read_restart": false,   
+         "read_id": 2147483647,   
+         "write_restart": false,   
+         "write_id": 2147483647,   
+         "write_freq": 2147483647,   
+         "write_restart_shift": false,   
+         "write_shift_id": 2147483647,   
+         "restart_rng": false    
+     },
+     "reference": {
+         "det": [ 1, 2, 3, 4, 5, 6],
+         "det_ms": 0,   
+         "det_symmetry": 0,   
+         "H00": 2.02890441,   
+         "F0": 0.30428740,   
+         "hilbert_space_det": [ 1, 2, 3, 4, 5, 6],
+         "hilbert_space_det_ms": 0,   
+         "hilbert_space_det_symmetry": 0,   
+         "ex_level": 4    
+     },
+     "blocking": {
+         "blocking_on_the_fly": false,   
+         "start_save_frequency": -1,   
+         "start_point_number": -1,   
+         "filename":  "BLOCKING",   
+         "start_point": -1,   
+         "error_limit": 0.00000000,   
+         "blocks_used": 2147483647,   
+         "min_blocks_used": 10,   
+         "auto_shift_damping": false,   
+         "shift_damping_precision": 2.00000000,   
+         "force_shift_damping_opt": false    
+     },
+     "logging_in": {
+         "calc": 0,   
+         "calc_file":  "CALC",   
+         "spawn": 0,   
+         "spawn_file":  "SPAWN",   
+         "death": 0,   
+         "death_file":  "DEATH",   
+         "start_iter": 0,   
+         "end_iter": 9223372036854775807    
+     },
+     "logging": {
+         "write_highlevel_values": false,   
+         "calc_unit": 2147483647,   
+         "write_successful_spawn": false,   
+         "write_failed_spawn": false,   
+         "spawn_unit": 2147483647,   
+         "write_successful_death": false,   
+         "write_failed_death": false,   
+         "death_unit": 2147483647    
+     }
+ }
+ -- End JSON block --
+
+ Truncated Selection Initialisation
+ ----------------------------------
+
+ Setting up required data storage to sample all composite clusters of size <= 6, 
+ cluster excitation level <= 6 using excitors of excitation level <= 4.
+
+ Found 8 possible excitation level combinations for a cluster of size 2.
+ Combinations are:
+
+            |     N_excitors @ excitation level:
+      Combo |-----------------------------------------
+     Number |  ex level= 1  ex level= 2  ex level= 3  ex level= 4
+    --------------------------------------------------
+          1 |        0            0            2            0
+          2 |        0            1            0            1
+          3 |        0            1            1            0
+          4 |        0            2            0            0
+          5 |        1            0            0            1
+          6 |        1            0            1            0
+          7 |        1            1            0            0
+          8 |        2            0            0            0
+
+ Found 7 possible excitation level combinations for a cluster of size 3.
+ Combinations are:
+
+            |     N_excitors @ excitation level:
+      Combo |-----------------------------------------
+     Number |  ex level= 1  ex level= 2  ex level= 3  ex level= 4
+    --------------------------------------------------
+          1 |        0            3            0            0
+          2 |        1            1            1            0
+          3 |        1            2            0            0
+          4 |        2            0            0            1
+          5 |        2            0            1            0
+          6 |        2            1            0            0
+          7 |        3            0            0            0
+
+ Found 4 possible excitation level combinations for a cluster of size 4.
+ Combinations are:
+
+            |     N_excitors @ excitation level:
+      Combo |-----------------------------------------
+     Number |  ex level= 1  ex level= 2  ex level= 3  ex level= 4
+    --------------------------------------------------
+          1 |        2            2            0            0
+          2 |        3            0            1            0
+          3 |        3            1            0            0
+          4 |        4            0            0            0
+
+ Found 2 possible excitation level combinations for a cluster of size 5.
+ Combinations are:
+
+            |     N_excitors @ excitation level:
+      Combo |-----------------------------------------
+     Number |  ex level= 1  ex level= 2  ex level= 3  ex level= 4
+    --------------------------------------------------
+          1 |        4            1            0            0
+          2 |        5            0            0            0
+
+ Found 1 possible excitation level combinations for a cluster of size 6.
+ Combinations are:
+
+            |     N_excitors @ excitation level:
+      Combo |-----------------------------------------
+     Number |  ex level= 1  ex level= 2  ex level= 3  ex level= 4
+    --------------------------------------------------
+          1 |        6            0            0            0
+
+ Information printed out every QMC report loop:
+
+ Shift: the energy offset calculated at the end of the report loop.
+ H_0j: <D_0|H|D_j>, Hamiltonian matrix element.
+ N_j: population of Hamiltonian particles on determinant D_j.
+ # H psips: current total population of Hamiltonian particles.
+ # states: number of many-particle states occupied.
+ spawn_events: number of successful spawning events across all processors.
+ R_spawn: average rate of spawning across all processors.
+ time: average time per Monte Carlo cycle.
+
+ Note that all particle populations are averaged over the report loop.
+
+ #     iterations   Shift                 \sum H_0j N_j         N_0                   # H psips                  # states  # spawn_events            # attempts   R_spawn    time   
+ #           1000   0.0000000000E+00     -7.7109737805E+00      7.8396073819E+01      1.0493076846E+03                893             723                    78    0.0000    0.0000 
+             1010   0.0000000000E+00     -7.6736723236E+00      7.9164167388E+01      1.0508888966E+03                893             496                  3994    0.3417    0.0013 
+             1020   0.0000000000E+00     -7.8203123603E+00      7.9574992268E+01      1.0417098897E+03                882             434                  3943    0.3484    0.0013 
+             1030   0.0000000000E+00     -7.8963023675E+00      7.9812985297E+01      1.0658338889E+03                906             433                  4089    0.3450    0.0013 
+             1040   0.0000000000E+00     -7.9991131738E+00      8.0289986803E+01      1.0783244027E+03                916             484                  4075    0.3573    0.0014 
+             1050   0.0000000000E+00     -8.0434231171E+00      8.0694956125E+01      1.0702153310E+03                907             469                  4079    0.3428    0.0013 
+             1060   0.0000000000E+00     -8.0933507021E+00      8.0919917188E+01      1.1055643810E+03                941             459                  4285    0.3462    0.0014 
+             1070   0.0000000000E+00     -8.1300112438E+00      8.1164125251E+01      1.1228927479E+03                956             509                  4322    0.3481    0.0015 
+             1080   0.0000000000E+00     -8.1102238574E+00      8.1617941976E+01      1.1505101643E+03                982             498                  4361    0.3472    0.0015 
+             1090   0.0000000000E+00     -8.1803094846E+00      8.2057814087E+01      1.1669265664E+03                996             502                  4396    0.3401    0.0015 
+             1100   0.0000000000E+00     -8.2059070555E+00      8.2471060683E+01      1.1816873565E+03               1010             473                  4470    0.3383    0.0015 
+             1110   0.0000000000E+00     -8.1577948092E+00      8.2747585397E+01      1.1746950829E+03               1003             496                  4479    0.3358    0.0016 
+             1120   0.0000000000E+00     -8.1176951118E+00      8.3019687047E+01      1.1581051909E+03                985             493                  4443    0.3414    0.0016 
+             1130   0.0000000000E+00     -8.1665048764E+00      8.3491755294E+01      1.1673557070E+03                993             516                  4442    0.3450    0.0016 
+             1140   0.0000000000E+00     -8.1822097747E+00      8.3981627472E+01      1.1750360713E+03               1000             500                  4412    0.3383    0.0015 
+             1150   0.0000000000E+00     -8.2391701688E+00      8.4475467001E+01      1.1562032371E+03                981             437                  4296    0.3355    0.0015 
+             1160   0.0000000000E+00     -8.2480319914E+00      8.4840882205E+01      1.1430308672E+03                968             499                  4154    0.3448    0.0014 
+             1170   0.0000000000E+00     -8.2447925080E+00      8.5405527253E+01      1.1601290034E+03                984             500                  4240    0.3349    0.0014 
+             1180   0.0000000000E+00     -8.2621229408E+00      8.5649202577E+01      1.1456737008E+03                969             466                  4245    0.3443    0.0015 
+             1190   0.0000000000E+00     -8.2909702019E+00      8.6055540318E+01      1.1515538804E+03                974             523                  4215    0.3476    0.0014 
+             1200   0.0000000000E+00     -8.3363712141E+00      8.6482933742E+01      1.1744781344E+03                994             502                  4361    0.3498    0.0015 
+             1210   0.0000000000E+00     -8.5213854223E+00      8.6840838593E+01      1.1867226016E+03               1004             529                  4386    0.3450    0.0016 
+             1220   0.0000000000E+00     -8.5420187281E+00      8.7125528070E+01      1.1860550948E+03               1003             510                  4384    0.3411    0.0015 
+             1230   0.0000000000E+00     -8.5873557727E+00      8.7407116723E+01      1.2020195931E+03               1016             561                  4467    0.3376    0.0016 
+             1240   0.0000000000E+00     -8.6013243327E+00      8.7786999393E+01      1.1994690256E+03               1013             531                  4505    0.3487    0.0016 
+             1250   0.0000000000E+00     -8.5911211364E+00      8.8209751993E+01      1.2336176480E+03               1045             551                  4625    0.3356    0.0016 
+             1260   0.0000000000E+00     -8.6305435776E+00      8.8358898647E+01      1.2167494923E+03               1028             539                  4566    0.3427    0.0016 
+             1270   0.0000000000E+00     -8.6863189024E+00      8.8696774921E+01      1.2091540440E+03               1020             534                  4489    0.3498    0.0016 
+             1280   0.0000000000E+00     -8.7135639679E+00      8.9015987370E+01      1.2354784258E+03               1044             547                  4564    0.3458    0.0016 
+             1290   0.0000000000E+00     -8.8033285288E+00      8.9583182134E+01      1.2335472626E+03               1040             546                  4572    0.3460    0.0016 
+             1300   0.0000000000E+00     -8.9525220473E+00      9.0131496250E+01      1.2107254087E+03               1016             555                  4555    0.3397    0.0016 
+             1310   0.0000000000E+00     -9.0278917969E+00      9.0633519723E+01      1.2425963036E+03               1047             532                  4613    0.3507    0.0016 
+             1320   0.0000000000E+00     -9.0140923297E+00      9.1258837146E+01      1.2078154252E+03               1011             524                  4491    0.3466    0.0016 
+             1330   0.0000000000E+00     -9.0515469092E+00      9.1904931127E+01      1.2209721346E+03               1022             577                  4534    0.3514    0.0016 
+             1340   0.0000000000E+00     -9.0137505834E+00      9.2389102987E+01      1.2149814269E+03               1014             568                  4462    0.3473    0.0016 
+             1350   0.0000000000E+00     -9.0789590686E+00      9.2904622851E+01      1.2112486634E+03               1008             524                  4466    0.3488    0.0016 
+             1360   0.0000000000E+00     -9.1746835238E+00      9.3255400561E+01      1.2217392118E+03               1016             541                  4593    0.3503    0.0016 
+             1370   0.0000000000E+00     -9.2678336107E+00      9.3644625850E+01      1.2354257685E+03               1028             498                  4658    0.3396    0.0016 
+             1380   0.0000000000E+00     -9.3434626566E+00      9.4281324914E+01      1.2396697515E+03               1032             561                  4754    0.3528    0.0016 
+             1390   0.0000000000E+00     -9.3608942355E+00      9.4674263269E+01      1.2516592315E+03               1043             537                  4732    0.3470    0.0016 
+             1400   0.0000000000E+00     -9.4338536325E+00      9.5092214235E+01      1.2576781315E+03               1047             595                  4734    0.3518    0.0016 
+             1410   0.0000000000E+00     -9.5697986467E+00      9.5539903004E+01      1.2731396734E+03               1061             539                  4808    0.3442    0.0016 
+             1420   0.0000000000E+00     -9.6869019548E+00      9.6051657866E+01      1.2739458465E+03               1060             558                  4893    0.3455    0.0016 
+             1430   0.0000000000E+00     -9.7677374133E+00      9.6709717400E+01      1.3047931601E+03               1090             567                  4959    0.3464    0.0016 
+             1440   0.0000000000E+00     -9.8241523320E+00      9.7102399398E+01      1.3068171785E+03               1090             571                  5022    0.3455    0.0017 
+             1450   0.0000000000E+00     -9.8184968392E+00      9.7490327307E+01      1.3083369441E+03               1089             551                  4936    0.3477    0.0017 
+             1460   0.0000000000E+00     -9.8454670736E+00      9.7882457176E+01      1.2936093935E+03               1071             590                  4933    0.3476    0.0016 
+             1470   0.0000000000E+00     -9.9113567969E+00      9.8487987721E+01      1.3096859503E+03               1087             595                  4964    0.3522    0.0016 
+             1480   0.0000000000E+00     -9.9413905151E+00      9.8847440341E+01      1.3291499719E+03               1105             581                  5081    0.3504    0.0017 
+             1490   0.0000000000E+00     -9.9851397353E+00      9.9219942068E+01      1.3441488662E+03               1121             627                  5078    0.3504    0.0017 
+             1500   0.0000000000E+00     -9.9727453044E+00      9.9644572131E+01      1.3425218225E+03               1118             603                  5024    0.3494    0.0017 
+             1510   0.0000000000E+00     -9.9652636871E+00      1.0016603649E+02      1.3685751563E+03               1140             578                  5106    0.3426    0.0017 
+             1520   0.0000000000E+00     -1.0065157246E+01      1.0070015876E+02      1.3694701974E+03               1137             637                  5128    0.3481    0.0017 
+             1530   0.0000000000E+00     -1.0085707138E+01      1.0126334313E+02      1.3617474107E+03               1129             593                  5111    0.3471    0.0017 
+             1540   0.0000000000E+00     -1.0109002772E+01      1.0177596095E+02      1.3663537023E+03               1134             563                  5049    0.3432    0.0016 
+             1550   0.0000000000E+00     -1.0181275180E+01      1.0235043520E+02      1.3924306695E+03               1156             579                  5256    0.3421    0.0016 
+             1560   0.0000000000E+00     -1.0213186389E+01      1.0292604085E+02      1.3697223991E+03               1132             588                  5103    0.3465    0.0016 
+             1570   0.0000000000E+00     -1.0249118247E+01      1.0346569516E+02      1.3780058423E+03               1140             588                  5079    0.3411    0.0016 
+             1580   0.0000000000E+00     -1.0304568560E+01      1.0410001171E+02      1.3798562665E+03               1139             573                  5076    0.3433    0.0016 
+             1590   0.0000000000E+00     -1.0313490363E+01      1.0476276441E+02      1.4148898141E+03               1174             610                  5200    0.3420    0.0016 
+             1600   0.0000000000E+00     -1.0263593429E+01      1.0551813175E+02      1.4185192827E+03               1178             581                  5108    0.3409    0.0016 
+             1610   0.0000000000E+00     -1.0214633092E+01      1.0614071891E+02      1.4266445749E+03               1184             573                  5107    0.3384    0.0016 
+             1620   0.0000000000E+00     -1.0292824548E+01      1.0653690857E+02      1.4262627906E+03               1182             613                  5127    0.3451    0.0016 
+             1630   0.0000000000E+00     -1.0333852928E+01      1.0699322476E+02      1.4197574764E+03               1174             574                  5160    0.3446    0.0016 
+             1640   0.0000000000E+00     -1.0418700713E+01      1.0756510497E+02      1.3748420186E+03               1128             580                  5003    0.3441    0.0015 
+             1650   0.0000000000E+00     -1.0421663858E+01      1.0809633587E+02      1.3647683472E+03               1116             606                  4901    0.3460    0.0015 
+             1660   0.0000000000E+00     -1.0514916480E+01      1.0872515831E+02      1.3800498356E+03               1130             621                  5031    0.3523    0.0015 
+             1670   0.0000000000E+00     -1.0595543294E+01      1.0903767329E+02      1.3935590140E+03               1140             618                  5101    0.3512    0.0016 
+             1680   0.0000000000E+00     -1.0649574203E+01      1.0965935034E+02      1.3928835704E+03               1139             608                  5118    0.3527    0.0016 
+             1690   0.0000000000E+00     -1.0725793515E+01      1.1029321244E+02      1.4006908206E+03               1143             638                  5094    0.3576    0.0016 
+             1700   0.0000000000E+00     -1.0798203235E+01      1.1110613256E+02      1.4144824092E+03               1155             630                  5128    0.3513    0.0016 
+             1710   0.0000000000E+00     -1.0902311221E+01      1.1181187024E+02      1.3961247288E+03               1134             595                  5094    0.3444    0.0016 
+             1720   0.0000000000E+00     -1.1044101384E+01      1.1245688159E+02      1.3945333269E+03               1130             638                  5163    0.3512    0.0016 
+             1730   0.0000000000E+00     -1.1057778582E+01      1.1304461894E+02      1.3749508788E+03               1109             576                  5122    0.3543    0.0016 
+             1740   0.0000000000E+00     -1.1072689062E+01      1.1364776953E+02      1.3451893047E+03               1077             578                  4907    0.3579    0.0016 
+             1750   0.0000000000E+00     -1.1204177106E+01      1.1425633590E+02      1.3650532120E+03               1094             637                  5044    0.3665    0.0016 
+             1760   0.0000000000E+00     -1.1273582448E+01      1.1487236325E+02      1.3525611010E+03               1080             644                  4970    0.3667    0.0016 
+             1770   0.0000000000E+00     -1.1344051610E+01      1.1527385528E+02      1.3460624725E+03               1071             650                  4995    0.3632    0.0016 
+             1780   0.0000000000E+00     -1.1431357113E+01      1.1571244759E+02      1.3765592590E+03               1102             646                  5085    0.3643    0.0016 
+             1790   0.0000000000E+00     -1.1435350823E+01      1.1618001175E+02      1.4038886206E+03               1126             612                  5166    0.3589    0.0016 
+             1800   0.0000000000E+00     -1.1530288992E+01      1.1658143379E+02      1.3980854912E+03               1119             654                  5152    0.3560    0.0016 
+             1810   0.0000000000E+00     -1.1552139900E+01      1.1701558578E+02      1.4142321901E+03               1135             623                  5209    0.3618    0.0016 
+             1820   0.0000000000E+00     -1.1598666566E+01      1.1740974976E+02      1.4562161834E+03               1174             667                  5414    0.3609    0.0017 
+             1830   0.0000000000E+00     -1.1680851410E+01      1.1785909856E+02      1.4447186374E+03               1159             706                  5365    0.3636    0.0017 
+             1840   0.0000000000E+00     -1.1825151695E+01      1.1845500558E+02      1.4415702812E+03               1155             639                  5283    0.3598    0.0017 
+             1850   0.0000000000E+00     -1.1936202863E+01      1.1886145356E+02      1.4418320833E+03               1153             654                  5230    0.3650    0.0017 
+             1860   0.0000000000E+00     -1.2013417024E+01      1.1931273173E+02      1.4359759440E+03               1144             630                  5289    0.3534    0.0017 
+             1870   0.0000000000E+00     -1.2041681651E+01      1.1974769260E+02      1.4477270683E+03               1154             637                  5268    0.3637    0.0017 
+             1880   0.0000000000E+00     -1.2014773388E+01      1.2031224991E+02      1.4700773700E+03               1175             714                  5367    0.3623    0.0017 
+             1890   0.0000000000E+00     -1.1981397351E+01      1.2092792419E+02      1.4537270292E+03               1158             644                  5300    0.3566    0.0017 
+             1900   0.0000000000E+00     -1.2022094574E+01      1.2161705984E+02      1.4600174023E+03               1163             649                  5256    0.3598    0.0017 
+             1910   0.0000000000E+00     -1.2114761369E+01      1.2212987173E+02      1.4695547053E+03               1170             659                  5266    0.3566    0.0017 
+             1920   0.0000000000E+00     -1.2139730472E+01      1.2282951907E+02      1.4663200796E+03               1165             675                  5281    0.3613    0.0017 
+             1930   0.0000000000E+00     -1.2303724785E+01      1.2343484785E+02      1.4911686587E+03               1187             675                  5467    0.3613    0.0017 
+             1940   0.0000000000E+00     -1.2306342812E+01      1.2382832502E+02      1.4977707892E+03               1192             673                  5382    0.3518    0.0017 
+             1950   0.0000000000E+00     -1.2464700137E+01      1.2429144396E+02      1.4992490140E+03               1189             680                  5515    0.3620    0.0017 
+             1960   0.0000000000E+00     -1.2553796560E+01      1.2495516695E+02      1.5230204071E+03               1212             717                  5573    0.3674    0.0018 
+             1970   0.0000000000E+00     -1.2664144785E+01      1.2554658269E+02      1.5772645961E+03               1264             717                  5848    0.3574    0.0018 
+             1980   0.0000000000E+00     -1.2712619442E+01      1.2607857781E+02      1.5929120208E+03               1280             670                  5895    0.3542    0.0018 
+             1990   0.0000000000E+00     -1.2700490230E+01      1.2662581738E+02      1.5736939083E+03               1258             698                  5762    0.3567    0.0018 
+             2000   0.0000000000E+00     -1.2883825899E+01      1.2736644453E+02      1.5856388386E+03               1265             669                  5863    0.3519    0.0018 
+             2010   0.0000000000E+00     -1.2916964094E+01      1.2789257279E+02      1.5913930570E+03               1270             744                  5893    0.3586    0.0018 
+             2020   0.0000000000E+00     -1.2955711157E+01      1.2865597465E+02      1.5817397210E+03               1259             706                  5792    0.3549    0.0018 
+             2030   0.0000000000E+00     -1.3036805948E+01      1.2935878407E+02      1.6017837647E+03               1275             774                  5873    0.3592    0.0018 
+             2040   0.0000000000E+00     -1.3109761563E+01      1.2997784434E+02      1.5600098596E+03               1232             694                  5804    0.3502    0.0018 
+             2050   0.0000000000E+00     -1.3264995435E+01      1.3077317770E+02      1.5909830845E+03               1258             704                  5905    0.3649    0.0018 
+             2060   0.0000000000E+00     -1.3328041096E+01      1.3126114842E+02      1.5871657852E+03               1253             732                  5877    0.3582    0.0018 
+             2070   0.0000000000E+00     -1.3392216629E+01      1.3196467939E+02      1.6152072764E+03               1278             752                  5931    0.3596    0.0018 
+             2080   0.0000000000E+00     -1.3492123351E+01      1.3249684314E+02      1.6291469642E+03               1291             798                  5982    0.3595    0.0018 
+             2090   0.0000000000E+00     -1.3493964170E+01      1.3313337651E+02      1.6413030216E+03               1302             739                  6045    0.3603    0.0019 
+             2100   0.0000000000E+00     -1.3508151432E+01      1.3388724315E+02      1.6522475947E+03               1311             735                  6145    0.3557    0.0019 
+             2110   0.0000000000E+00     -1.3565119374E+01      1.3465179390E+02      1.6671239065E+03               1326             766                  6146    0.3578    0.0019 
+             2120   0.0000000000E+00     -1.3601533374E+01      1.3527816173E+02      1.6605288852E+03               1315             769                  6186    0.3569    0.0020 
+             2130   0.0000000000E+00     -1.3665696969E+01      1.3567321282E+02      1.6511324923E+03               1304             720                  6103    0.3571    0.0020 
+             2140   0.0000000000E+00     -1.3689662348E+01      1.3650993459E+02      1.6584082236E+03               1308             805                  6121    0.3624    0.0019 
+             2150   0.0000000000E+00     -1.3783352442E+01      1.3714300067E+02      1.6622650744E+03               1309             792                  6086    0.3626    0.0020 
+             2160   0.0000000000E+00     -1.3864760481E+01      1.3782886125E+02      1.7010834035E+03               1345             761                  6257    0.3605    0.0020 
+             2170   0.0000000000E+00     -1.3994588781E+01      1.3858580830E+02      1.6763263161E+03               1318             783                  6136    0.3603    0.0020 
+             2180   0.0000000000E+00     -1.4010685319E+01      1.3921400177E+02      1.6775733673E+03               1317             774                  6205    0.3651    0.0020 
+             2190   0.0000000000E+00     -1.4059724650E+01      1.3971431845E+02      1.6988970718E+03               1337             806                  6255    0.3600    0.0020 
+             2200   0.0000000000E+00     -1.4150914439E+01      1.4030211555E+02      1.7164186560E+03               1351             808                  6386    0.3616    0.0020 
+             2210   0.0000000000E+00     -1.4198652669E+01      1.4077525850E+02      1.6890288604E+03               1321             766                  6235    0.3599    0.0020 
+             2220   0.0000000000E+00     -1.4289130690E+01      1.4159262070E+02      1.6830419816E+03               1312             794                  6206    0.3619    0.0020 
+             2230   0.0000000000E+00     -1.4332085418E+01      1.4232909481E+02      1.6734538830E+03               1302             786                  6188    0.3609    0.0020 
+             2240   0.0000000000E+00     -1.4331863246E+01      1.4303744956E+02      1.7026807876E+03               1331             789                  6194    0.3667    0.0020 
+             2250   0.0000000000E+00     -1.4375985533E+01      1.4375430735E+02      1.7126289472E+03               1338             797                  6226    0.3632    0.0020 
+             2260   0.0000000000E+00     -1.4525628862E+01      1.4422008410E+02      1.7169183536E+03               1338             754                  6240    0.3547    0.0020 
+             2270   0.0000000000E+00     -1.4683748307E+01      1.4480427227E+02      1.7178838712E+03               1337             796                  6242    0.3619    0.0020 
+             2280   0.0000000000E+00     -1.4754944998E+01      1.4539457835E+02      1.7224903203E+03               1340             835                  6235    0.3612    0.0020 
+             2290   0.0000000000E+00     -1.4860537216E+01      1.4610378018E+02      1.7184123761E+03               1333             796                  6250    0.3637    0.0020 
+             2300   0.0000000000E+00     -1.4888563341E+01      1.4686932652E+02      1.7509090709E+03               1364             817                  6332    0.3654    0.0020 
+             2310   0.0000000000E+00     -1.4977253440E+01      1.4741523068E+02      1.7551709516E+03               1365             831                  6366    0.3649    0.0020 
+             2320   0.0000000000E+00     -1.5016701188E+01      1.4775693120E+02      1.7493884169E+03               1357             835                  6351    0.3652    0.0020 
+             2330   0.0000000000E+00     -1.5093561210E+01      1.4818258171E+02      1.7205220040E+03               1325             811                  6312    0.3620    0.0020 
+             2340   0.0000000000E+00     -1.5213993629E+01      1.4868429124E+02      1.7331373976E+03               1337             814                  6374    0.3711    0.0020 
+             2350   0.0000000000E+00     -1.5253302382E+01      1.4926216060E+02      1.7522023264E+03               1353             838                  6397    0.3655    0.0020 
+             2360   0.0000000000E+00     -1.5294219116E+01      1.5006134601E+02      1.7560940171E+03               1354             811                  6415    0.3671    0.0020 
+             2370   0.0000000000E+00     -1.5397864483E+01      1.5065068175E+02      1.7647762685E+03               1361             805                  6469    0.3664    0.0020 
+             2380   0.0000000000E+00     -1.5469855075E+01      1.5114120870E+02      1.8042802457E+03               1400             847                  6627    0.3648    0.0021 
+             2390   0.0000000000E+00     -1.5474213131E+01      1.5171564168E+02      1.7662690336E+03               1359             838                  6554    0.3625    0.0021 
+             2400   0.0000000000E+00     -1.5527684382E+01      1.5236890409E+02      1.7504893317E+03               1343             832                  6403    0.3650    0.0020 
+             2410   0.0000000000E+00     -1.5513799882E+01      1.5325025050E+02      1.7396011038E+03               1331             801                  6318    0.3710    0.0021 
+             2420   0.0000000000E+00     -1.5563623356E+01      1.5391826780E+02      1.7657058279E+03               1354             861                  6405    0.3753    0.0021 
+             2430   0.0000000000E+00     -1.5642831112E+01      1.5437908212E+02      1.8100044294E+03               1394             812                  6537    0.3742    0.0021 
+             2440   0.0000000000E+00     -1.5722340252E+01      1.5510118507E+02      1.8350258231E+03               1417             844                  6748    0.3573    0.0020 
+             2450   0.0000000000E+00     -1.5807109103E+01      1.5594608623E+02      1.8267748623E+03               1405             822                  6779    0.3621    0.0020 
+             2460   0.0000000000E+00     -1.5865108682E+01      1.5717563639E+02      1.8463037892E+03               1422             873                  6794    0.3659    0.0021 
+             2470   0.0000000000E+00     -1.5930682639E+01      1.5827927471E+02      1.8508714857E+03               1424             834                  6780    0.3626    0.0021 
+             2480   0.0000000000E+00     -1.5937148790E+01      1.5960970265E+02      1.8812243954E+03               1452             876                  6852    0.3632    0.0021 
+             2490   0.0000000000E+00     -1.6027281056E+01      1.6043075825E+02      1.8868146115E+03               1456             864                  6917    0.3573    0.0021 
+             2500   0.0000000000E+00     -1.6068756084E+01      1.6156096820E+02      1.8752579960E+03               1441             869                  6859    0.3623    0.0021 
+             2510   0.0000000000E+00     -1.6126133265E+01      1.6250358676E+02      1.8476693590E+03               1410             883                  6708    0.3658    0.0021 
+             2520   0.0000000000E+00     -1.6221295227E+01      1.6342163252E+02      1.8459457170E+03               1406             891                  6686    0.3668    0.0021 
+             2530   0.0000000000E+00     -1.6361500955E+01      1.6412658389E+02      1.8326461638E+03               1390             842                  6631    0.3645    0.0021 
+             2540   0.0000000000E+00     -1.6430730137E+01      1.6485454712E+02      1.8578743427E+03               1414             858                  6773    0.3634    0.0021 
+             2550   0.0000000000E+00     -1.6564357738E+01      1.6578109954E+02      1.8561865370E+03               1408             867                  6700    0.3673    0.0021 
+             2560   0.0000000000E+00     -1.6626391306E+01      1.6666369663E+02      1.8918192972E+03               1441             897                  6857    0.3666    0.0021 
+             2570   0.0000000000E+00     -1.6757812233E+01      1.6751459821E+02      1.9189413965E+03               1463             885                  6891    0.3667    0.0021 
+             2580   0.0000000000E+00     -1.6892088259E+01      1.6831284801E+02      1.9164596227E+03               1459             914                  6894    0.3696    0.0022 
+             2590   0.0000000000E+00     -1.6946713157E+01      1.6943486312E+02      1.9134026083E+03               1454             876                  6840    0.3685    0.0021 
+             2600   0.0000000000E+00     -1.7101036430E+01      1.7047053188E+02      1.9258865336E+03               1462             888                  6930    0.3723    0.0022 
+             2610   0.0000000000E+00     -1.7234986919E+01      1.7144528653E+02      1.9406778779E+03               1472             896                  6990    0.3671    0.0022 
+             2620   0.0000000000E+00     -1.7289058168E+01      1.7208604361E+02      1.9572620646E+03               1486             897                  7068    0.3618    0.0022 
+             2630   0.0000000000E+00     -1.7436955536E+01      1.7284025697E+02      1.9747349345E+03               1498             935                  7147    0.3717    0.0023 
+             2640   0.0000000000E+00     -1.7636272501E+01      1.7405163664E+02      2.0397254851E+03               1557             938                  7390    0.3722    0.0023 
+             2650   0.0000000000E+00     -1.7793337404E+01      1.7499867650E+02      2.0358696200E+03               1550             980                  7332    0.3673    0.0023 
+             2660   0.0000000000E+00     -1.7846715756E+01      1.7596655783E+02      2.0355130608E+03               1549             980                  7326    0.3640    0.0023 
+             2670   0.0000000000E+00     -1.7936347868E+01      1.7682666313E+02      2.0595008743E+03               1568             930                  7485    0.3648    0.0023 
+             2680   0.0000000000E+00     -1.8063444955E+01      1.7765353764E+02      2.0353785178E+03               1541             946                  7361    0.3655    0.0023 
+             2690   0.0000000000E+00     -1.8182207842E+01      1.7844108706E+02      2.0394587835E+03               1543             955                  7340    0.3648    0.0023 
+             2700   0.0000000000E+00     -1.8208423798E+01      1.7930901560E+02      2.0442333429E+03               1546             958                  7339    0.3719    0.0023 
+             2710   0.0000000000E+00     -1.8323388375E+01      1.7996160923E+02      2.0567125707E+03               1557             913                  7489    0.3672    0.0023 
+             2720   0.0000000000E+00     -1.8391700952E+01      1.8091222611E+02      2.0619114113E+03               1559            1006                  7447    0.3720    0.0023 
+             2730   0.0000000000E+00     -1.8410874364E+01      1.8187158459E+02      2.0584637547E+03               1552             942                  7411    0.3697    0.0023 
+             2740   0.0000000000E+00     -1.8470199873E+01      1.8279393601E+02      2.0638014861E+03               1555             964                  7415    0.3700    0.0023 
+             2750   0.0000000000E+00     -1.8547264518E+01      1.8340340146E+02      2.0784053679E+03               1567            1025                  7400    0.3684    0.0023 
+             2760   0.0000000000E+00     -1.8595035177E+01      1.8420743923E+02      2.0989033534E+03               1584             959                  7585    0.3636    0.0023 
+             2770   0.0000000000E+00     -1.8695076249E+01      1.8508102917E+02      2.1112156624E+03               1594             927                  7633    0.3581    0.0023 
+             2780   0.0000000000E+00     -1.8805426108E+01      1.8605527110E+02      2.1175226380E+03               1596            1042                  7684    0.3663    0.0023 
+             2790   0.0000000000E+00     -1.8954287889E+01      1.8712235992E+02      2.0951015653E+03               1569             996                  7642    0.3706    0.0023 
+             2800   0.0000000000E+00     -1.8996966407E+01      1.8824832749E+02      2.1003299213E+03               1574             970                  7544    0.3718    0.0023 
+             2810   0.0000000000E+00     -1.9079773691E+01      1.8899588990E+02      2.0760679580E+03               1546            1024                  7460    0.3703    0.0023 
+             2820   0.0000000000E+00     -1.9222266121E+01      1.8971592752E+02      2.0907611083E+03               1558            1007                  7520    0.3677    0.0023 
+             2830   0.0000000000E+00     -1.9314118582E+01      1.9072865060E+02      2.1082672267E+03               1574            1060                  7570    0.3755    0.0024 
+             2840   0.0000000000E+00     -1.9339868739E+01      1.9153397902E+02      2.1186610363E+03               1581             968                  7556    0.3750    0.0024 
+             2850   0.0000000000E+00     -1.9484297897E+01      1.9257021229E+02      2.1135538000E+03               1570            1007                  7575    0.3679    0.0023 
+             2860   0.0000000000E+00     -1.9587849452E+01      1.9368406212E+02      2.0827986038E+03               1537             973                  7407    0.3744    0.0023 
+             2870   0.0000000000E+00     -1.9552549967E+01      1.9481433453E+02      2.1106708459E+03               1563            1055                  7410    0.3779    0.0024 
+             2880   0.0000000000E+00     -1.9629595873E+01      1.9605100040E+02      2.1116193213E+03               1564            1025                  7406    0.3734    0.0024 
+             2890   0.0000000000E+00     -1.9663096994E+01      1.9677762663E+02      2.1195343336E+03               1569            1021                  7426    0.3727    0.0024 
+             2900   0.0000000000E+00     -1.9732562574E+01      1.9750693498E+02      2.0937244556E+03               1541             947                  7260    0.3673    0.0023 
+             2910   0.0000000000E+00     -1.9770297507E+01      1.9857007294E+02      2.0878585683E+03               1532             981                  7257    0.3748    0.0023 
+             2920   0.0000000000E+00     -1.9853998245E+01      1.9967190659E+02      2.0789504019E+03               1521             947                  7234    0.3754    0.0024 
+             2930   0.0000000000E+00     -1.9938706529E+01      2.0067547495E+02      2.1019912621E+03               1539             954                  7314    0.3733    0.0024 
+             2940   0.0000000000E+00     -2.0115513496E+01      2.0156808168E+02      2.1394191823E+03               1572            1040                  7446    0.3765    0.0024 
+             2950   0.0000000000E+00     -2.0173444839E+01      2.0277419240E+02      2.1178916195E+03               1547            1085                  7411    0.3792    0.0024 
+             2960   0.0000000000E+00     -2.0286860282E+01      2.0417287211E+02      2.1150282794E+03               1539             997                  7328    0.3760    0.0024 
+             2970   0.0000000000E+00     -2.0485375596E+01      2.0551007670E+02      2.1367906206E+03               1556            1014                  7472    0.3832    0.0024 
+             2980   0.0000000000E+00     -2.0727244613E+01      2.0651298264E+02      2.1176149500E+03               1531             969                  7375    0.3795    0.0024 
+             2990   0.0000000000E+00     -2.0812598537E+01      2.0733412357E+02      2.1089654477E+03               1519            1051                  7347    0.3852    0.0024 
+             3000   0.0000000000E+00     -2.0851061195E+01      2.0836592181E+02      2.1239314143E+03               1534            1090                  7395    0.3845    0.0024 
+             3010   0.0000000000E+00     -2.0888609195E+01      2.0935793617E+02      2.0933795995E+03               1500             956                  7274    0.3852    0.0024 
+             3020   0.0000000000E+00     -2.1025985743E+01      2.1024949362E+02      2.1074769434E+03               1508            1040                  7293    0.3821    0.0024 
+             3030   0.0000000000E+00     -2.1168315360E+01      2.1139064990E+02      2.1312518653E+03               1529            1005                  7422    0.3854    0.0024 
+             3040   0.0000000000E+00     -2.1279978833E+01      2.1237170803E+02      2.1363073654E+03               1531            1024                  7447    0.3837    0.0024 
+             3050   0.0000000000E+00     -2.1421789263E+01      2.1344370582E+02      2.1767516687E+03               1565            1089                  7625    0.3867    0.0024 
+             3060   0.0000000000E+00     -2.1624396016E+01      2.1478733527E+02      2.1934255625E+03               1578            1080                  7705    0.3833    0.0024 
+             3070   0.0000000000E+00     -2.1733061867E+01      2.1562499578E+02      2.2358095254E+03               1615            1107                  7840    0.3888    0.0024 
+             3080   0.0000000000E+00     -2.1846874107E+01      2.1659043296E+02      2.2748765445E+03               1648            1037                  8033    0.3782    0.0025 
+             3090   0.0000000000E+00     -2.2022089770E+01      2.1765362119E+02      2.2844582596E+03               1654            1159                  8044    0.3795    0.0026 
+             3100   0.0000000000E+00     -2.2081992787E+01      2.1863792830E+02      2.3289097686E+03               1695            1109                  8190    0.3755    0.0026 
+             3110   0.0000000000E+00     -2.2208674211E+01      2.1988657022E+02      2.3085757329E+03               1670            1037                  8185    0.3794    0.0026 
+             3120   0.0000000000E+00     -2.2387555671E+01      2.2129851987E+02      2.3459876147E+03               1703            1110                  8268    0.3803    0.0026 
+             3130   0.0000000000E+00     -2.2411855904E+01      2.2264261234E+02      2.3242703202E+03               1678            1110                  8127    0.3773    0.0026 
+             3140   0.0000000000E+00     -2.2581519061E+01      2.2385757443E+02      2.3418966437E+03               1687            1132                  8194    0.3797    0.0026 
+             3150   0.0000000000E+00     -2.2831704698E+01      2.2487498451E+02      2.3335996238E+03               1674            1166                  8222    0.3797    0.0026 
+             3160   0.0000000000E+00     -2.2957050607E+01      2.2638257897E+02      2.3161530320E+03               1654            1099                  8126    0.3783    0.0026 
+             3170   0.0000000000E+00     -2.3036439363E+01      2.2764072060E+02      2.3529370375E+03               1684            1196                  8218    0.3841    0.0026 
+             3180   0.0000000000E+00     -2.3167636379E+01      2.2850859336E+02      2.3882314477E+03               1716            1163                  8411    0.3822    0.0027 
+             3190   0.0000000000E+00     -2.3239238983E+01      2.2973854829E+02      2.3615238733E+03               1688            1080                  8227    0.3846    0.0026 
+             3200   0.0000000000E+00     -2.3287551415E+01      2.3103531554E+02      2.4097375573E+03               1730            1153                  8464    0.3819    0.0027 
+             3210   0.0000000000E+00     -2.3303981346E+01      2.3207476288E+02      2.4354528350E+03               1755            1191                  8538    0.3779    0.0027 
+             3220   0.0000000000E+00     -2.3374642278E+01      2.3338385166E+02      2.4375419737E+03               1752            1172                  8561    0.3797    0.0027 
+             3230   0.0000000000E+00     -2.3575712178E+01      2.3412814891E+02      2.4063509515E+03               1718            1174                  8518    0.3833    0.0027 
+             3240   0.0000000000E+00     -2.3707279086E+01      2.3544542908E+02      2.4416783502E+03               1747            1134                  8553    0.3770    0.0027 
+             3250   0.0000000000E+00     -2.3806209999E+01      2.3695638084E+02      2.4447148495E+03               1747            1179                  8549    0.3825    0.0027 
+             3260   0.0000000000E+00     -2.3848079190E+01      2.3823004818E+02      2.4257345997E+03               1724            1148                  8427    0.3805    0.0027 
+             3270   0.0000000000E+00     -2.4077307631E+01      2.3947638592E+02      2.4429714988E+03               1734            1211                  8564    0.3842    0.0027 
+             3280   0.0000000000E+00     -2.4309766859E+01      2.4069421575E+02      2.4695580256E+03               1754            1228                  8718    0.3894    0.0027 
+             3290   0.0000000000E+00     -2.4489937641E+01      2.4174077969E+02      2.4760009672E+03               1757            1123                  8667    0.3828    0.0027 
+             3300   0.0000000000E+00     -2.4510783042E+01      2.4317570643E+02      2.4777470139E+03               1755            1250                  8707    0.3815    0.0027 
+             3310   0.0000000000E+00     -2.4694204438E+01      2.4451108015E+02      2.5007391539E+03               1770            1197                  8739    0.3879    0.0027 
+             3320   0.0000000000E+00     -2.4927786169E+01      2.4581148459E+02      2.5774343329E+03               1839            1243                  9037    0.3900    0.0029 
+             3330   0.0000000000E+00     -2.5054471869E+01      2.4691171263E+02      2.5687184161E+03               1827            1278                  9044    0.3777    0.0029 
+             3340   0.0000000000E+00     -2.5171971836E+01      2.4809284258E+02      2.5695335432E+03               1823            1318                  9101    0.3878    0.0029 
+             3350   0.0000000000E+00     -2.5307174312E+01      2.4933761395E+02      2.5933407002E+03               1841            1270                  9123    0.3807    0.0029 
+             3360   0.0000000000E+00     -2.5442975304E+01      2.5061951063E+02      2.6400902119E+03               1882            1312                  9341    0.3827    0.0029 
+             3370   0.0000000000E+00     -2.5696899597E+01      2.5188308445E+02      2.6654390600E+03               1902            1297                  9480    0.3841    0.0030 
+             3380   0.0000000000E+00     -2.5737958282E+01      2.5294203186E+02      2.6707912756E+03               1908            1280                  9435    0.3776    0.0029 
+             3390   0.0000000000E+00     -2.5873020575E+01      2.5401030926E+02      2.7132460500E+03               1943            1329                  9576    0.3832    0.0030 
+             3400   0.0000000000E+00     -2.5953522495E+01      2.5502373750E+02      2.6875586951E+03               1917            1273                  9468    0.3784    0.0030 
+             3410   0.0000000000E+00     -2.5957525352E+01      2.5615378889E+02      2.6966882290E+03               1920            1313                  9522    0.3812    0.0030 
+             3420   0.0000000000E+00     -2.6074552522E+01      2.5763294574E+02      2.6925005073E+03               1911            1332                  9458    0.3859    0.0030 
+             3430   0.0000000000E+00     -2.6132030941E+01      2.5929132096E+02      2.7043756993E+03               1920            1304                  9499    0.3808    0.0030 
+             3440   0.0000000000E+00     -2.6175912967E+01      2.6046614846E+02      2.6546906449E+03               1867            1271                  9322    0.3824    0.0030 
+             3450   0.0000000000E+00     -2.6338570432E+01      2.6150329308E+02      2.6691438345E+03               1878            1294                  9337    0.3812    0.0030 
+             3460   0.0000000000E+00     -2.6347109957E+01      2.6308839394E+02      2.6523621964E+03               1856            1335                  9211    0.3870    0.0030 
+             3470   0.0000000000E+00     -2.6463769552E+01      2.6434044349E+02      2.7007266653E+03               1902            1288                  9341    0.3830    0.0030 
+             3480   0.0000000000E+00     -2.6612231548E+01      2.6539092397E+02      2.7407492096E+03               1938            1304                  9523    0.3815    0.0030 
+             3490   0.0000000000E+00     -2.6788871410E+01      2.6665720474E+02      2.7253357387E+03               1918            1293                  9480    0.3817    0.0030 
+             3500   0.0000000000E+00     -2.6937192056E+01      2.6793324412E+02      2.7249599113E+03               1913            1284                  9503    0.3825    0.0030 
+             3510   0.0000000000E+00     -2.7085377539E+01      2.6933149795E+02      2.7147491563E+03               1900            1281                  9417    0.3754    0.0030 
+             3520   0.0000000000E+00     -2.7160167445E+01      2.7067552943E+02      2.7341483338E+03               1915            1275                  9460    0.3793    0.0030 
+             3530   0.0000000000E+00     -2.7371043415E+01      2.7204278312E+02      2.7541810548E+03               1928            1330                  9539    0.3826    0.0030 
+             3540   0.0000000000E+00     -2.7431086678E+01      2.7353441553E+02      2.7104617732E+03               1877            1326                  9405    0.3841    0.0030 
+             3550   0.0000000000E+00     -2.7692396987E+01      2.7502292673E+02      2.7154214312E+03               1876            1338                  9437    0.3901    0.0030 
+             3560   0.0000000000E+00     -2.7887789684E+01      2.7664807207E+02      2.7309088318E+03               1886            1389                  9454    0.3906    0.0030 
+             3570   0.0000000000E+00     -2.7928100911E+01      2.7786445644E+02      2.7515636902E+03               1904            1341                  9560    0.3875    0.0030 
+             3580   0.0000000000E+00     -2.8051941585E+01      2.7944390230E+02      2.7887815846E+03               1934            1383                  9674    0.3907    0.0031 
+             3590   0.0000000000E+00     -2.8184210237E+01      2.8096267296E+02      2.7934114547E+03               1937            1364                  9725    0.3843    0.0031 
+             3600   0.0000000000E+00     -2.8258579957E+01      2.8231391907E+02      2.7979151786E+03               1935            1369                  9683    0.3858    0.0031 
+             3610   0.0000000000E+00     -2.8360136444E+01      2.8371241168E+02      2.8037323556E+03               1939            1443                  9717    0.3866    0.0031 
+             3620   0.0000000000E+00     -2.8463647024E+01      2.8507901467E+02      2.7902685464E+03               1921            1412                  9717    0.3875    0.0031 
+             3630   0.0000000000E+00     -2.8649466091E+01      2.8670580376E+02      2.7982570196E+03               1923            1391                  9655    0.3859    0.0031 
+             3640   0.0000000000E+00     -2.8807769765E+01      2.8823178502E+02      2.8121129127E+03               1930            1411                  9773    0.3890    0.0031 
+             3650   0.0000000000E+00     -2.8979769708E+01      2.8972112601E+02      2.8548766211E+03               1965            1381                  9859    0.3883    0.0032 
+             3660   0.0000000000E+00     -2.9182520170E+01      2.9112886089E+02      2.8934451440E+03               1996            1441                 10021    0.3903    0.0032 
+             3670   0.0000000000E+00     -2.9302664580E+01      2.9286058960E+02      2.9131137659E+03               2011            1395                 10092    0.3863    0.0032 
+             3680   0.0000000000E+00     -2.9464820435E+01      2.9481660539E+02      2.9444261423E+03               2035            1478                 10282    0.3909    0.0033 
+             3690   0.0000000000E+00     -2.9643556239E+01      2.9635970271E+02      2.9684981089E+03               2053            1445                 10279    0.3858    0.0032 
+             3700   0.0000000000E+00     -2.9763860974E+01      2.9774161966E+02      2.9573536636E+03               2038            1475                 10235    0.3848    0.0033 
+             3710   0.0000000000E+00     -2.9984424380E+01      2.9948066179E+02      2.9345394812E+03               2006            1457                 10243    0.3876    0.0033 
+             3720   0.0000000000E+00     -3.0225491871E+01      3.0130413785E+02      2.9521806502E+03               2016            1497                 10284    0.3884    0.0033 
+             3730   0.0000000000E+00     -3.0394761331E+01      3.0287207691E+02      2.9705915716E+03               2030            1488                 10331    0.3896    0.0033 
+             3740   0.0000000000E+00     -3.0525380643E+01      3.0415368462E+02      2.9220835859E+03               1978            1447                 10162    0.3944    0.0033 
+             3750   0.0000000000E+00     -3.0660585309E+01      3.0581674870E+02      2.9408282108E+03               1991            1465                 10188    0.3917    0.0033 
+             3760   0.0000000000E+00     -3.0729877234E+01      3.0791483400E+02      2.9466505421E+03               1993            1440                 10147    0.3905    0.0033 
+             3770   0.0000000000E+00     -3.0893365318E+01      3.0957913027E+02      2.9702277867E+03               2008            1500                 10319    0.3915    0.0033 
+             3780   0.0000000000E+00     -3.1125846583E+01      3.1115694813E+02      3.0050045228E+03               2037            1500                 10371    0.3970    0.0033 
+             3790   0.0000000000E+00     -3.1314289600E+01      3.1293582428E+02      3.0319948856E+03               2061            1593                 10445    0.3919    0.0033 
+             3800   0.0000000000E+00     -3.1361306904E+01      3.1464157548E+02      3.0198104386E+03               2043            1522                 10356    0.3933    0.0033 
+             3810   0.0000000000E+00     -3.1543040768E+01      3.1661110667E+02      3.0285903886E+03               2044            1490                 10342    0.3915    0.0034 
+             3820   0.0000000000E+00     -3.1713356808E+01      3.1873757438E+02      3.0717389528E+03               2080            1524                 10646    0.3934    0.0034 
+             3830   0.0000000000E+00     -3.1977768081E+01      3.2018631715E+02      3.1052070742E+03               2106            1561                 10711    0.3899    0.0034 
+             3840   0.0000000000E+00     -3.2288215669E+01      3.2170442134E+02      3.1027457710E+03               2095            1540                 10739    0.3880    0.0034 
+             3850   0.0000000000E+00     -3.2523372694E+01      3.2315043210E+02      3.1220359271E+03               2102            1511                 10911    0.3869    0.0035 
+             3860   0.0000000000E+00     -3.2783488591E+01      3.2429015270E+02      3.1339205803E+03               2107            1593                 10900    0.3921    0.0035 
+             3870   0.0000000000E+00     -3.2906562510E+01      3.2560540742E+02      3.1093658116E+03               2083            1596                 10800    0.3938    0.0035 
+             3880   0.0000000000E+00     -3.2984668628E+01      3.2691040497E+02      3.1429412003E+03               2113            1554                 10908    0.3991    0.0035 
+             3890   0.0000000000E+00     -3.3068822174E+01      3.2859867245E+02      3.1412492939E+03               2106            1562                 10860    0.3967    0.0035 
+             3900   0.0000000000E+00     -3.3090555235E+01      3.3044593984E+02      3.1704811807E+03               2131            1552                 10939    0.3958    0.0035 
+             3910   0.0000000000E+00     -3.3286267085E+01      3.3258367327E+02      3.1413421864E+03               2095            1565                 10834    0.3933    0.0035 
+             3920   0.0000000000E+00     -3.3429980898E+01      3.3426551913E+02      3.1687415601E+03               2117            1542                 10838    0.3934    0.0035 
+             3930   0.0000000000E+00     -3.3622571886E+01      3.3614918025E+02      3.1432699913E+03               2083            1583                 10778    0.3982    0.0035 
+             3940   0.0000000000E+00     -3.3868350154E+01      3.3810020031E+02      3.1449118904E+03               2079            1561                 10789    0.3993    0.0035 
+             3950   0.0000000000E+00     -3.4053360675E+01      3.3969402474E+02      3.1588957498E+03               2082            1667                 10933    0.4047    0.0036 
+             3960   0.0000000000E+00     -3.4288828287E+01      3.4096151188E+02      3.1763709495E+03               2095            1555                 10948    0.4004    0.0036 
+             3970   0.0000000000E+00     -3.4382018655E+01      3.4251575482E+02      3.2157383567E+03               2132            1619                 11026    0.3977    0.0035 
+             3980   0.0000000000E+00     -3.4488911167E+01      3.4448141395E+02      3.2498835341E+03               2159            1612                 11168    0.3979    0.0036 
+             3990   0.0000000000E+00     -3.4741198887E+01      3.4616703827E+02      3.2620458168E+03               2163            1659                 11214    0.3969    0.0036 
+             4000   0.0000000000E+00     -3.4923338552E+01      3.4788196692E+02      3.2804137927E+03               2177            1650                 11252    0.3976    0.0036 
+             4010   0.0000000000E+00     -3.5048655097E+01      3.4983380800E+02      3.2719260215E+03               2162            1632                 11274    0.3959    0.0036 
+             4020   0.0000000000E+00     -3.5204162974E+01      3.5144181941E+02      3.2596328993E+03               2142            1737                 11187    0.4012    0.0036 
+             4030   0.0000000000E+00     -3.5404240518E+01      3.5336737379E+02      3.2659691239E+03               2142            1708                 11148    0.3977    0.0036 
+             4040   0.0000000000E+00     -3.5657294751E+01      3.5528531975E+02      3.2761024081E+03               2147            1687                 11226    0.4008    0.0036 
+             4050   0.0000000000E+00     -3.5807486176E+01      3.5683694780E+02      3.2526692714E+03               2117            1676                 11083    0.4003    0.0036 
+             4060   0.0000000000E+00     -3.5994091058E+01      3.5872727612E+02      3.2794389676E+03               2140            1655                 11232    0.4051    0.0036 
+             4070   0.0000000000E+00     -3.6105263117E+01      3.5999537668E+02      3.2858112890E+03               2140            1709                 11214    0.4024    0.0036 
+             4080   0.0000000000E+00     -3.6364066985E+01      3.6202207333E+02      3.3195986721E+03               2164            1668                 11350    0.4008    0.0036 
+             4090   0.0000000000E+00     -3.6575940263E+01      3.6389795305E+02      3.3459671533E+03               2184            1676                 11499    0.3961    0.0036 
+             4100   0.0000000000E+00     -3.6681418513E+01      3.6563665073E+02      3.3772991861E+03               2210            1701                 11637    0.4003    0.0037 
+             4110   0.0000000000E+00     -3.6871377562E+01      3.6746039415E+02      3.3495624414E+03               2178            1790                 11473    0.4068    0.0037 
+             4120   0.0000000000E+00     -3.7021235700E+01      3.6951558535E+02      3.3475680630E+03               2170            1706                 11439    0.4011    0.0037 
+             4130   0.0000000000E+00     -3.7165298898E+01      3.7112376011E+02      3.3734796400E+03               2188            1685                 11569    0.3997    0.0037 
+             4140   0.0000000000E+00     -3.7437128180E+01      3.7251671969E+02      3.3897761342E+03               2197            1793                 11550    0.4035    0.0037 
+             4150   0.0000000000E+00     -3.7690177603E+01      3.7439454516E+02      3.3922531726E+03               2193            1735                 11563    0.4079    0.0037 
+             4160   0.0000000000E+00     -3.7848985317E+01      3.7581707056E+02      3.4017016138E+03               2196            1752                 11642    0.4031    0.0037 
+             4170   0.0000000000E+00     -3.8002334719E+01      3.7755737769E+02      3.4581685634E+03               2246            1791                 11768    0.4058    0.0038 
+             4180   0.0000000000E+00     -3.8197077942E+01      3.7921606713E+02      3.4856676372E+03               2269            1750                 11945    0.3999    0.0038 
+             4190   0.0000000000E+00     -3.8345621666E+01      3.8080804320E+02      3.4875697039E+03               2262            1750                 11980    0.4036    0.0039 
+             4200   0.0000000000E+00     -3.8608409662E+01      3.8239750118E+02      3.4887636623E+03               2257            1767                 11938    0.4033    0.0039 
+             4210   0.0000000000E+00     -3.8786005301E+01      3.8423172998E+02      3.5012900662E+03               2261            1778                 11962    0.4004    0.0039 
+             4220   0.0000000000E+00     -3.9076841627E+01      3.8622817018E+02      3.5091400159E+03               2262            1782                 11999    0.4010    0.0039 
+             4230   0.0000000000E+00     -3.9188282124E+01      3.8812080521E+02      3.5044913613E+03               2250            1822                 12000    0.4036    0.0039 
+             4240   0.0000000000E+00     -3.9322981226E+01      3.9040076547E+02      3.4971976723E+03               2236            1787                 12004    0.4009    0.0039 
+             4250   0.0000000000E+00     -3.9664262395E+01      3.9192336695E+02      3.5312180398E+03               2260            1829                 12132    0.4022    0.0039 
+             4260   0.0000000000E+00     -3.9884061286E+01      3.9365784611E+02      3.5402807184E+03               2262            1867                 12093    0.4076    0.0039 
+             4270   0.0000000000E+00     -4.0069048796E+01      3.9575845436E+02      3.5443788070E+03               2256            1814                 12095    0.4027    0.0039 
+             4280   0.0000000000E+00     -4.0309563119E+01      3.9782536958E+02      3.5700282661E+03               2275            1776                 12238    0.4019    0.0039 
+             4290   0.0000000000E+00     -4.0479385725E+01      3.9993623518E+02      3.5678611532E+03               2267            1876                 12238    0.4047    0.0039 
+             4300   0.0000000000E+00     -4.0607616750E+01      4.0211846513E+02      3.6053646206E+03               2296            1940                 12360    0.4072    0.0039 
+             4310   0.0000000000E+00     -4.0758955353E+01      4.0396323718E+02      3.5989657263E+03               2287            1810                 12320    0.4035    0.0039 
+             4320   0.0000000000E+00     -4.0780991545E+01      4.0574383047E+02      3.5940567637E+03               2280            1855                 12279    0.4081    0.0039 
+             4330   0.0000000000E+00     -4.0878976607E+01      4.0758622431E+02      3.6078192015E+03               2286            1916                 12305    0.4085    0.0039 
+             4340   0.0000000000E+00     -4.1049136173E+01      4.0957214903E+02      3.6423067539E+03               2314            1864                 12422    0.4069    0.0040 
+             4350   0.0000000000E+00     -4.1231797210E+01      4.1160208215E+02      3.6230858873E+03               2286            1916                 12281    0.4080    0.0039 
+             4360   0.0000000000E+00     -4.1516670518E+01      4.1345387952E+02      3.6516758219E+03               2310            1927                 12353    0.4098    0.0040 
+             4370   0.0000000000E+00     -4.1815767335E+01      4.1548807428E+02      3.7011273733E+03               2349            1932                 12560    0.4077    0.0040 
+             4380   0.0000000000E+00     -4.2114023538E+01      4.1729378425E+02      3.7054016373E+03               2343            1930                 12601    0.4045    0.0040 
+             4390   0.0000000000E+00     -4.2282145584E+01      4.1913888346E+02      3.7388762821E+03               2370            1895                 12721    0.4082    0.0041 
+             4400   0.0000000000E+00     -4.2475677771E+01      4.2120885147E+02      3.7330756833E+03               2353            1994                 12701    0.4071    0.0041 
+             4410   0.0000000000E+00     -4.2812322367E+01      4.2295911778E+02      3.7477244166E+03               2363            1898                 12725    0.4070    0.0041 
+             4420   0.0000000000E+00     -4.2928754160E+01      4.2510529714E+02      3.7358203507E+03               2346            1908                 12653    0.4073    0.0041 
+             4430   0.0000000000E+00     -4.3093954952E+01      4.2734809306E+02      3.7205050051E+03               2324            1923                 12607    0.4079    0.0041 
+             4440   0.0000000000E+00     -4.3165836196E+01      4.2980727012E+02      3.6922080970E+03               2290            1956                 12470    0.4078    0.0040 
+             4450   0.0000000000E+00     -4.3298671250E+01      4.3211520673E+02      3.7089600077E+03               2300            1934                 12484    0.4142    0.0040 
+             4460   0.0000000000E+00     -4.3511648299E+01      4.3445586187E+02      3.7301699200E+03               2311            1962                 12647    0.4095    0.0040 
+             4470   0.0000000000E+00     -4.3771226295E+01      4.3671540983E+02      3.7823889457E+03               2359            1982                 12737    0.4120    0.0041 
+             4480   0.0000000000E+00     -4.3929746491E+01      4.3842369968E+02      3.8176227889E+03               2391            1867                 12883    0.4064    0.0042 
+             4490   0.0000000000E+00     -4.4154819649E+01      4.4041762338E+02      3.8308072592E+03               2395            1994                 12925    0.4086    0.0042 
+             4500   0.0000000000E+00     -4.4313102302E+01      4.4263546024E+02      3.8645985286E+03               2417            2046                 13120    0.4128    0.0042 
+             4510   0.0000000000E+00     -4.4521047619E+01      4.4453244188E+02      3.8803085438E+03               2430            2054                 13089    0.4100    0.0042 
+             4520   0.0000000000E+00     -4.4789764164E+01      4.4668832286E+02      3.9347681678E+03               2469            2049                 13361    0.4105    0.0043 
+             4530   0.0000000000E+00     -4.5081453244E+01      4.4887337020E+02      3.9621877590E+03               2491            2101                 13450    0.4104    0.0043 
+             4540   0.0000000000E+00     -4.5309301341E+01      4.5117339383E+02      3.9624310114E+03               2482            2063                 13502    0.4079    0.0043 
+             4550   0.0000000000E+00     -4.5507243122E+01      4.5352594134E+02      3.9444381008E+03               2456            2031                 13309    0.4090    0.0043 
+             4560   0.0000000000E+00     -4.5670227053E+01      4.5588799192E+02      3.9763927548E+03               2479            2128                 13442    0.4127    0.0043 
+             4570   0.0000000000E+00     -4.5901089655E+01      4.5826542257E+02      3.9515109368E+03               2447            2057                 13299    0.4090    0.0043 
+             4580   0.0000000000E+00     -4.6098694506E+01      4.6053972956E+02      3.9832715622E+03               2468            2083                 13435    0.4073    0.0043 
+             4590   0.0000000000E+00     -4.6380354625E+01      4.6303669016E+02      4.0020944010E+03               2479            2154                 13533    0.4096    0.0043 
+             4600   0.0000000000E+00     -4.6555129313E+01      4.6562340882E+02      4.0044148288E+03               2473            2069                 13457    0.4095    0.0043 
+             4610   0.0000000000E+00     -4.6768065995E+01      4.6835008028E+02      3.9973841951E+03               2455            2028                 13424    0.4111    0.0043 
+             4620   0.0000000000E+00     -4.6984505826E+01      4.7051814944E+02      3.9835801656E+03               2438            2090                 13343    0.4115    0.0043 
+             4630   0.0000000000E+00     -4.7219721314E+01      4.7230488660E+02      4.0218665601E+03               2467            2077                 13482    0.4105    0.0043 
+             4640   0.0000000000E+00     -4.7339604982E+01      4.7451698402E+02      4.0758477548E+03               2508            2179                 13657    0.4132    0.0043 
+             4650   0.0000000000E+00     -4.7618652841E+01      4.7702487859E+02      4.1198789303E+03               2545            2158                 13815    0.4108    0.0045 
+             4660   0.0000000000E+00     -4.7826303311E+01      4.7935845131E+02      4.1051880633E+03               2522            2104                 13788    0.4085    0.0045 
+             4670   0.0000000000E+00     -4.8049932341E+01      4.8196974269E+02      4.0798694828E+03               2485            2220                 13704    0.4123    0.0045 
+             4680   0.0000000000E+00     -4.8392680563E+01      4.8416534788E+02      4.1546819979E+03               2548            2189                 14016    0.4133    0.0045 
+             4690   0.0000000000E+00     -4.8671562204E+01      4.8634510693E+02      4.1573451516E+03               2542            2125                 14017    0.4083    0.0045 
+             4700   0.0000000000E+00     -4.8866401040E+01      4.8849219914E+02      4.1743414381E+03               2549            2196                 14058    0.4101    0.0046 
+             4710   0.0000000000E+00     -4.9139164627E+01      4.9131337437E+02      4.1862924709E+03               2545            2287                 14204    0.4155    0.0046 
+             4720   0.0000000000E+00     -4.9318345009E+01      4.9384026160E+02      4.1618331326E+03               2517            2202                 13971    0.4137    0.0046 
+             4730   0.0000000000E+00     -4.9562165605E+01      4.9654153884E+02      4.1570935096E+03               2501            2170                 13937    0.4141    0.0045 
+             4740   0.0000000000E+00     -4.9741997864E+01      4.9903690493E+02      4.1653167921E+03               2505            2294                 13923    0.4129    0.0046 
+             4750   0.0000000000E+00     -5.0041845154E+01      5.0125179800E+02      4.2382539248E+03               2568            2329                 14190    0.4193    0.0046 
+             4760   0.0000000000E+00     -5.0314810253E+01      5.0398268523E+02      4.2822075355E+03               2601            2317                 14412    0.4124    0.0046 
+             4770   0.0000000000E+00     -5.0548833620E+01      5.0663957455E+02      4.2599197093E+03               2570            2250                 14240    0.4109    0.0046 
+             4780   0.0000000000E+00     -5.0907034987E+01      5.0945878444E+02      4.2583022203E+03               2556            2297                 14332    0.4208    0.0046 
+             4790   0.0000000000E+00     -5.1202687592E+01      5.1180901025E+02      4.2471982429E+03               2536            2274                 14251    0.4213    0.0047 
+             4800   0.0000000000E+00     -5.1508854810E+01      5.1429308572E+02      4.2969467020E+03               2575            2241                 14451    0.4176    0.0047 
+             4810   0.0000000000E+00     -5.1866497454E+01      5.1672747160E+02      4.3572576958E+03               2622            2373                 14743    0.4156    0.0048 
+             4820   0.0000000000E+00     -5.2176894022E+01      5.1924086003E+02      4.3636713522E+03               2617            2329                 14741    0.4146    0.0049 
+             4830   0.0000000000E+00     -5.2447946362E+01      5.2216335659E+02      4.3790692488E+03               2624            2323                 14712    0.4168    0.0048 
+             4840   0.0000000000E+00     -5.2821340985E+01      5.2468927320E+02      4.3552790518E+03               2586            2271                 14691    0.4152    0.0048 
+             4850   0.0000000000E+00     -5.3185369565E+01      5.2697158538E+02      4.3718316180E+03               2591            2368                 14741    0.4194    0.0048 
+             4860   0.0000000000E+00     -5.3508486811E+01      5.2938520629E+02      4.3692357485E+03               2579            2415                 14755    0.4216    0.0049 
+             4870   0.0000000000E+00     -5.3706888791E+01      5.3202313028E+02      4.3881196840E+03               2591            2383                 14844    0.4230    0.0048 
+             4880   0.0000000000E+00     -5.4001971796E+01      5.3476892722E+02      4.4266823067E+03               2622            2391                 14892    0.4183    0.0049 
+             4890   0.0000000000E+00     -5.4333445524E+01      5.3738812528E+02      4.4533838280E+03               2635            2501                 14983    0.4242    0.0049 
+             4900   0.0000000000E+00     -5.4556144096E+01      5.3956958807E+02      4.4913892042E+03               2670            2454                 15089    0.4203    0.0049 
+             4910   0.0000000000E+00     -5.4785931410E+01      5.4206353114E+02      4.4635400236E+03               2633            2383                 15064    0.4163    0.0049 
+             4920   0.0000000000E+00     -5.5075018140E+01      5.4435619913E+02      4.4950745644E+03               2652            2462                 15097    0.4216    0.0050 
+             4930   0.0000000000E+00     -5.5359371205E+01      5.4746422057E+02      4.5162311582E+03               2658            2520                 15250    0.4248    0.0050 
+             4940   0.0000000000E+00     -5.5691258906E+01      5.5030706013E+02      4.5103252135E+03               2642            2510                 15248    0.4229    0.0049 
+             4950   0.0000000000E+00     -5.5959805451E+01      5.5266637944E+02      4.5244538281E+03               2646            2408                 15289    0.4183    0.0050 
+             4960   0.0000000000E+00     -5.6250334024E+01      5.5535173456E+02      4.5845444885E+03               2701            2492                 15452    0.4205    0.0050 
+             4970   0.0000000000E+00     -5.6434612777E+01      5.5831016947E+02      4.5934713503E+03               2700            2462                 15462    0.4211    0.0050 
+             4980   0.0000000000E+00     -5.6461258860E+01      5.6105244672E+02      4.5915702863E+03               2692            2426                 15428    0.4212    0.0050 
+             4990   0.0000000000E+00     -5.6611002242E+01      5.6383810806E+02      4.6051178397E+03               2697            2440                 15419    0.4194    0.0050 
+             5000   0.0000000000E+00     -5.6891023036E+01      5.6729427222E+02      4.5844162679E+03               2661            2486                 15334    0.4208    0.0050 
+             5010   0.0000000000E+00     -5.7235412216E+01      5.6985087759E+02      4.6597663353E+03               2727            2475                 15522    0.4214    0.0050 
+             5020   0.0000000000E+00     -5.7440612501E+01      5.7254296214E+02      4.6490304566E+03               2706            2502                 15570    0.4191    0.0050 
+             5030   0.0000000000E+00     -5.7755037413E+01      5.7531272036E+02      4.6577848966E+03               2708            2557                 15502    0.4243    0.0051 
+             5040   0.0000000000E+00     -5.7923470903E+01      5.7805520764E+02      4.6863192059E+03               2724            2506                 15607    0.4255    0.0051 
+             5050   0.0000000000E+00     -5.8228431942E+01      5.8090057875E+02      4.7206074312E+03               2749            2522                 15755    0.4249    0.0051 
+             5060   0.0000000000E+00     -5.8507926558E+01      5.8394889574E+02      4.7440242985E+03               2760            2530                 15769    0.4244    0.0052 
+             5070   0.0000000000E+00     -5.8826310910E+01      5.8733826420E+02      4.7706322363E+03               2778            2640                 15864    0.4252    0.0052 
+             5080   0.0000000000E+00     -5.9093164825E+01      5.9061762278E+02      4.7856152531E+03               2781            2539                 16040    0.4213    0.0052 
+             5090   0.0000000000E+00     -5.9411624046E+01      5.9368518891E+02      4.7931135513E+03               2782            2554                 16041    0.4196    0.0052 
+             5100   0.0000000000E+00     -5.9649451596E+01      5.9679054597E+02      4.8109309619E+03               2786            2660                 16069    0.4216    0.0053 
+             5110   0.0000000000E+00     -5.9854616767E+01      5.9916099476E+02      4.8122424148E+03               2777            2589                 16029    0.4219    0.0053 
+             5120   0.0000000000E+00     -6.0100297093E+01      6.0193795914E+02      4.8367983571E+03               2790            2631                 16032    0.4208    0.0052 
+             5130   0.0000000000E+00     -6.0496024498E+01      6.0473162047E+02      4.8936884927E+03               2833            2599                 16306    0.4246    0.0053 
+             5140   0.0000000000E+00     -6.0866517736E+01      6.0784743783E+02      4.8973113075E+03               2820            2683                 16387    0.4194    0.0052 
+             5150   0.0000000000E+00     -6.1231693641E+01      6.1090714975E+02      4.9131901339E+03               2829            2660                 16359    0.4218    0.0053 
+             5160   0.0000000000E+00     -6.1403415414E+01      6.1419612989E+02      4.9360860008E+03               2845            2623                 16482    0.4216    0.0053 
+             5170   0.0000000000E+00     -6.1723702107E+01      6.1763396016E+02      4.9524167199E+03               2851            2671                 16479    0.4244    0.0053 
+             5180   0.0000000000E+00     -6.2036920707E+01      6.2091032065E+02      4.9465595015E+03               2830            2656                 16452    0.4253    0.0053 
+             5190   0.0000000000E+00     -6.2471213060E+01      6.2442620330E+02      4.9659761056E+03               2833            2808                 16465    0.4298    0.0054 
+             5200   0.0000000000E+00     -6.2920620520E+01      6.2718217540E+02      4.9580360299E+03               2809            2705                 16490    0.4280    0.0053 
+             5210   0.0000000000E+00     -6.3289984053E+01      6.2980617234E+02      4.9449820636E+03               2781            2773                 16445    0.4301    0.0054 
+             5220   0.0000000000E+00     -6.3576584687E+01      6.3334695003E+02      5.0494288916E+03               2875            2831                 16686    0.4282    0.0054 
+             5230   0.0000000000E+00     -6.3840459497E+01      6.3660744141E+02      5.0809472225E+03               2896            2787                 16883    0.4274    0.0055 
+             5240   0.0000000000E+00     -6.4039616482E+01      6.3916400906E+02      5.1261355267E+03               2930            2880                 17021    0.4233    0.0055 
+             5250   0.0000000000E+00     -6.4305777364E+01      6.4193642584E+02      5.1586308414E+03               2955            2768                 17188    0.4281    0.0056 
+             5260   0.0000000000E+00     -6.4672692432E+01      6.4507132577E+02      5.1450155767E+03               2928            2809                 17107    0.4255    0.0056 
+             5270   0.0000000000E+00     -6.5018075010E+01      6.4817595575E+02      5.1447874761E+03               2911            2946                 17113    0.4288    0.0056 
+             5280   0.0000000000E+00     -6.5617465937E+01      6.5123515977E+02      5.1860833807E+03               2936            2856                 17267    0.4314    0.0056 
+             5290   0.0000000000E+00     -6.6056957604E+01      6.5412247759E+02      5.1993908908E+03               2933            2850                 17393    0.4301    0.0056 
+             5300   0.0000000000E+00     -6.6474927017E+01      6.5764666157E+02      5.2629239096E+03               2985            2866                 17635    0.4292    0.0058 
+             5310   0.0000000000E+00     -6.6661802194E+01      6.6100022334E+02      5.2747961388E+03               2980            2933                 17710    0.4265    0.0058 
+             5320   0.0000000000E+00     -6.7134356042E+01      6.6468963032E+02      5.2622949151E+03               2955            2934                 17611    0.4281    0.0057 
+             5330   0.0000000000E+00     -6.7481620524E+01      6.6830977116E+02      5.2381658280E+03               2925            2962                 17440    0.4301    0.0057 
+             5340   0.0000000000E+00     -6.7908375087E+01      6.7122781959E+02      5.2676061839E+03               2936            2935                 17634    0.4316    0.0057 
+             5350   0.0000000000E+00     -6.8364942081E+01      6.7478506486E+02      5.3318930104E+03               2986            2889                 17830    0.4331    0.0059 
+             5360   0.0000000000E+00     -6.8781413590E+01      6.7830563982E+02      5.3438220592E+03               2980            2908                 17954    0.4329    0.0059 
+             5370   0.0000000000E+00     -6.9176517310E+01      6.8207534425E+02      5.3897247645E+03               3016            3025                 17927    0.4308    0.0059 
+             5380   0.0000000000E+00     -6.9378255073E+01      6.8535222567E+02      5.3997950576E+03               3012            3066                 17972    0.4297    0.0059 
+             5390   0.0000000000E+00     -6.9584899142E+01      6.8884643474E+02      5.4339262179E+03               3036            3012                 18057    0.4328    0.0059 
+             5400   0.0000000000E+00     -6.9746785401E+01      6.9254797331E+02      5.4501370499E+03               3048            2999                 18080    0.4313    0.0059 
+             5410   0.0000000000E+00     -7.0010911293E+01      6.9624489623E+02      5.4735136135E+03               3056            3072                 18150    0.4281    0.0059 
+             5420   0.0000000000E+00     -7.0452387606E+01      6.9932023296E+02      5.4830823967E+03               3052            2955                 18227    0.4287    0.0059 
+             5430   0.0000000000E+00     -7.0777974437E+01      7.0237444167E+02      5.4798231432E+03               3035            3084                 18202    0.4293    0.0059 
+             5440   0.0000000000E+00     -7.1074048538E+01      7.0600444054E+02      5.4556742246E+03               2996            3053                 18086    0.4342    0.0060 
+             5450   0.0000000000E+00     -7.1512912739E+01      7.0973601649E+02      5.4786549748E+03               3007            3083                 18108    0.4348    0.0059 
+             5460   0.0000000000E+00     -7.1788327751E+01      7.1346337807E+02      5.4775220698E+03               2990            3024                 18199    0.4306    0.0059 
+             5470   0.0000000000E+00     -7.2123698677E+01      7.1707622487E+02      5.5456188557E+03               3041            3175                 18315    0.4375    0.0060 
+             5480   0.0000000000E+00     -7.2456235150E+01      7.2075339019E+02      5.5295434237E+03               3017            3094                 18324    0.4341    0.0060 
+             5490   0.0000000000E+00     -7.2853128068E+01      7.2461323373E+02      5.5167112700E+03               2990            3113                 18274    0.4349    0.0060 
+             5500   0.0000000000E+00     -7.3031982211E+01      7.2807676793E+02      5.5648803686E+03               3031            3129                 18361    0.4340    0.0060 
+             5510   0.0000000000E+00     -7.3251644493E+01      7.3123038562E+02      5.6056245573E+03               3054            3103                 18515    0.4344    0.0060 
+             5520   0.0000000000E+00     -7.3589937896E+01      7.3491577144E+02      5.6881721127E+03               3120            3200                 18684    0.4365    0.0061 
+             5530   0.0000000000E+00     -7.3975809581E+01      7.3901581269E+02      5.6996897683E+03               3125            3253                 18750    0.4317    0.0062 
+             5540   0.0000000000E+00     -7.4465709531E+01      7.4266950873E+02      5.7010195142E+03               3108            3187                 18831    0.4332    0.0062 
+             5550   0.0000000000E+00     -7.4994838345E+01      7.4633732580E+02      5.7456318106E+03               3136            3219                 19029    0.4335    0.0062 
+             5560   0.0000000000E+00     -7.5413682083E+01      7.4966265640E+02      5.7320398676E+03               3112            3176                 18926    0.4335    0.0062 
+             5570   0.0000000000E+00     -7.5814474900E+01      7.5327558767E+02      5.7175920999E+03               3081            3305                 18843    0.4367    0.0062 
+             5580   0.0000000000E+00     -7.6320542419E+01      7.5661234442E+02      5.7170924541E+03               3060            3290                 18829    0.4369    0.0062 
+             5590   0.0000000000E+00     -7.6584955018E+01      7.6036098226E+02      5.7611726874E+03               3098            3210                 18955    0.4390    0.0062 
+             5600   0.0000000000E+00     -7.6928177040E+01      7.6457745380E+02      5.8161565019E+03               3133            3264                 19095    0.4341    0.0063 
+             5610   0.0000000000E+00     -7.7390800814E+01      7.6890468279E+02      5.8389417566E+03               3135            3261                 19381    0.4363    0.0063 
+             5620   0.0000000000E+00     -7.7865611197E+01      7.7286491232E+02      5.8103594758E+03               3091            3316                 19215    0.4372    0.0063 
+             5630   0.0000000000E+00     -7.8295246469E+01      7.7667083738E+02      5.8097198980E+03               3082            3246                 19135    0.4386    0.0063 
+             5640   0.0000000000E+00     -7.8777792413E+01      7.8016098069E+02      5.8376437089E+03               3092            3322                 19267    0.4412    0.0063 
+             5650   0.0000000000E+00     -7.9053661383E+01      7.8437918975E+02      5.8602339519E+03               3105            3300                 19274    0.4400    0.0064 
+             5660   0.0000000000E+00     -7.9455218937E+01      7.8851605080E+02      5.9358290167E+03               3160            3344                 19548    0.4357    0.0063 
+             5670   0.0000000000E+00     -7.9966106511E+01      7.9255152536E+02      5.9314094144E+03               3138            3446                 19594    0.4415    0.0064 
+             5680   0.0000000000E+00     -8.0364138494E+01      7.9631091865E+02      5.9827353171E+03               3172            3426                 19780    0.4404    0.0065 
+             5690   0.0000000000E+00     -8.0840247209E+01      8.0028730832E+02      5.9783802854E+03               3152            3368                 19702    0.4396    0.0065 
+             5700   0.0000000000E+00     -8.1278483534E+01      8.0384009915E+02      6.0423495300E+03               3202            3445                 19908    0.4381    0.0065 
+             5710   0.0000000000E+00     -8.1671829481E+01      8.0817245933E+02      6.0936902653E+03               3232            3516                 20197    0.4424    0.0066 
+             5720   0.0000000000E+00     -8.2175726596E+01      8.1206236053E+02      6.0918060992E+03               3212            3499                 20163    0.4400    0.0066 
+             5730   0.0000000000E+00     -8.2650075921E+01      8.1572448736E+02      6.1271469460E+03               3225            3500                 20295    0.4408    0.0066 
+             5740   0.0000000000E+00     -8.3254954597E+01      8.2020325014E+02      6.1403640574E+03               3222            3631                 20281    0.4427    0.0066 
+             5750   0.0000000000E+00     -8.3619953160E+01      8.2415784727E+02      6.1817477319E+03               3250            3453                 20446    0.4389    0.0067 
+             5760   0.0000000000E+00     -8.3875021055E+01      8.2833395740E+02      6.1394307273E+03               3200            3547                 20182    0.4423    0.0066 
+             5770   0.0000000000E+00     -8.4255193275E+01      8.3292164055E+02      6.1566258499E+03               3199            3553                 20252    0.4417    0.0067 
+             5780   0.0000000000E+00     -8.4720979405E+01      8.3696390316E+02      6.1760994830E+03               3206            3591                 20300    0.4421    0.0067 
+             5790   0.0000000000E+00     -8.5057183187E+01      8.4152521506E+02      6.1953701066E+03               3201            3474                 20432    0.4440    0.0067 
+             5800   0.0000000000E+00     -8.5524980066E+01      8.4573405668E+02      6.2309907442E+03               3214            3612                 20521    0.4445    0.0067 
+             5810   0.0000000000E+00     -8.6024985582E+01      8.5043344728E+02      6.2895190234E+03               3257            3579                 20693    0.4420    0.0068 
+             5820   0.0000000000E+00     -8.6436342001E+01      8.5457805353E+02      6.3594026677E+03               3307            3663                 20875    0.4432    0.0069 
+             5830   0.0000000000E+00     -8.6839444627E+01      8.5890289114E+02      6.3672022683E+03               3296            3728                 20953    0.4409    0.0069 
+             5840   0.0000000000E+00     -8.7190653485E+01      8.6292418810E+02      6.4172059701E+03               3331            3697                 21150    0.4439    0.0070 
+             5850   0.0000000000E+00     -8.7590544664E+01      8.6722301545E+02      6.4455662690E+03               3348            3682                 21289    0.4394    0.0070 
+             5860   0.0000000000E+00     -8.7862858188E+01      8.7141617663E+02      6.4579541341E+03               3346            3712                 21234    0.4413    0.0070 
+             5870   0.0000000000E+00     -8.8211020036E+01      8.7558894601E+02      6.4783896908E+03               3351            3643                 21274    0.4397    0.0070 
+             5880   0.0000000000E+00     -8.8548527154E+01      8.7994234105E+02      6.4575149330E+03               3311            3651                 21199    0.4421    0.0071 
+             5890   0.0000000000E+00     -8.8966516015E+01      8.8518141390E+02      6.5087903142E+03               3341            3653                 21442    0.4474    0.0071 
+             5900   0.0000000000E+00     -8.9420617369E+01      8.8942170237E+02      6.5608497649E+03               3375            3819                 21603    0.4457    0.0071 
+             5910   0.0000000000E+00     -8.9806263082E+01      8.9372940887E+02      6.5627260775E+03               3367            3805                 21485    0.4398    0.0071 
+             5920   0.0000000000E+00     -9.0058890662E+01      8.9812451513E+02      6.6025100118E+03               3389            3812                 21654    0.4433    0.0071 
+             5930   0.0000000000E+00     -9.0483004134E+01      9.0271491487E+02      6.6250424413E+03               3393            3827                 21780    0.4449    0.0072 
+             5940   0.0000000000E+00     -9.0976182304E+01      9.0742466392E+02      6.6474967305E+03               3400            3804                 21781    0.4458    0.0073 
+             5950   0.0000000000E+00     -9.1403204610E+01      9.1129082919E+02      6.6505928929E+03               3388            3853                 21819    0.4491    0.0073 
+             5960   0.0000000000E+00     -9.1963707429E+01      9.1606748654E+02      6.6585693005E+03               3377            3774                 21818    0.4456    0.0073 
+             5970   0.0000000000E+00     -9.2341292130E+01      9.2059408919E+02      6.6852882806E+03               3387            3835                 21924    0.4459    0.0074 
+             5980   0.0000000000E+00     -9.2787813466E+01      9.2527527809E+02      6.7785327146E+03               3458            3879                 22234    0.4443    0.0074 
+             5990   0.0000000000E+00     -9.3260237640E+01      9.3044333236E+02      6.8115417071E+03               3471            3861                 22281    0.4441    0.0074 
+             6000   0.0000000000E+00     -9.3802611174E+01      9.3562256303E+02      6.8322758138E+03               3469            3986                 22297    0.4470    0.0074 
+
+ Number of discard events: 0
+ Timing breakdown
+ ----------------
+
+ Wall time for each calculation section (seconds):
+
+ UEG initialisation: .00
+ CCMC calculation  : 1.19
+ CCMC calculation  : 17.12
+
+ ================================================================
+ Finished running on 03/10/2022 at 19:17:36
+ Wall time (seconds):                              18.32
+ CPU time (sum of 4 threads, seconds):             73.24
+ ================================================================
+

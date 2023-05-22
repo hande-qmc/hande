@@ -63,7 +63,9 @@ contains
             tol = 0.0_sp
         end if
 
-        forall (i=1:size(arr)) rank(i) = i
+        do i=1, size(arr)
+            rank(i) = i
+        end do
 
         do i = 2, size(arr)
             j = i - 1
@@ -122,7 +124,9 @@ contains
             tol = 0.0_dp
         end if
 
-        forall (i=1:size(arr)) rank(i) = i
+        do i=1, size(arr)
+            rank(i) = i
+        end do
 
         do i = 2, size(arr)
             j = i - 1
@@ -167,7 +171,9 @@ contains
                                           ! of an allocatable array on entry
         integer :: i, j, tmp
 
-        forall (i=1:size(arr)) rank(i) = i
+        do i=1, size(arr)
+            rank(i) = i
+        end do
 
         do i = 2, size(arr)
             j = i - 1
@@ -213,7 +219,10 @@ contains
                                           ! of an allocatable array on entry
         integer :: i, j, tmp
 
-        forall (i=1:size(arr)) rank(i) = i
+        do i=1, size(arr)
+            rank(i) = i
+        end do
+
 
         do i = 2, size(arr)
             j = i - 1

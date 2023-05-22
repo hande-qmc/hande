@@ -330,10 +330,10 @@ contains
             call insertion_rank(sp_eigv(1::2), sp_eigv_rank(1::2), tolerance=depsilon)
             call insertion_rank(sp_eigv(2::2), sp_eigv_rank(2::2), tolerance=depsilon)
             ! Interweave so the basis functions remain with alternating spins.
-            forall (i = 1:sys%basis%nbasis-1:2)
+            do concurrent (i = 1:sys%basis%nbasis-1:2)
                 sp_eigv_rank(i) = 2*sp_eigv_rank(i) - 1
                 sp_eigv_rank(i+1) = 2*sp_eigv_rank(i+1)
-            end forall
+            end do
         else
             ! RHF case is much easier, as spin channels are degenerate and have
             ! the same spatial components.
@@ -359,6 +359,23 @@ contains
         ! Set up basis functions, including those which are subsequently frozen.
         allocate(all_basis_fns(sys%basis%nbasis), stat=ierr)
         call check_allocate('all_basis_fns', sys%basis%nbasis, ierr)
+        if (.not. sys%momentum_space) then
+            if (sys%read_in%uhf)  then
+                if (any(orbsym(:sys%basis%nbasis) == 0)) then
+                    do i = 1, sys%basis%nbasis
+                        orbsym(i) = orbsym(i) + 1
+                    end do
+                    call warning('read_in_integrals', "Symmetry labels = 0 found. Rebased from 1.", 1)
+                end if
+            else
+                if (any(orbsym(:sys%basis%nbasis/2) == 0)) then
+                    do i = 1, sys%basis%nbasis/2
+                        orbsym(i) = orbsym(i) + 1
+                    end do
+                    call warning('read_in_integrals', "Symmetry labels = 0 found. Rebased from 1.", 1)
+                end if
+            end if
+        end if
         call init_basis_fns_read_in(norb, sys, orbsym, symlz,  sp_eigv, sp_eigv_rank(1:), all_basis_fns)
 
         ! From sys%CAS work out the start of the active basis functions, the number
@@ -392,11 +409,27 @@ contains
         deallocate(sp_eigv, stat=ierr)
         call check_deallocate('sp_eigv', ierr)
 
+        !PySCF FCIDUMPS for linear molecules are not automatically reduced to D2h, leading to symmetries HANDE
+        !is not prepared to handle. These can be folded back into D2h by transforming 1x, 2x etc -> x.
+        !e.g. for N2 in cc-pVQZ
+        !&FCI NORB= 110,NELEC=14,MS2=0,
+        !ORBSYM=0,5,0,5,0,6,7,2,3,5,5,0,6,7,0,2,3,5,10,11,6,7,14,15,0,2,3,5,6,7,0,2,3,10,11,6,7,5,0,16,
+        !17,0,12,13,5,14,15,10,11,14,15,2,3,6,7,5,2,3,0,5,6,7,0,10,11,16,17,20,21,24,25,12,13,14,15,2,3,
+        !5,6,7,2,3,0,5,10,11,16,17,12,13,6,7,14,15,0,10,11,5,14,15,6,7,2,3,2,3,0,5,0,5
+
+        if (any(sys%basis%basis_fns(:)%sym > 7))then
+            do i=1, sys%basis%nbasis
+                sys%basis%basis_fns(i)%sym = mod(sys%basis%basis_fns(i)%sym, 10)
+            end do
+            call warning('read_in_integrals', "Symmetry labels > 7 found. Folded back into D2h.", 1)
+        end if
         ! Was a symmetry found for all basis functions?  If not, then we must
         ! turn symmetry off.
         if (.not. momentum_sym .and. minval(sys%basis%basis_fns(:)%sym) < 0) then
             if (parent) write (iunit,'(1X,a62,/)') 'Unconverged symmetry found.  Turning point group symmetry off.'
-            forall (i=1:sys%basis%nbasis) sys%basis%basis_fns(i)%sym = 0
+            do concurrent (i=1:sys%basis%nbasis)
+                sys%basis%basis_fns(i)%sym = 0
+            end do
         end if
 
         ! Set up symmetry information.

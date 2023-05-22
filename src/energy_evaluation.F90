@@ -310,8 +310,9 @@ contains
         ! Each particle type's population (there are nspaces of these) is listed in each proc's buffer,
         !  starting at proc_data_info(1, nparticles_indx)
         associate(real_start_ind => proc_data_info(1, nparticles_indx))
-            forall (i=real_start_ind:real_start_ind+qs%psip_list%nspaces-1,j=0:nprocs-1) &
-                    rep_info_sum(i+j) = sum(rep_loop_reduce(i+j::data_size))
+            do concurrent (i=real_start_ind:real_start_ind+qs%psip_list%nspaces-1,j=0:nprocs-1)
+                rep_info_sum(i+j) = sum(rep_loop_reduce(i+j::data_size))
+            end do
         end associate
 
         call communicated_energy_estimators(qmc_in, qs, rep_info_sum, ntot_particles_old, load_bal_in, doing_lb, &
@@ -701,9 +702,6 @@ contains
         real(p), intent(inout) :: loc_shift
         real(dp), intent(in) :: nparticles_old, nparticles
         integer, intent(in) :: nupdate_steps
-
-        real(p) :: tau_update
-        integer :: icycle, icheb
 
         ! dmqmc_factor is included to account for a factor of 1/2 introduced into tau in
         ! DMQMC calculations. In all other calculation types, it is set to 1, and so can be ignored.

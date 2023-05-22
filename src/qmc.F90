@@ -1,5 +1,4 @@
 module qmc
-
 ! Launcher and initialisation routines for the various QMC algorithms.
 
 implicit none
@@ -212,10 +211,10 @@ contains
         ! So, we only turn it on from the start if shift_harmonic_forcing_two_stage is false.
         if (qmc_in%shift_harmonic_crit_damp) then
             qmc_state%shift_harmonic_forcing = real((qmc_state%shift_damping**2)/4.0_p, p)
-        else if (qmc_state%shift_harmonic_forcing .ne. 0.00_p) then 
+        else if (abs(qmc_state%shift_harmonic_forcing) .gt. 0.00_p) then 
             qmc_state%shift_harmonic_forcing = qmc_in%shift_harmonic_forcing
         end if
-        if (qmc_state%shift_harmonic_forcing .ne. 0.00_p) then
+        if (abs(qmc_state%shift_harmonic_forcing) .gt. 0.00_p) then
             ! Turn on harmonic forcing right now or only when target population is reached?
             if (.not. qmc_in%shift_harmonic_forcing_two_stage) qmc_state%vary_shift = .true. 
         end if
@@ -870,7 +869,9 @@ contains
             ! Total number of particles on processor.
             ! Probably should be handled more simply by setting it to be either 0 or
             ! D0_population or obtaining it from the restart file, as appropriate.
-            forall (i=1:pl%nspaces) pl%nparticles(i) = sum(abs( real(pl%pops(i,:pl%nstates),p)/pl%pop_real_factor))
+            do concurrent (i=1:pl%nspaces)
+                pl%nparticles(i) = sum(abs( real(pl%pops(i,:pl%nstates),p)/pl%pop_real_factor))
+            end do
             ! Should we already be in varyshift mode (e.g. restarting a calculation)?
 #ifdef PARALLEL
             do i=1, pl%nspaces
@@ -879,8 +880,11 @@ contains
             ! When restarting a non-blocking calculation this sum will not equal
             ! tot_nparticles as some walkers have been communicated around the report
             ! loop. The correct total is in the restart file so get it from there.
-            if (.not. have_tot_nparticles) &
-                forall(i=1:pl%nspaces) pl%tot_nparticles(i) = sum(pl%nparticles_proc(i,:))
+            if (.not. have_tot_nparticles) then
+                do concurrent (i=1:pl%nspaces)
+                    pl%tot_nparticles(i) = sum(pl%nparticles_proc(i,:))
+                end do
+            end if
 #else
             pl%tot_nparticles = pl%nparticles
             pl%nparticles_proc(:pl%nspaces,1) = pl%nparticles(:pl%nspaces)
@@ -1309,11 +1313,10 @@ contains
         integer, intent(in) :: io_unit
         type(qmc_state_t), intent(inout) :: qs
 
-        integer :: i, current_max, total_max, ir, iel, n_rshift, isym, nsym_refs
+        integer :: i, current_max, total_max, ir, isym, nsym_refs
         integer(i0) :: secref_bstring(sys%basis%bit_string_len), real_bstring(sys%basis%tot_string_len), core_bstring
         type(reference_t) :: read_in_ref
-        type(reference_t), allocatable :: sym_refs(:)
-        
+
         total_max = 0
 
         if (.not. ccmc_in%mr_read_in) then

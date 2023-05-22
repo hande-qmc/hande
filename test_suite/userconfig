@@ -9,8 +9,35 @@ skip_program = grep
 skip_args = -i 'disabled at compile-time\|Fatal: not compiled with HDF5 support\|Running with .* threads\|Tried to pass logging options to a non-debug build'
 skip_cmd_template = tc.skip tc.args tc.test tc.error
 
+[hande_omp_np1]
+exe = ../bin/hande.x
+inputs_args = ('*.in', '')
+vcs = git
+run_cmd_template = bash -c "OMP_NUM_THREADS=4 tc.program tc.args tc.input > tc.output 2> tc.error"
+extract_fn = ../tools/pyhande pyhande.testcode.testcode_data
+extract_program = ../tools/tests/extract_test_data.py
+ignore_fields = time
+skip_program = grep
+skip_args = -i 'disabled at compile-time\|Fatal: not compiled with HDF5 support\|Tried to pass logging options to a non-debug build'
+skip_cmd_template = tc.skip tc.args tc.test tc.error
+launch_parallel = OMP_NUM_THREADS=4 mpirun -np tc.nprocs
+
+[hande_omp_np2]
+exe = ../bin/hande.x
+inputs_args = ('*.in', '')
+vcs = git
+run_cmd_template = bash -c "OMP_NUM_THREADS=2 tc.program tc.args tc.input > tc.output 2> tc.error"
+extract_fn = ../tools/pyhande pyhande.testcode.testcode_data
+extract_program = ../tools/tests/extract_test_data.py
+ignore_fields = time
+skip_program = grep
+skip_args = -i 'disabled at compile-time\|Fatal: not compiled with HDF5 support\|Tried to pass logging options to a non-debug build'
+skip_cmd_template = tc.skip tc.args tc.test tc.error
+launch_parallel = OMP_NUM_THREADS=2 mpirun -np tc.nprocs
+
 [user]
 diff = vimdiff
-benchmark = 3503cc75 8839cabc a0b969ea f1fa736e 07e05947 b63b278d 104ac488 4be2ee57 4413d5a5 adb2b8f 45bbd21a e805a0ed 50d23db5 2e4d2981 9736a0ad aca45fa9 1b519751 a6350c6 faedacf4 51c78e0c a8b186ff 15f64d01 73a60f1c 91b4fad
+benchmark = 3503cc75 8839cabc a0b969ea f1fa736e 07e05947 b63b278d 104ac488 4be2ee57 4413d5a5 adb2b8f 45bbd21a e805a0ed 50d23db5 2e4d2981 9736a0ad aca45fa9 1b519751 a6350c6 faedacf4 51c78e0c a8b186ff 15f64d01 73a60f1c 91b4fad hande-c18d344e.hande_omp_np1-c18d344e.hande_omp_np2-c18d344e hande-be2cfe1a.hande_omp_np1-be2cfe1a.hande_omp_np2-be2cfe1a hande-80b97a1e.hande_omp_np1-80b97a1e.hande_omp_np2-80b97a1e hande-fc224b1c.hande_omp_np1-fc224b1c.hande_omp_np2-fc224b1c fc224b1c a7d5ca7b 6a1fd6cd 9712b5a3
+
 tolerance = (1.e-10, 1.e-10, None, False)
 

@@ -492,7 +492,7 @@ contains
         integer, intent(in) :: lshift
         integer(int_32), intent(out) :: f_shift(:)
 
-        integer :: nbasis, new_str_len, ierr, bit_el_shft, bit_pos_shft, bit_el_orig, bit_pos_orig, bsize, i
+        integer :: nbasis, bit_el_shft, bit_pos_shft, bit_el_orig, bit_pos_orig, bsize, i
 
         bsize = bit_size(0_int_32)
 
@@ -532,7 +532,7 @@ contains
         integer, intent(in) :: lshift
         integer(int_64), intent(out) :: f_shift(:)
 
-        integer :: nbasis, new_str_len, ierr, bit_el_shft, bit_pos_shft, bit_el_orig, bit_pos_orig, bsize, i
+        integer :: nbasis, bit_el_shft, bit_pos_shft, bit_el_orig, bit_pos_orig, bsize, i
 
         bsize = bit_size(0_int_64)
 

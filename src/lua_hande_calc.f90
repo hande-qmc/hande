@@ -571,7 +571,7 @@ contains
 
         if (t2 < t1) t2 = t2 + count_max
 
-        call register_timing(lua_state, "CCMC calculation", real(t2-t1)/count_rate)
+        call register_timing(lua_state, "CCMC calculation", real((t2-t1)/count_rate))
 
     end function lua_ccmc
 
@@ -1408,8 +1408,8 @@ contains
                 ! If passed a table, assume we are using Chebyshev
                 qmc_in%chebyshev = .true.
                 call aot_get_val(qmc_in%chebyshev_order, err, lua_state, chebyshev_table, 'chebyshev_order', default=5)
-                if (qmc_in%chebyshev_order <= 1) then
-                    call stop_all('read_qmc_in', 'Chebyshev order must be greater than 1 if using the Chebyshev projector')
+                if (qmc_in%chebyshev_order < 1) then
+                    call stop_all('read_qmc_in', 'Chebyshev order must be at least 1 if using the Chebyshev projector')
                 end if
                 call aot_get_val(qmc_in%chebyshev_shift, err, lua_state, chebyshev_table, 'chebyshev_shift')
                 call aot_get_val(qmc_in%chebyshev_scale, err, lua_state, chebyshev_table, 'chebyshev_scale')
@@ -1920,7 +1920,7 @@ contains
         type (sys_t), intent(in) :: sys
         type(ccmc_in_t), intent(out) :: ccmc_in
 
-        integer :: ccmc_table, err, i, ir, ios, nel, iel, bit_string_len, ierr
+        integer :: ccmc_table, err, i, ir, ios, nel, iel, ierr
         integer(i0) :: test_arr(50)
         integer(i0), allocatable :: bstring(:)
         character(255) :: err_msg, test_line

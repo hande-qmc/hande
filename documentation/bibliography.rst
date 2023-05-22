@@ -37,7 +37,7 @@ Bibliography
 .. [Spencer19] J.S. Spencer, N.S. Blunt, S. Choi, J. Etrych, M-A. Filip, W.M.C. Foulkes, R.S.T. Franklin, W.J. Handley, F.D. Malone, V.A. Neufeld, R. Di Remigio, T.W. Rogers, C.J.C. Scott, J.J. Shepherd, W.A. Vigor, J. Weston, R. Xu, A.J.W. Thom, The HANDE-QMC Project: Open-Source Stochastic Quantum Chemistry from the Ground State Up, J. Chem. Theory Comput. 15, 3, 1728-1742 (2019).
 .. [Sun18] Q. Sun, T. S. Berkelbach, N. S. Blunt, et. al, PYSCF: The Python-based simulations of chemistry framework, WIREs: Computational Molecular Science 8, 1, e1340 (2018).
 .. [Thom10] A.J.W. Thom, Stochastic Coupled Cluster Theory, Phys. Rev. Lett. 105, 236004 (2010).
-.. [VanBenschoten21] W.Z. Van Benschoten and J.J. Shepherd, Piecewise Interaction Picture Density Matrix Quantum Monte Carlo, arXiv:2108.06252v1 [physics.chem-ph].
+.. [VanBenschoten22] W.Z. Van Benschoten and J.J. Shepherd, Piecewise Interaction Picture Density Matrix Quantum Monte Carlo. J. Chem. Phys. 2022, 156 (18), 184107.
 .. [Umrigar93] C.J. Umrigar, M.P. Nightingale, K.J. Runge, A diffusion Monte Carlo algorithm with very small time-step errors, J. Chem. Phys. 99, 2865 (1993).
 .. [Vigor15] W.A. Vigor, J.S. Spencer, M.J. Bearpark, A.J.W. Thom, Minimising biases in full configuration interaction quantum Monte Carlo, J. Chem. Phys. 142, 104101 (2015).
 .. [Vigor16] W.A. Vigor, J.S. Spencer, M.J. Bearpark, A.J.W. Thom, Understanding and improving the efficiency of full configuration interaction quantum Monte Carlo, J. Chem. Phys. 144, 094110 (2016).

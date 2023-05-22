@@ -131,6 +131,13 @@ dmqmc options
     :math:`\frac{d\hat{\rho}}{d\beta}=-\hat{\rho} \hat{H}`
     of the Bloch equation is used. The **symmetrize** option only works with
     the symmetric version of the Bloch equation.
+
+    .. note::
+
+        The use of symmetric or asymmetric propagation in the DMQMC methods can
+        impact the behavior of the sign problem as well the convergence with
+        respect to beta loops. For more information see [Petras21]_.
+
 ``replica_tricks``
     type: boolean.
 
@@ -186,7 +193,7 @@ dmqmc options
     controls the final temperature instead.
     If specified while using the interaction picture, the interaction picture
     and Bloch equation are used in a piecewise fashion to sample a range of 
-    temperatures from **target_beta** to **final_beta**. [VanBenschoten21]_
+    temperatures from **target_beta** to **final_beta**. [VanBenschoten22]_
 ``sampling_weights``
     type: vector of floats.
 

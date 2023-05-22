@@ -423,7 +423,11 @@ contains
                 if (present(full_mat)) then
                     if (full_mat) ii = 1
                 end if
-                !$omp do private(j) schedule(dynamic, 200)
+#ifdef OPENMP_DETERM
+                !$omp do schedule(static,200)
+#else
+                !$omp do private(j, hmatel) schedule(dynamic, 200)
+#endif
                 do j = ii, ndets
                     if (hamil%comp) then
                         hmatel = get_hmatel_complex(sys,dets(:,i),dets(:,j))

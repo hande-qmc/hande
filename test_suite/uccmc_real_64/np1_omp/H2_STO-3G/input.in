@@ -1,0 +1,24 @@
+sys = read_in {
+    int_file = 'FCIDUMP',
+}
+
+uccmc {
+    sys = sys,
+    qmc = {
+        tau = 0.005,
+        real_amplitudes = true,
+        rng_seed = 22108743,
+        init_pop = 200,
+        mc_cycles = 10,
+        nreports = 2e3, 
+        target_population = 5e2,
+        state_size =3e3,
+        spawned_state_size = 3e3,
+        vary_shift = false,
+        vary_shift_from = 'proje',
+    },
+    reference = {
+        ex_level = 2,
+    },
+}
+

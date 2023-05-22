@@ -142,7 +142,7 @@ type sys_real_lattice_t
     ! i both directly and via periodic boundary conditions).
     ! For the triangular lattice there are 3*ndim bonds and ndim must equal 2,
     ! so each site is connected to 6 other sites.
-    integer, allocatable :: connected_sites(:,:) ! (0:2ndim, nbasis) or (0:3dim, nbasis)
+    integer, allocatable :: connected_sites(:,:) ! (0:2*ndim, nbasis) or (0:3*ndim, nbasis)
 
     ! next_nearest_orbs(i,j) gives the number of paths by which sites i and j are
     ! are next nearest neighbors. For example, on a square lattice in the
@@ -163,7 +163,22 @@ type sys_real_lattice_t
     ! cell.  If so then the an orbital can incur a kinetic interaction with itself.
     ! This is the only way that the integral < i | T | i >, where i is a basis
     ! function centred on a lattice site, can be non-zero.
-    logical :: t_self_images
+    logical, allocatable :: t_self_images(:) ! (ndim)
+    ! For the lattice [[1,1], [1,-1]] (2-site), like
+    !     a b a b
+    !     b A B a
+    !     a b a b
+    ! each A is surrounded by 4 B, and vice versa, so there should be 4 t contributions.
+    ! In general, the question can be posed as 'for each site i, how many of i's neighbours are their own self images'
+    ! The answer is two times the number of side lengths equal to sqrt(2), this is true for any number of dimensions.
+    ! Consider another lattice [[2,2],[1,-1]] (4-site):
+    !  d A B c
+    !  C D a b
+    !  b c d a
+    ! for example, the D site has two neighbours that are A's, and so on. 
+    ! The sqrt(2) comes from the factor that the Hubbard model is a nearest-neighbour model, so the question above
+    ! can only be satisfied when a lattice vector has a norm that equals to sqrt(2) (related by two hoppings 90deg from e/o).
+    integer :: second_images = -1
 
     ! True if we are actually only modelling a finite system (e.g. a H_2 molecule)
     ! False if we are modelling an infinite lattice
@@ -492,17 +507,23 @@ contains
                         sl%box_length = sys%ueg%r_s*((4*pi*sys%nel)/3)**(1.0_p/3.0_p)
                     end select
                     sl%rlattice = 0.0_p
-                    forall (ivec=1:sl%ndim) sl%rlattice(ivec,ivec) = 1.0_p/sl%box_length(ivec)
+                    do concurrent (ivec=1:sl%ndim)
+                        sl%rlattice(ivec,ivec) = 1.0_p/sl%box_length(ivec)
+                    end do
 
                 case(ringium)
                 case default
 
                     ! Lattice-model specific information.
 
-                    forall (ivec=1:sl%ndim) sl%box_length(ivec) = sqrt(real(dot_product(sl%lattice(:,ivec),sl%lattice(:,ivec)),p))
+                    do concurrent (ivec=1:sl%ndim)
+                        sl%box_length(ivec) = sqrt(real(dot_product(sl%lattice(:,ivec),sl%lattice(:,ivec)),p))
+                    end do
                     sl%nsites = nint(product(sl%box_length))
 
-                    forall (ivec=1:sl%ndim) sl%rlattice(:,ivec) = sl%lattice(:,ivec)/sl%box_length(ivec)**2
+                    do concurrent (ivec=1:sl%ndim)
+                        sl%rlattice(:,ivec) = sl%lattice(:,ivec)/sl%box_length(ivec)**2
+                    end do
 
                     ! If performing a calculation in all symmetry sectors, set Ms to be its maximum value
                     ! so that the necessary arrays will be allocated to their maximum size.
@@ -592,7 +613,9 @@ contains
             in_FBZ = .true.
         case default
             ! Convert to cartesian units.
-            forall (i=1:sl%ndim) kc(i) = sum(k*sl%rlattice(i,:))
+            do concurrent (i=1:sl%ndim)
+                kc(i) = sum(k*sl%rlattice(i,:))
+            end do
 
             ! This test only works because the underlying lattice is orthogonal.
             ! The asymmetry of the boundary conditions prevent the acceptance of
@@ -718,13 +741,26 @@ contains
             if (sys%system /= hub_k) then
                 call json_write_key(js, 'triangular_lattice', sys%lattice%triangular_lattice)
                 call json_write_key(js, 'bipartite_lattice', sys%lattice%bipartite_lattice)
+                call json_object_init(js, 'tmat')
+                do i = 1, sys%basis%nbasis
+                    write (isite,'(i0)') i
+                    call json_write_key(js, trim(isite), sys%real_lattice%tmat(:,i), i==sys%basis%nbasis)
+                end do
+                call json_object_end(js)
+                call json_object_init(js, 'connected_orbs')
+                do i = 1, sys%basis%nbasis
+                    write (isite,'(i0)') i
+                    call json_write_key(js, trim(isite), sys%real_lattice%connected_orbs(:,i), i==sys%basis%nbasis)
+                end do
+                call json_object_end(js)
                 call json_object_init(js, 'connected_sites')
                 do i = 1, sys%basis%nbasis
                     write (isite,'(i0)') i
-                    call json_write_key(js, trim(isite), sys%real_lattice%connected_sites(1:,i), i==sys%basis%nbasis)
+                    call json_write_key(js, trim(isite), sys%real_lattice%connected_sites(0:,i), i==sys%basis%nbasis)
                 end do
                 call json_object_end(js)
-                call json_write_key(js, 'self_image', sys%real_lattice%t_self_images)
+                call json_write_key(js, 't_self_images', sys%real_lattice%t_self_images)
+                call json_write_key(js, 'second_images', sys%real_lattice%second_images)
                 call json_write_key(js, 'finite_cluster', sys%real_lattice%finite_cluster, terminal=.true.)
             end if
             call json_object_end(js)
