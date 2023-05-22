@@ -804,7 +804,8 @@ contains
 
     end subroutine initial_ci_projected_energy
 
-    subroutine initial_cc_projected_energy(sys, qs, rng_seed, logging_info, cumulative_abs_real_pops, ntot_particles, ccmc_in)
+    subroutine initial_cc_projected_energy(sys, qs, rng_seed, logging_info, cumulative_abs_real_pops, ntot_particles, &
+                                           determ, ccmc_in)
 
         ! Calculate the projected energy based upon the initial walker
         ! distribution for a CC wavefunction ansatz.
@@ -836,7 +837,7 @@ contains
         use hamiltonian_data, only: hmatel_t
         use logging, only: logging_t
         use proc_pointers, only: update_proj_energy_ptr
-        use qmc_data, only: qmc_state_t, zero_estimators_t, ccmc_in_t
+        use qmc_data, only: qmc_state_t, zero_estimators_t, semi_stoch_t, ccmc_in_t
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
@@ -845,6 +846,7 @@ contains
         type(logging_t), intent(in) :: logging_info
         real(p), intent(inout), allocatable :: cumulative_abs_real_pops(:)
         real(dp), intent(out) :: ntot_particles(qs%psip_list%nspaces)
+        type(semi_stoch_t), intent(in) :: determ
         type(ccmc_in_t), intent(in) :: ccmc_in
 
         type(det_info_t) :: cdet
@@ -863,6 +865,8 @@ contains
         real(p) :: proj_energy_sum(qs%psip_list%nspaces)
         complex(p) :: proj_energy_comp_sum(qs%psip_list%nspaces)
 #endif
+        ! Dummy semi-stoch variables needed for select_(nc_)cluster
+        logical :: determ_parent
 
         call zero_estimators_t(qs%estimators)
 
@@ -885,13 +889,14 @@ contains
         allocate(cluster%excitors(2))
         do iattempt = 1, nattempts + qs%psip_list%nstates
             if (iattempt < qs%psip_list%nstates) then
-                call select_nc_cluster(sys, qs%psip_list, qs%ref%f0, iattempt, 0.0_p, .false., cdet, cluster, qs%excit_gen_data)
+                call select_nc_cluster(sys, qs%psip_list, qs%ref%f0, iattempt, 0.0_p, .false., cdet, cluster, &
+                    qs%excit_gen_data, determ)
             else
                 ! Note: even if we're doing linked CC, the clusters contributing to the projected estimator must not contain
                 ! excitors involving the same orbitals so we need only look for unlinked clusters.
                 call select_cluster(rng, sys, qs%psip_list, qs%ref%f0, 2, .false., nattempts, D0_normalisation, 0.0_p, &
                                 cumulative_abs_real_pops, tot_abs_real_pop, 2, 2, logging_info, cdet, cluster, qs%excit_gen_data, &
-                                ccmc_in%discard_threshold, count_discard)
+                                determ, ccmc_in%discard_threshold, count_discard)
             end if
             if (cluster%excitation_level /= huge(0)) then
 

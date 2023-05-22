@@ -305,7 +305,7 @@ contains
                                   init_amp_psel_accumulation
         use ccmc_death_spawning, only: stochastic_ccmc_death_nc
         use ccmc_utils, only: get_D0_info, init_contrib, dealloc_contrib, cumulative_population, init_ex_lvl_dist_t, &
-                              update_ex_lvl_dist, regenerate_ex_levels_psip_list
+                              update_ex_lvl_dist, regenerate_ex_levels_psip_list, hamil_cc_transform
         use determinants, only: alloc_det_info_t, dealloc_det_info_t, sum_fock_values_bit_string, sum_fock_values_occ_list, &
                                 decode_det
         use determinant_data, only: det_info_t
@@ -321,10 +321,11 @@ contains
         use replica_rdm, only: update_rdm, calc_rdm_energy, write_final_rdm
 
         use qmc_data, only: qmc_in_t, ccmc_in_t, semi_stoch_in_t, restart_in_t
-        use qmc_data, only: blocking_in_t, load_bal_in_t
-        use qmc_data, only: qmc_state_t, annihilation_flags_t, estimators_t, blocking_t, particle_t
+        use qmc_data, only: blocking_in_t, semi_stoch_t, particle_t
+        use qmc_data, only: load_bal_in_t, qmc_state_t, annihilation_flags_t, estimators_t, blocking_t
         use qmc_data, only: qmc_in_t_json, ccmc_in_t_json, semi_stoch_in_t_json, restart_in_t_json
         use qmc_data, only: blocking_in_t_json, excit_gen_power_pitzer_orderN, excit_gen_heat_bath
+        use qmc_data, only: empty_determ_space
         use reference_determinant, only: reference_t, reference_t_json
         use check_input, only: check_qmc_opts, check_ccmc_opts, check_blocking_opts
         use json_out, only: json_out_t, json_object_init, json_object_end
@@ -332,11 +333,14 @@ contains
         use energy_evaluation, only: get_sanitized_projected_energy, get_sanitized_projected_energy_cmplx
         use blocking, only: write_blocking_report_header, init_blocking, do_blocking, deallocate_blocking, &
                             write_blocking_report, update_shift_damping
+        use semi_stoch, only: check_if_determ, determ_projection, set_determ_info_ccmc, set_determ_info_ccmc_stochastic
+        use semi_stoch, only: dealloc_semi_stoch_t, init_semi_stoch_t, init_semi_stoch_t_flags, set_determ_info
 
         use logging, only: init_logging, end_logging, prep_logging_mc_cycle, write_logging_calc_ccmc
         use logging, only: logging_in_t, logging_t, logging_in_t_json, logging_t_json, write_logging_select_ccmc
         use report, only: write_date_time_close
         use excit_gens, only: p_single_double_coll_t
+        use mrcc_utils, only: init_highest_dets_t, update_highest_dets
         use propagators, only: update_chebyshev
 
         type(sys_t), intent(in) :: sys
@@ -360,7 +364,7 @@ contains
         type(det_info_t) :: ref_det
 
         integer(int_p) :: ndeath, ndeath_nc
-        integer :: nspawn_events, ierr
+        integer :: nspawn_events, ierr, ndeterm_found
         type(wfn_contrib_t), allocatable :: contrib(:)
         type(multispawn_stats_t), allocatable :: ms_stats(:)
         type(p_single_double_coll_t), allocatable :: ps_stats(:)
@@ -369,6 +373,8 @@ contains
         type(qmc_in_t) :: qmc_in_loc
         type(logging_t) :: logging_info
         type(selection_data_t) :: selection_data
+        type(semi_stoch_t) :: determ
+        logical :: semi_stoch_average_done, determ_parent
 
         logical :: soft_exit, dump_restart_shift, restarting, restart_proj_est
 
@@ -389,6 +395,7 @@ contains
         logical :: seen_D0, regenerate_info
         real(p) :: dfock
         complex(p) :: D0_population_cycle, proj_energy_cycle
+        real(p) :: proj_energy_cycle_determ, proj_energy_cycle_stoch
 
         real(p), allocatable :: rdm(:,:)
 
@@ -401,6 +408,8 @@ contains
             write (io_unit,'(1X,"CCMC")')
             write (io_unit,'(1X,"----",/)')
         end if
+
+        semi_stoch_average_done = .false.
 
         restarting = present(qmc_state_restart) .or. restart_in%read_restart
         ! Check input options.
@@ -530,6 +539,13 @@ contains
         end if
         if (debug) call init_amp_psel_accumulation(qs%ref%max_ex_level+2, logging_info, ccmc_in%linked, selection_data)
 
+        ! Some initial semi-stochastic parameters.
+        call init_semi_stoch_t_flags(determ, size(qs%psip_list%states, dim=2))
+        ! Turn semi-stochastic on immediately unless asked otherwise.
+        semi_stoch_iter = max(semi_stoch_in%start_iter, qs%mc_cycles_done+1)
+        ! Accumulate deterministic and stochastic contributions to E_proj separately
+        if (semi_stoch_in%separate_stats) qs%estimators%semi_stoch_sep_stats = .true.
+
         nparticles_old = qs%psip_list%tot_nparticles
 
         ! Initialise D0_pos to be somewhere (anywhere) in the list.
@@ -557,21 +573,19 @@ contains
 
         if (parent) then
             call write_qmc_report_header(qs%psip_list%nspaces, cmplx_est=sys%read_in%comp, rdm_energy=ccmc_in%density_matrices, &
-                                         nattempts=.true., io_unit=io_unit)
+                                         nattempts=.true., io_unit=io_unit, &
+                                         semi_stoch_sep_stats=semi_stoch_in%separate_stats)
         end if
 
         restart_proj_est = present(qmc_state_restart) .or. (restart_in%read_restart .and. restart_version_restart >= 2)
         if (.not.restart_proj_est) then
             call initial_cc_projected_energy(sys, qs, qmc_in%seed+iproc, logging_info, cumulative_abs_real_pops, nparticles_old, &
-                                             ccmc_in)
+                                             determ, ccmc_in)
         end if
         call initial_qmc_status(sys, qmc_in, qs, nparticles_old, doing_ccmc=.true., io_unit=io_unit)
 
         ! Initialise timer.
         call system_clock(t1, count_rate, count_max)
-
-        ! The iteration on which to start performing semi-stochastic.
-        semi_stoch_iter = qs%mc_cycles_done + semi_stoch_in%start_iter
 
         ! Should we dump a restart file just before the shift is turned on?
         dump_restart_shift = restart_in%write_restart_shift
@@ -613,16 +627,51 @@ contains
             do icycle = 1, qmc_in%ncycles
                 iter = qs%mc_cycles_done + (ireport-1)*qmc_in%ncycles + icycle
 
+                if (debug) call prep_logging_mc_cycle(iter, logging_in, logging_info, sys%read_in%comp, &
+                                                      min(sys%nel, qs%ref%ex_level+2))
+
                 do icheb = 1, qs%cheby_prop%order
                     qs%cheby_prop%icheb = icheb
-
-                    if (debug) call prep_logging_mc_cycle(iter, logging_in, logging_info, sys%read_in%comp, &
-                                                            min(sys%nel, qs%ref%ex_level+2))
 
                     call get_D0_info(qs, sys%read_in%comp, D0_proc, D0_pos, nD0_proc, D0_normalisation)
                     ! Update the shift of the excitor locations to be the end of this
                     ! current iteration.
                     qs%spawn_store%spawn%hash_shift = qs%spawn_store%spawn%hash_shift + 1
+
+                    ! Should we turn on semistochastic CCMC?
+                    ! We turn on semistoch 
+                    ! ... if we're at the specified semi_stoch_iter (given we're using semistoch at all, which
+                    ! is checked by space_type)
+                    ! ... OR we speficied an averaging procedure to be carried out (in which case semi_stoch_iter is overidden
+                    ! by a specified number of iterations after convergence)
+                    ! If we're using the Chebyshev projector, we need to initialize semi_stoch only before the first sub-iteration,
+                    ! where the wavefunction is physically meaningful.
+                    if (((iter == semi_stoch_iter .and. semi_stoch_in%space_type /= empty_determ_space) &
+                        .or. semi_stoch_average_done) .and. icheb == 1) then
+                        ! If semi_stoch_average_done, it implies semi_stoch_in%average == true and qs%averaging == true
+                        if (semi_stoch_in%average .and. .not. qs%averaging) then
+                            call init_highest_dets_t(qs, sys, ss_in=semi_stoch_in)
+                        else
+                            determ%doing_semi_stoch = .true.
+                            if (semi_stoch_average_done) then
+                                call init_semi_stoch_t(determ, semi_stoch_in, sys, qs%propagator, qs%psip_list, qs%ref, &
+                                                       annihilation_flags, qs%spawn_store%spawn, qmc_in%use_mpi_barriers, io_unit, &
+                                                       qs%highest_dets)
+                                ! This makes sure we only initialise determ once if averaging.
+                                semi_stoch_average_done = .false.
+                                qs%averaging = .false.
+                            else
+                                call init_semi_stoch_t(determ, semi_stoch_in, sys, qs%propagator, qs%psip_list, qs%ref, &
+                                                       annihilation_flags, qs%spawn_store%spawn, qmc_in%use_mpi_barriers, io_unit)
+                            end if
+                            if (nD0_proc == 1 .and. determ%flags(D0_pos) /= 0) then
+                                ! If for some reason D0 is not in the deterministic space, stop all
+                                ! Brian: [todo] - quietly add it in
+                                call stop_all('do_ccmc', 'D0 not in the deterministic space, something may have gone wrong.')
+                            end if
+                            call hamil_cc_transform(determ%hamil, determ%dets, qs%ref%f0)
+                        end if
+                    end if
 
                     if (ccmc_in%linked) then
                         ! The BCH expansion of the Hamiltonian terminates at fourth
@@ -703,13 +752,31 @@ contains
                                                 ccmc_in%even_selection)
                     call zero_ps_stats(ps_stats, qs%excit_gen_data%p_single_double%rep_accum%overflow_loc)
 
+
                     ! Initialise reduction variables outside the parallel region. (ndeath was initialised in init_mc_cycle above)
                     ! We need to count spawning attempts differently as there may be multiple spawns per cluster.
                     nattempts_spawn = 0
                     proj_energy_cycle = cmplx(0.0, 0.0, p)
                     D0_population_cycle = cmplx(0.0, 0.0, p)
+                    proj_energy_cycle_determ = 0.0_p
+                    proj_energy_cycle_stoch = 0.0_p
                     ndeath_nc = 0
                     nparticles_change = 0.0_p
+
+                    ndeterm_found = 0
+                    if (determ%doing_semi_stoch .and. iproc == D0_proc) then
+                        ! We call set_determ_info instead of set_determ_info_ccmc here as the latter needs to be called inside 
+                        ! an OpenMP parallel region.
+                        if (sys%read_in%comp) then
+                            call set_determ_info(D0_pos, [real((D0_normalisation),p),aimag(D0_normalisation)], &
+                                                 ndeterm_found, determ, determ_parent) 
+                            ! determ_parent here is never used, unlike in FCIQMC. The equivalent variable in CCMC is stored in 
+                            ! contrib%cdet%is_determ
+                        else
+                            call set_determ_info(D0_pos, [real((D0_normalisation),p)], &
+                                                 ndeterm_found, determ, determ_parent)
+                        end if
+                    end if
 
                     ! OpenMP chunk size determined completely empirically from a single
                     ! test.  Please feel free to improve...
@@ -717,15 +784,16 @@ contains
                     ! can't use default(none).  I *strongly* recommend turning
                     ! default(none) on when making changes and ensure that the only
                     ! errors relate to the procedure pointers...
-
                     !$omp parallel default(none) &
-                    !$omp private(it, seen_D0, iexcip_pos, i) &
+                    !$omp private(it, iexcip_pos, i, seen_D0) &
                     !$omp shared(rng, cumulative_abs_real_pops, tot_abs_real_pop,  &
                     !$omp        max_cluster_size, contrib, D0_normalisation, D0_pos, rdm,    &
                     !$omp        qs, sys, bloom_stats, min_cluster_size, ref_det,             &
                     !$omp        selection_data, ex_lvl_dist, ccmc_in, nprocs, ms_stats, &
-                    !$omp        ps_stats, qmc_in, load_bal_in, logging_info, count_discard) &
-                    !$omp reduction(+:D0_population_cycle,proj_energy_cycle,nattempts_spawn,ndeath,nparticles_change,ndeath_nc)
+                    !$omp        ps_stats, qmc_in, load_bal_in, logging_info, &
+                    !$omp        nD0_proc, determ, ndeterm_found, semi_stoch_in, count_discard) &
+                    !$omp reduction(+:D0_population_cycle,proj_energy_cycle,nattempts_spawn,ndeath,nparticles_change,ndeath_nc, &
+                    !$omp             proj_energy_cycle_determ, proj_energy_cycle_stoch)
                     
                     ! Initialise private variables inside the parallel region
 
@@ -746,7 +814,10 @@ contains
                                 ! Deterministically select each excip as a non-composite cluster.
                                 call select_nc_cluster(sys, qs%psip_list, qs%ref%f0, &
                                             iattempt, qmc_in%initiator_pop, ccmc_in%even_selection, &
-                                            contrib(it)%cdet, contrib(it)%cluster, qs%excit_gen_data)
+                                            contrib(it)%cdet, contrib(it)%cluster, qs%excit_gen_data, determ)
+                                
+                                if (contrib(it)%cdet%is_determ) call set_determ_info_ccmc(iattempt, contrib(it), &
+                                                                             ndeterm_found, determ, sys%read_in%comp)
 
                                 if (qs%propagator%quasi_newton) contrib(it)%cdet%fock_sum = &
                                                 sum_fock_values_occ_list(sys, qs%propagator%sp_fock, contrib(it)%cdet%occ_list) &
@@ -755,10 +826,12 @@ contains
                                 ! [VAN]: in debug mode. However, this updated selection_data will only be used if selection logging
                                 ! [VAN]: according to comments. And logging cannot be used with openmp. Dangerous though.
                                 call do_ccmc_accumulation(sys, qs, contrib(it)%cdet, contrib(it)%cluster, logging_info, &
-                                                        D0_population_cycle, proj_energy_cycle, ccmc_in, ref_det, rdm, &
-                                                        selection_data)
+                                                        D0_population_cycle, proj_energy_cycle, &
+                                                        proj_energy_cycle_determ, proj_energy_cycle_stoch, &
+                                                        ccmc_in, ref_det, rdm, selection_data, &
+                                                        determ, semi_stoch_in%separate_stats)
                                 call do_nc_ccmc_propagation(rng(it), sys, qs, ccmc_in, logging_info, bloom_stats, &
-                                                                    contrib(it), nattempts_spawn, ps_stats(it))
+                                                            contrib(it), nattempts_spawn, ps_stats(it), determ)
                             end if
 
                         ! For OpenMP scalability, have this test inside a single loop rather
@@ -775,11 +848,14 @@ contains
                                                 selection_data%nstochastic_clusters, D0_normalisation, qmc_in%initiator_pop, &
                                                 cumulative_abs_real_pops, tot_abs_real_pop, min_cluster_size, max_cluster_size, &
                                                 logging_info, contrib(it)%cdet, contrib(it)%cluster, qs%excit_gen_data, &
-                                                ccmc_in%discard_threshold, count_discard)
+                                                determ, ccmc_in%discard_threshold, count_discard)
                             end if
 
+                            if (contrib(it)%cdet%is_determ) call set_determ_info_ccmc_stochastic(contrib(it), determ, &
+                                                                                    sys%read_in%comp, qs%spawn_store%spawn)
+
                             if (contrib(it)%cluster%excitation_level <= qs%ref%max_ex_level+2 .or. &
-                                    (ccmc_in%linked .and. contrib(it)%cluster%excitation_level == huge(0))) then
+                                (ccmc_in%linked .and. contrib(it)%cluster%excitation_level == huge(0))) then
                                 ! cluster%excitation_level == huge(0) indicates a cluster
                                 ! where two excitors share an elementary operator
                                 if (qs%propagator%quasi_newton) contrib(it)%cdet%fock_sum = &
@@ -787,11 +863,13 @@ contains
                                                 - qs%ref%fock_sum
 
                                 call do_ccmc_accumulation(sys, qs, contrib(it)%cdet, contrib(it)%cluster, logging_info, &
-                                                        D0_population_cycle, proj_energy_cycle, ccmc_in, ref_det, rdm, &
-                                                        selection_data)
+                                                        D0_population_cycle, proj_energy_cycle, &
+                                                        proj_energy_cycle_determ, proj_energy_cycle_stoch, &
+                                                        ccmc_in, ref_det, rdm, selection_data, &
+                                                        determ, semi_stoch_in%separate_stats)
                                 call do_stochastic_ccmc_propagation(rng(it), sys, qs, &
                                                                     ccmc_in, logging_info, ms_stats(it), bloom_stats, &
-                                                                    contrib(it), nattempts_spawn, ndeath, ps_stats(it))
+                                                                    contrib(it), nattempts_spawn, ndeath, ps_stats(it), determ)
                             end if
                         end if
                     end do
@@ -819,7 +897,8 @@ contains
                             seen_D0 = .true.
                             call create_null_cluster(sys, qs%ref%f0, nprocs*real(selection_data%nD0_select,p),&
                                                     D0_normalisation, qmc_in%initiator_pop, contrib(it)%cdet,&
-                                                    contrib(it)%cluster, qs%excit_gen_data)
+                                                    contrib(it)%cluster, qs%excit_gen_data, &
+                                                    (determ%doing_semi_stoch .and. nD0_proc == 1))
                         end if
 
                         if (qs%propagator%quasi_newton) contrib(it)%cdet%fock_sum = &
@@ -827,11 +906,15 @@ contains
                                         - qs%ref%fock_sum
 
                         call do_ccmc_accumulation(sys, qs, contrib(it)%cdet, contrib(it)%cluster, logging_info, &
-                                                D0_population_cycle, proj_energy_cycle, ccmc_in, ref_det, rdm, selection_data)
+                                                D0_population_cycle, proj_energy_cycle, &
+                                                proj_energy_cycle_determ, proj_energy_cycle_stoch, &
+                                                ccmc_in, ref_det, rdm, selection_data, &
+                                                determ, semi_stoch_in%separate_stats)
                         nattempts_spawn = nattempts_spawn + 1
                        
-                        call perform_ccmc_spawning_attempt(rng(it), sys, qs, ccmc_in, logging_info, bloom_stats,&
-                                                          contrib(it), 1, ps_stats(it))
+                        call perform_ccmc_spawning_attempt(rng(it), sys, qs, ccmc_in, logging_info, bloom_stats, &
+                                contrib(it), 1, ps_stats(it), determ)
+
                     end do
                     !$omp end do
 
@@ -849,19 +932,24 @@ contains
                             ! Note we use the (encoded) population directly in stochastic_ccmc_death_nc
                             ! (unlike the stochastic_ccmc_death) to avoid unnecessary decoding/encoding
                             ! steps (cf comments in stochastic_death for FCIQMC).
-                            if (qs%propagator%quasi_newton) then
-                                dfock = sum_fock_values_bit_string(sys, qs%propagator%sp_fock, qs%psip_list%states(:,iattempt)) &
-                                    - qs%ref%fock_sum
-                            end if
-                            call stochastic_ccmc_death_nc(rng(it), ccmc_in%linked, qs, iattempt==D0_pos, dfock, &
-                                              qs%psip_list%dat(1, iattempt), qs%estimators(1)%proj_energy_old, &
-                                              qs%psip_list%pops(1, iattempt), nparticles_change(1), ndeath_nc, &
-                                              logging_info)
-                            if (sys%read_in%comp) then
+                            ! If the noncomposite excitor is deterministic, death will be handled in determ_projection.
+                            if (determ%doing_semi_stoch .and. determ%flags(iattempt) == 0) then
+                                cycle
+                            else
+                                if (qs%propagator%quasi_newton) then
+                                    dfock = sum_fock_values_bit_string(sys, qs%propagator%sp_fock, qs%psip_list%states(:,iattempt))&
+                                        - qs%ref%fock_sum
+                                end if
                                 call stochastic_ccmc_death_nc(rng(it), ccmc_in%linked, qs, iattempt==D0_pos, dfock, &
-                                                  qs%psip_list%dat(1 ,iattempt), qs%estimators(2)%proj_energy_old, &
-                                                  qs%psip_list%pops(2, iattempt), nparticles_change(2), ndeath_nc, &
+                                                  qs%psip_list%dat(1, iattempt), qs%estimators(1)%proj_energy_old, &
+                                                  qs%psip_list%pops(1, iattempt), nparticles_change(1), ndeath_nc, &
                                                   logging_info)
+                                if (sys%read_in%comp) then
+                                    call stochastic_ccmc_death_nc(rng(it), ccmc_in%linked, qs, iattempt==D0_pos, dfock, &
+                                                      qs%psip_list%dat(1 ,iattempt), qs%estimators(2)%proj_energy_old, &
+                                                      qs%psip_list%pops(2, iattempt), nparticles_change(2), ndeath_nc, &
+                                                      logging_info)
+                                end if
                             end if
                         end do
                         !$omp end do
@@ -882,6 +970,10 @@ contains
                     qs%psip_list%nparticles = qs%psip_list%nparticles + nparticles_change
                     qs%estimators%D0_population_comp = qs%estimators%D0_population_comp + D0_population_cycle
                     qs%estimators%proj_energy_comp = qs%estimators%proj_energy_comp + proj_energy_cycle
+                    if (semi_stoch_in%separate_stats) then
+                        qs%estimators%proj_energy_determ = qs%estimators%proj_energy_determ + proj_energy_cycle_determ
+                        qs%estimators%proj_energy_stoch = qs%estimators%proj_energy_stoch + proj_energy_cycle_stoch
+                    end if
 
                     ! Calculate the number of spawning events before the particles are redistributed,
                     ! otherwise sending particles to other processors is counted as a spawning event.
@@ -892,10 +984,12 @@ contains
                     ! the current hash shift, so it's just those in the main list
                     ! that we need to deal with.
                     associate(pl=>qs%psip_list, spawn=>qs%spawn_store%spawn)
+                        if (determ%doing_semi_stoch) call determ_projection(rng(0), qmc_in, qs, spawn, determ)
+
                         if (nprocs > 1) call redistribute_particles(pl%states, pl%pop_real_factor, pl%pops, pl%nstates, &
                                                                     pl%nparticles, spawn)
 
-                        call direct_annihilation(sys, rng(0), qs%ref, annihilation_flags, pl, spawn)
+                        call direct_annihilation(sys, rng(0), qs%ref, annihilation_flags, pl, spawn, determ=determ)
                     end associate
 
                     if (debug) call write_logging_calc_ccmc(logging_info, iter, nspawn_events, ndeath + ndeath_nc, &
@@ -937,7 +1031,7 @@ contains
                 if (bloom_stats%nblooms_curr > 0) call bloom_stats_warning(bloom_stats, io_unit=io_unit)
                 call write_qmc_report(qmc_in, qs, ireport, nparticles_old, real((t2-t1)/count_rate), .false., .false., &
                                         io_unit=io_unit, cmplx_est=sys%read_in%comp, rdm_energy=ccmc_in%density_matrices, &
-                                        nattempts=.true.)
+                                        nattempts=.true., semi_stoch_sep_stats=semi_stoch_in%separate_stats)
                 if (blocking_in%blocking_on_the_fly) then
                     call do_blocking(bl, qs, qmc_in, ireport, iter, iunit, blocking_in, sys%read_in%comp)
                 end if
@@ -953,6 +1047,21 @@ contains
                                            rng(0))
 
             qs%psip_list%tot_nparticles = nparticles_old
+
+            if (qs%averaging) then
+                ! Accumulate highest occupied determinants, for now we assume this is to determine the 'high pop' space 
+                ! for a semi-stochastic CCMC calculation.
+                if (qs%highest_dets%ireport < qs%highest_dets%nreports) then
+                    call update_highest_dets(qs, sys)
+                    if (qs%highest_dets%error) then
+                        semi_stoch_average_done = .true.
+                    end if
+                    qs%highest_dets%ireport = qs%highest_dets%ireport + 1
+                else
+                    call update_highest_dets(qs, sys)
+                    semi_stoch_average_done = .true.
+                end if
+            end if
 
             if (soft_exit) exit
 
@@ -1017,7 +1126,8 @@ contains
     end subroutine do_ccmc
 
     subroutine do_ccmc_accumulation(sys, qs, cdet, cluster, logging_info, D0_population_cycle, proj_energy_cycle, &
-                                    ccmc_in, ref_det, rdm, selection_data, D0_population_noncomp_cycle)
+                                    proj_energy_cycle_determ, proj_energy_cycle_stoch, ccmc_in, ref_det, rdm, selection_data, &
+                                    determ, semi_stoch_sep_stats, D0_population_noncomp_cycle)
 
         ! Performs all accumulation of values required for given ccmc clusters.
         ! Updates projected energy and any RDMs with the contribution from the
@@ -1032,10 +1142,15 @@ contains
         !   ref_det: reference determinant information.
         !   cluster: information on cluster currently under consideration.
         !   logging_info: current logging settings in use.
+        !   determ: the semi_stoch_t object holding information relevant to semi-stochastic CCMC.
+        !   semi_stoch_sep_stats: True if doing semi-stochastic and report 
+        !       deterministic and stochastic contributions to E_proj separately.
 
         ! In/Out:
         !   D0_population_cycle: running total of reference population from any size cluster.
         !   proj_energy_cycle: running total of projected energy contributions.
+        !   proj_energy_cycle_determ: running total of projected energy contributions.
+        !   proj_energy_cycle_stoch: running total of projected energy contributions.
         !   rdm: array containing reduced density matrix.
         !   selection_data: info on clsuter selection.
         !   D0_population_noncomp_cycle: running total of reference population from size 0 clusters (only used in UCC).
@@ -1045,7 +1160,7 @@ contains
         use determinants, only: det_info_t
         use ccmc_data, only: cluster_t, selection_data_t
         use ccmc_selection, only: update_selection_data
-        use qmc_data, only: zero_estimators_t
+        use qmc_data, only: zero_estimators_t, semi_stoch_t
 
         use excitations, only: excit_t, get_excitation
         use hamiltonian_data, only: hmatel_t
@@ -1060,9 +1175,13 @@ contains
         type(cluster_t), intent(in) :: cluster
         type(logging_t), intent(in) :: logging_info
         complex(p), intent(inout) :: D0_population_cycle, proj_energy_cycle
+        real(p), intent(inout) :: proj_energy_cycle_determ, proj_energy_cycle_stoch
         real(p), allocatable, intent(inout) :: rdm(:,:)
         real(p), intent(inout), optional :: D0_population_noncomp_cycle
         type(selection_data_t), intent(inout) :: selection_data
+        type(semi_stoch_t), intent(in) :: determ
+        logical, intent(in) :: semi_stoch_sep_stats
+
         type(excit_t) :: connection
         type(hmatel_t) :: hmatel
         type(estimators_t) :: estimators_cycle
@@ -1080,6 +1199,7 @@ contains
             ! must divide through by the probability of selecting
             ! the cluster.
             call zero_estimators_t(estimators_cycle)
+            estimators_cycle%semi_stoch_sep_stats = semi_stoch_sep_stats
             connection = get_excitation(sys%nel, sys%basis, cdet%f, qs%ref%f0)
             call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, &
                      [real(cluster%amplitude,p),aimag(cluster%amplitude)]*&
@@ -1096,6 +1216,10 @@ contains
             else
                 D0_population_cycle = D0_population_cycle + estimators_cycle%D0_population
                 proj_energy_cycle = proj_energy_cycle + estimators_cycle%proj_energy
+                if (semi_stoch_sep_stats) then
+                    proj_energy_cycle_determ = proj_energy_cycle_determ + estimators_cycle%proj_energy_determ
+                    proj_energy_cycle_stoch = proj_energy_cycle_stoch + estimators_cycle%proj_energy_stoch
+                end if
             end if
         end if
 
@@ -1103,18 +1227,17 @@ contains
             .and. cluster%excitation_level /= 0 .and. .not. sys%read_in%comp) then
             ! Add contribution to density matrix
             ! d_pqrs = <HF|a_p^+a_q^+a_sa_r|CC>
-            !$omp critical
+            !$omp critical (ccmc_rdm_crit)
             call update_rdm(sys, cdet%f, ref_det%f, cdet%occ_list, &
                             real(cluster%amplitude, p)*cluster%cluster_to_det_sign, &
                             1.0_p, cluster%pselect, rdm)
-            !$omp end critical
+            !$omp end critical (ccmc_rdm_crit)
         end if
 
     end subroutine do_ccmc_accumulation
 
-    subroutine do_stochastic_ccmc_propagation(rng, sys, qs, ccmc_in, &
-                                            logging_info, ms_stats, bloom_stats, &
-                                            contrib, nattempts_spawn_tot, ndeath, ps_stat, uccmc_in)
+    subroutine do_stochastic_ccmc_propagation(rng, sys, qs, ccmc_in, logging_info, ms_stats, bloom_stats, &
+                                              contrib, nattempts_spawn_tot, ndeath, ps_stat, determ, uccmc_in)
 
         ! Perform stochastic propogation of a cluster in an appropriate manner
         ! for the given inputs. For multireference systems, it allows death for
@@ -1126,6 +1249,8 @@ contains
         !   uccmc_in (optional): options relating to uccmc passed in to calculation.
         !   logging_info: logging_t object with info about current logging
         !        when debug is true. 
+        !   determ: the semi_stoch_t object holding information relevant to semi-stochastic CCMC.
+
         !
         ! In/Out:
         !   rng: random number generator.
@@ -1146,7 +1271,7 @@ contains
 
         use dSFMT_interface, only: dSFMT_t
         use system, only: sys_t
-        use qmc_data, only: qmc_state_t, ccmc_in_t, uccmc_in_t
+        use qmc_data, only: qmc_state_t, ccmc_in_t, semi_stoch_t, uccmc_in_t
         use ccmc_data, only: multispawn_stats_t, ms_stats_update, wfn_contrib_t
         use bloom_handler, only: bloom_stats_t, accumulate_bloom_stats
         use logging, only: logging_t
@@ -1167,6 +1292,7 @@ contains
         integer(int_p), intent(inout) :: ndeath
         type(multispawn_stats_t), intent(inout) :: ms_stats
         type(p_single_double_coll_t), intent(inout) :: ps_stat
+        type(semi_stoch_t), intent(in) :: determ
 
         integer :: nspawnings_cluster
         logical :: attempt_death
@@ -1185,25 +1311,22 @@ contains
         nattempts_spawn_tot = nattempts_spawn_tot + nspawnings_cluster
         if (qs%multiref) then
             if (multiref_check_ex_level(sys, contrib, qs, 2)) then
-                    attempt_death = multiref_check_ex_level(sys, contrib, qs, 0)
-                    call do_spawning_death(rng, sys, qs, ccmc_in, &
-                                        logging_info, bloom_stats, contrib, &
-                                         ndeath, ps_stat, nspawnings_cluster, &
-                                         attempt_death, uccmc_in)
+                ! If the ket is in deterministic space, death will be performed deterministically.       
+                attempt_death = multiref_check_ex_level(sys, contrib, qs, 0) .and. (.not. contrib%cdet%is_determ)
+                call do_spawning_death(rng, sys, qs, ccmc_in, logging_info, bloom_stats, contrib, ndeath, ps_stat, &
+                                       nspawnings_cluster, attempt_death, determ, uccmc_in)
             end if
         else
-            attempt_death = (contrib%cluster%excitation_level <= qs%ref%ex_level) 
+            attempt_death = (contrib%cluster%excitation_level <= qs%ref%ex_level) .and. (.not. contrib%cdet%is_determ)
 
-                call do_spawning_death(rng, sys, qs, ccmc_in, &
-                                 logging_info, bloom_stats, contrib, &
-                                 ndeath, ps_stat, nspawnings_cluster, attempt_death, uccmc_in)
-
+            call do_spawning_death(rng, sys, qs, ccmc_in, logging_info, bloom_stats, contrib, ndeath, ps_stat, &
+                                   nspawnings_cluster, attempt_death, determ, uccmc_in)
         end if
 
     end subroutine do_stochastic_ccmc_propagation  
 
     subroutine do_spawning_death(rng, sys, qs, ccmc_in, logging_info, bloom_stats, contrib, &
-                                 ndeath, ps_stat, nspawnings_cluster, attempt_death, uccmc_in)
+                                 ndeath, ps_stat, nspawnings_cluster, attempt_death, determ, uccmc_in)
 
         ! For stochastically selected clusters this
         ! attempts spawning and death, adding any created particles to the
@@ -1221,6 +1344,7 @@ contains
         !        when debug is true. 
         !   attempt_death: logical variable that encodes whether the selected 
         !        cluster is within the desired CC truncation. 
+        !   determ: the semi_stoch_t object holding information relevant to semi-stochastic CCMC.
         !
         ! In/Out:
         !   rng: random number generator.
@@ -1237,7 +1361,7 @@ contains
 
         use dSFMT_interface, only: dSFMT_t
         use system, only: sys_t
-        use qmc_data, only: qmc_state_t, ccmc_in_t, uccmc_in_t
+        use qmc_data, only: qmc_state_t, ccmc_in_t, semi_stoch_t, uccmc_in_t
         use ccmc_data, only: ms_stats_update, wfn_contrib_t
 
         use ccmc_death_spawning, only: stochastic_ccmc_death
@@ -1261,17 +1385,21 @@ contains
         integer, intent(in) :: nspawnings_cluster
         logical, intent(in) :: attempt_death
 
+        type(semi_stoch_t), intent(in) :: determ
+
         integer :: i
 
         do i = 1, nspawnings_cluster
-                call perform_ccmc_spawning_attempt(rng, sys, qs, ccmc_in, logging_info, bloom_stats, contrib, &
-                                               nspawnings_cluster, ps_stat, uccmc_in)
+            call perform_ccmc_spawning_attempt(rng, sys, qs, ccmc_in, logging_info, bloom_stats, contrib, &
+                                               nspawnings_cluster, ps_stat, determ, uccmc_in)
         end do
         
         ! Does the cluster collapsed onto D0 produce
         ! a determinant is in the truncation space?  If so, also
         ! need to attempt a death/cloning step.
         ! optimisation: call only once per iteration for clusters of size 0 or 1 for ccmc_in%full_nc.
+        ! If the ket is in the deterministic space (i.e. cdet%is_determ is true), 
+        ! attempt death is set to false in do_stochastic_ccmc_propagation
         if (attempt_death) then
            ! Clusters above size 2 can't die in linked ccmc.
             if ((.not. ccmc_in%linked) .or. contrib%cluster%nexcitors <= 2) then
@@ -1285,7 +1413,7 @@ contains
     end subroutine do_spawning_death
  
     subroutine do_nc_ccmc_propagation(rng, sys, qs, ccmc_in, logging_info, bloom_stats, &
-                                            contrib, nattempts_spawn_tot, ps_stat, uccmc_in)
+                                      contrib, nattempts_spawn_tot, ps_stat, determ, uccmc_in)
 
         ! Perform stochastic propogation of a cluster selected deterministically
         ! in full non-composite selection. This performs all spawning attempts
@@ -1307,6 +1435,7 @@ contains
         !   uccmc_in: options relating to uccmc passed in to calculation.
         !   logging_info: logging_t object with info about current logging
         !        when debug is true.
+        !   determ: the semi_stoch_t object holding information relevant to semi-stochastic CCMC.
         !
         ! In/Out:
         !   rng: random number generator.
@@ -1324,7 +1453,7 @@ contains
 
         use dSFMT_interface, only: dSFMT_t
         use system, only: sys_t
-        use qmc_data, only: qmc_state_t, ccmc_in_t, uccmc_in_t
+        use qmc_data, only: qmc_state_t, ccmc_in_t, semi_stoch_t, uccmc_in_t
         use ccmc_data, only: multispawn_stats_t, ms_stats_update, wfn_contrib_t
         use qmc_common, only: decide_nattempts
 
@@ -1342,6 +1471,7 @@ contains
         type(wfn_contrib_t), intent(inout) :: contrib
         type(bloom_stats_t), intent(inout) :: bloom_stats
         type(logging_t), intent(in) :: logging_info
+        type(semi_stoch_t), intent(in) :: determ
 
         integer(int_64), intent(inout) :: nattempts_spawn_tot
         type(p_single_double_coll_t), intent(inout) :: ps_stat
@@ -1366,13 +1496,14 @@ contains
         contrib%cluster%amplitude = contrib%cluster%amplitude / abs(contrib%cluster%amplitude)
         
         do i = 1, nspawnings_cluster
-                call perform_ccmc_spawning_attempt(rng, sys, qs, ccmc_in, logging_info, bloom_stats, contrib, 1, ps_stat, uccmc_in)
+            call perform_ccmc_spawning_attempt(rng, sys, qs, ccmc_in, logging_info, bloom_stats, contrib, 1, ps_stat, &
+                                               determ, uccmc_in)
         end do
 
     end subroutine do_nc_ccmc_propagation
 
     subroutine perform_ccmc_spawning_attempt(rng, sys, qs, ccmc_in, logging_info, bloom_stats, contrib, nspawnings_total, &
-                                        ps_stat, uccmc_in)
+                                             ps_stat, determ, uccmc_in)
 
         ! Performs a single ccmc spawning attempt, as appropriate for a
         ! given setting combination of linked, complex or none of the above.
@@ -1403,7 +1534,7 @@ contains
         !       excit_gen_doubles: counter on number of double excitations attempted.
         use dSFMT_interface, only: dSFMT_t
         use system, only: sys_t
-        use qmc_data, only: qmc_state_t, ccmc_in_t, uccmc_in_t
+        use qmc_data, only: qmc_state_t, ccmc_in_t, semi_stoch_t, uccmc_in_t
         use ccmc_data, only: wfn_contrib_t
 
         use excitations, only: excit_t
@@ -1424,12 +1555,15 @@ contains
         type(excit_t) :: connection
         type(bloom_stats_t), intent(inout) :: bloom_stats
         type(logging_t), intent(in) :: logging_info
-
         integer, intent(in) :: nspawnings_total
         type(p_single_double_coll_t), intent(inout) :: ps_stat
+        type(semi_stoch_t), intent(in) :: determ
+
         integer(int_p) :: nspawned, nspawned_im
         integer(i0) :: fexcit(sys%basis%tot_string_len)
-        logical :: trot
+        logical :: spawn_is_determ, trot
+
+        spawn_is_determ = .false.
 
         if (present(uccmc_in)) then
             trot = uccmc_in%trot
@@ -1452,15 +1586,19 @@ contains
         else
             call spawner_ccmc(rng, sys, qs, qs%spawn_store%spawn%cutoff, &
                       ccmc_in%linked, contrib%cdet, contrib%cluster, gen_excit_ptr, logging_info, &
-                      nspawned, connection, nspawnings_total, ps_stat)
+                      nspawned, connection, nspawnings_total, ps_stat, determ, spawn_is_determ)
             nspawned_im = 0_int_p
 
         end if
 
-        if (nspawned /= 0_int_p) call create_spawned_particle_ccmc(sys, qs%ref, contrib%cdet, connection, &
-                                            nspawned, 1, contrib%cluster%excitation_level, &
-                                            ccmc_in%even_selection, fexcit, qs%spawn_store%spawn, bloom_stats, trot)
-        if (nspawned_im /= 0_int_p) call create_spawned_particle_ccmc(sys, qs%ref, contrib%cdet, connection,&
+        if (nspawned /= 0_int_p) then
+            call create_spawned_particle_ccmc(sys, qs%ref, contrib%cdet, connection, &
+                                        nspawned, 1, contrib%cluster%excitation_level, &
+                                        ccmc_in%even_selection, fexcit, qs%spawn_store%spawn, bloom_stats, trot)
+        end if
+
+        ! Brian - [todo]: add semistoch support for complex systems
+        if (nspawned_im /= 0_int_p) call create_spawned_particle_ccmc(sys, qs%ref, contrib%cdet, connection, &
                                             nspawned_im, 2, contrib%cluster%excitation_level, &
                                             ccmc_in%even_selection, fexcit, qs%spawn_store%spawn, bloom_stats, trot)
 

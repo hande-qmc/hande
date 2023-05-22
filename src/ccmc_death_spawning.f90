@@ -9,7 +9,8 @@ implicit none
 
 contains
     subroutine spawner_ccmc(rng, sys, qs, spawn_cutoff, linked_ccmc, cdet, cluster, &
-                            gen_excit_ptr, logging_info, nspawn, connection, nspawnings_total, ps_stat)
+                            gen_excit_ptr, logging_info, nspawn, connection, &
+                            nspawnings_total, ps_stat, determ, spawn_is_determ)
 
         ! Attempt to spawn a new particle on a connected excitor with
         ! probability
@@ -51,6 +52,7 @@ contains
         !        gen_excit_ptr%full *must* be set to a procedure which generates
         !        a complete excitation.
         !    logging_info: logging_t derived type containing information on logging behaviour.
+        !    determ: the semi_stoch_t object holding information relevant to semi-stochastic CCMC.
         ! In/Out:
         !    rng: random number generator.
         !    nspawnings_total: The total number of spawnings attemped by the current cluster
@@ -67,6 +69,7 @@ contains
         !        0 indicates the spawning attempt was unsuccessful.
         !    connection: excitation connection between the current excitor
         !        and the child excitor, on which progeny are spawned.
+        !    spawn_is_determ: true if the bra-excitor belongs to the deterministic space
 
         use ccmc_data, only: cluster_t
         use search, only: tree_search
@@ -79,11 +82,12 @@ contains
         use spawning, only: attempt_to_spawn, calc_qn_spawned_weighting, update_p_single_double_data
         use system, only: sys_t
         use const, only: depsilon, debug
-        use qmc_data, only: qmc_state_t, ccmc_in_t
+        use qmc_data, only: qmc_state_t, ccmc_in_t, semi_stoch_t
         use hamiltonian_data
         use logging, only: logging_t, write_logging_spawn
         use excit_gens, only: p_single_double_coll_t
         use errors, only: stop_all
+        use semi_stoch, only: check_if_determ
 
         type(sys_t), intent(in) :: sys
         type(qmc_state_t), intent(in) :: qs
@@ -96,9 +100,10 @@ contains
         integer, intent(in) :: nspawnings_total
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
         type(logging_t), intent(in) :: logging_info
+        type(semi_stoch_t), intent(in) :: determ
         integer(int_p), intent(out) :: nspawn
         type(excit_t), intent(out) :: connection
-        integer :: i
+        logical, intent(out) :: spawn_is_determ
 
         ! We incorporate the sign of the amplitude into the Hamiltonian matrix
         ! element, so we 'pretend' to attempt_to_spawn that all excips are
@@ -107,9 +112,11 @@ contains
         type(hmatel_t) :: hmatel, hmatel_save
         real(p) :: pgen, spawn_pgen
         integer(i0) :: fexcit(sys%basis%tot_string_len), funlinked(sys%basis%tot_string_len)
-        integer :: excitor_sign, excitor_level, excitor_level2
+        integer :: excitor_sign, excitor_level, excitor_level2, i
         logical :: linked, single_unlinked, allowed_excitation, allowed_multiref
         real(p) :: invdiagel
+
+        spawn_is_determ = .false.
 
         ! 1. Generate random excitation.
         ! Note CCMC is not (yet, if ever) compatible with the 'split' excitation
@@ -165,34 +172,45 @@ contains
             ! This is the same process as excitor to determinant and hence we
             ! can reuse code...
             call create_excited_det(sys%basis, cdet%f, connection, fexcit)
-            !AJWT: Even safer (but perhaps for another day) is to create a det_string derived type which
-            !AJWT: get_excitation_level accepts.
-            excitor_level = get_excitation_level(det_string(qs%ref%f0, sys%basis), det_string(fexcit, sys%basis))
-            call convert_excitor_to_determinant(fexcit, excitor_level, excitor_sign, qs%ref%f0)
-            if (excitor_level > qs%ref%ex_level) then
-                if (qs%multiref) then
-                    ! In the multireference case, check whether the determinant is within the accepted number
-                    ! of excitations from any of the secondary references.
-                    if (qs%mr_acceptance_search == 0) then
-                        allowed_multiref = .false.
-                        do i = 1, size(qs%secondary_refs)
-                             excitor_level2 = get_excitation_level(det_string(qs%secondary_refs(i)%f0, sys%basis), &
-                                                                   det_string(fexcit, sys%basis))
-                             if (excitor_level2 <= qs%secondary_refs(i)%ex_level) then
-                                 allowed_multiref = .true.
-                                 exit
-                             end if
-                        end do
-                    else
-                        allowed_multiref = tree_search(qs%secondary_ref_tree, det_string(fexcit, sys%basis),&
-                            &qs%secondary_ref_tree%root)
-                    end if
-                    if (.not. allowed_multiref) nspawn = 0
-                else
-                    nspawn = 0
-                end if
+
+            if (determ%doing_semi_stoch) then
+                spawn_is_determ = check_if_determ(determ%hash_table, determ%dets, fexcit)
             end if
-            if (excitor_sign < 0) nspawn = -nspawn
+
+            if (spawn_is_determ .and. cdet%is_determ) then
+                ! No deterministic to deterministic spawns
+                nspawn = 0_int_p
+            else
+                !AJWT: Even safer (but perhaps for another day) is to create a det_string derived type which
+                !AJWT: get_excitation_level accepts.
+                excitor_level = get_excitation_level(det_string(qs%ref%f0, sys%basis), det_string(fexcit, sys%basis))
+                call convert_excitor_to_determinant(fexcit, excitor_level, excitor_sign, qs%ref%f0)
+                if (excitor_level > qs%ref%ex_level) then
+                    if (qs%multiref) then
+                        ! In the multireference case, check whether the determinant is within the accepted number
+                        ! of excitations from any of the secondary references.
+                        if (qs%mr_acceptance_search == 0) then
+                            allowed_multiref = .false.
+                            do i = 1, size(qs%secondary_refs)
+                                 excitor_level2 = get_excitation_level(det_string(qs%secondary_refs(i)%f0, sys%basis), &
+                                                                       det_string(fexcit, sys%basis))
+                                 if (excitor_level2 <= qs%secondary_refs(i)%ex_level) then
+                                     allowed_multiref = .true.
+                                     exit
+                                 end if
+                            end do
+                        else
+                            allowed_multiref = tree_search(qs%secondary_ref_tree, det_string(fexcit, sys%basis),&
+                                &qs%secondary_ref_tree%root)
+                        end if
+                        if (.not. allowed_multiref) nspawn = 0
+                    else
+                        nspawn = 0
+                    end if
+                end if
+                if (excitor_sign < 0) nspawn = -nspawn
+            end if
+
             if (debug) call write_logging_spawn(logging_info, hmatel_save, pgen, invdiagel, [nspawn], &
                         real(cluster%amplitude,p), sys%read_in%comp, spawn_pgen, cdet%f, fexcit, connection)
         else

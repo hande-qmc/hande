@@ -377,14 +377,14 @@ contains
                         do j = ii, ndets
                             hmatel = get_hmatel(sys, dets(:,i), dets(:,j))
                             if (abs(hmatel%r) > depsilon) then
-                                !$omp critical
+                                !$omp critical (fci_crit)
                                 nnz = nnz + 1
                                 if (imode == 2) then
                                     hamil%smat%mat(nnz) = hmatel%r
                                     hamil%smat%col_ind(nnz) = j
                                     if (hamil%smat%row_ptr(i) == 0) hamil%smat%row_ptr(i) = nnz
                                 end if
-                                !$omp end critical
+                                !$omp end critical (fci_crit)
                             end if
                         end do
                         !$omp end do

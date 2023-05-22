@@ -5,8 +5,7 @@ use const, only: int_32, int_64, p, i0
 implicit none
 
 private
-public :: qsort
-public :: insert_sort
+public :: qsort, insert_sort, argsort
 
 ! Quicksort...
 interface qsort
@@ -22,6 +21,10 @@ interface insert_sort
     module procedure insert_sort_int_64
     module procedure insert_sort_real_p
 end interface insert_sort
+
+interface argsort
+    module procedure argsort_int_64_list
+end interface argsort
 
 contains
 
@@ -851,5 +854,73 @@ contains
 
     end subroutine insert_sort_real_p
     
+
+!--- Argsort based on qsort. ---
+
+    subroutine argsort_int_64_list(list, args, head, nsort, sort_abs)
+
+        ! Returns in args the list of indices that would sort the list.
+        ! E.g. [182,-203,585,230,23] -> [2,5,1,4,3]
+
+        ! list(:,i) is regarded as greater than list(:,j) if the first
+        ! non-identical element between list(:,i) and list(:,j) is greater in
+        ! list(:,i).
+
+        ! In:
+        !    list: 2D array of int_64 integers.  Sorted on output.
+        !    head: sort list up to and including list(:,:head) and
+        !        leave the rest of the array untouched.  Default: sort the
+        !        entire array.
+        !    nsort (optional): sort list only using the first nsort elements in
+        !        each 1D slice to compare entries (ie compare list(:nsort,i) and
+        !        list(:nsort,j), so list is sorted according to list(:nsort,:)).
+        !        Default: use entire slice.
+        ! Out:
+        !    args: 1D array of indices that would sort the list. 
+
+        use checking, only: check_allocate, check_deallocate
+
+        integer(int_64), intent(in) :: list(:,:)
+        integer, intent(out) :: args(:)
+        integer, intent(in) :: head
+        integer, intent(in), optional :: nsort
+        logical, intent(in), optional :: sort_abs
+
+        integer :: i, j, ns, ierr
+        integer(int_64), allocatable :: list_arg(:,:)
+        logical :: sort_abs_loc
+
+        if (present(nsort)) then
+            ns = nsort
+        else
+            ns = ubound(list, dim=1)
+        end if
+
+        if (present(sort_abs)) then
+            sort_abs_loc = sort_abs
+        else
+            sort_abs_loc = .false.
+        end if
+
+        allocate(list_arg(ns+1, head), source=0_int_64, stat=ierr)
+        call check_allocate('list_arg', (ns+1)*head, ierr)
+
+        if (sort_abs_loc) then
+            list_arg(1:ns, :) = abs(list(1:ns, 1:head))
+        else
+            list_arg(1:ns, :) = list(1:ns, 1:head)
+        end if
+        
+        ! The original indices
+        forall (i=1:head) list_arg(ns+1, i) = i
+
+        call qsort(list_arg, .false., head, ns)
+
+        args(:) = list_arg(ns+1,:)
+
+        deallocate(list_arg, stat=ierr)
+        call check_deallocate('list_arg', ierr)
+
+    end subroutine argsort_int_64_list
 
 end module sort

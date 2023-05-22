@@ -62,7 +62,7 @@ contains
                 call binary_search(psip_list%states, f0, D0_pos_old, psip_list%nstates, hit, D0_pos, psip_list%descending)
             end select
         end if
-        if (.not.hit) call stop_all('find_D0', 'Cannot find reference!')
+        if (.not. hit) call stop_all('find_D0', 'Cannot find reference!')
 
     end subroutine find_D0
 
@@ -914,5 +914,42 @@ contains
 
 
     end subroutine regenerate_ex_levels_psip_list
+
+    subroutine hamil_cc_transform(hamil, dets, f0)
+
+        ! Each determinant has a unique sign in CCMC (see comments above at convert_excitor_to_determinant)
+        ! this subroutine is called once at semi_stoch_iter to ensure the deterministic space determinants have the correct signs.
+        ! In: 
+        !   dets: list of determinants in the deterministic space.
+        !   f0: the reference determinant.
+        ! In/out:
+        !   hamil: the detministic subspace of the Hamiltonian saved in the CSR format.
+        !          upon input it has the bare hamiltonian elements <i|H|j> without correct 'CC signs'
+
+        use csr, only: csrp_t
+        use excitations, only: get_excitation_level
+
+        type(csrp_t), intent(inout) :: hamil
+        integer(i0), intent(in) :: dets(:,:), f0(:)
+
+        integer :: ndets, idet, jj, jdet, sgn_i, sgn_j, excit_level
+
+        ndets = size(dets, dim=2) ! dets = (sys%basis%tensor_label_len, ndets)
+
+        do idet = 1, ndets 
+            excit_level = get_excitation_level(f0, dets(:,idet))
+            call convert_excitor_to_determinant(dets(:,idet), excit_level, sgn_i, f0)
+            ! loops over the nonzero entries of <idet|H|jj> for all jj
+            ! there will be at least one iteration because the diagonal element is guaranteed to be nonzero
+            do jj = hamil%row_ptr(idet), hamil%row_ptr(idet+1)-1
+                ! column index correspond to the position in dets(:,:)
+                jdet = hamil%col_ind(jj)
+                excit_level = get_excitation_level(f0, dets(:,jdet))
+                call convert_excitor_to_determinant(dets(:,jdet), excit_level, sgn_j, f0)
+                hamil%mat(jj) = hamil%mat(jj)*sgn_i*sgn_j
+            end do
+        end do
+
+    end subroutine hamil_cc_transform
 
 end module ccmc_utils
