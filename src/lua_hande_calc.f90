@@ -1727,10 +1727,6 @@ contains
         !     ci_space = { ... },               -- one of these required if space == 'ci'. Reference table.
         !     ci_range = {lo, hi},              -- one of these required if space == 'ci'. Two-integer array.
         !     separate_stats = true/false, 
-        !     average = true/false,
-        !     wfn_weightage = float,            -- one of this or size required if average == true.
-        !     max_ndets = integer,              -- required if average == true.
-        !     nreports = integer,               -- required if average == true.
         ! }
 
         ! In/Out:
@@ -1786,7 +1782,7 @@ contains
                     semi_stoch_in%target_size = -1
                 case('high')
                     semi_stoch_in%space_type = high_pop_determ_space
-                    call aot_get_val(semi_stoch_in%average, err, lua_state, semi_stoch_table, 'average')
+                    !call aot_get_val(semi_stoch_in%average, err, lua_state, semi_stoch_table, 'average') ! This option will be enabled when the tailoring PR goes through
                     if (.not. semi_stoch_in%average) then
                         call aot_get_val(semi_stoch_in%target_size, err, lua_state, semi_stoch_table, 'size')
                         if (err /= 0 .and. parent) call stop_all('read_semi_stoch_in', 'Target space size not given.')
