@@ -37,7 +37,7 @@ HANDE development team
 | Christopher Bradley, Imperial College London.
 | Tiger Zhang, University of Cambridge.
 | William Van Benschoten, University of Iowa.
-| Brian Zhao, University of Cambridge.
+| Brian Zhao, University of Cambridge (now Emory University).
 
 Some past HANDE developers
 --------------------------
