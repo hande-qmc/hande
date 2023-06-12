@@ -934,7 +934,7 @@ contains
         ! list(:,i).
 
         ! In:
-        !    list: 2D array of int_64 integers.  Sorted on output.
+        !    list: 2D array of int_32 integers.  Sorted on output.
         !    head: sort list up to and including list(:,:head) and
         !        leave the rest of the array untouched.  Default: sort the
         !        entire array.
