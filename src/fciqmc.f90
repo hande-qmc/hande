@@ -162,7 +162,7 @@ contains
 
         ! Initialise data.
         if (state_hist_in%state_histograms) then
-            call init_state_histogram_t(iunit, qmc_in, reference_in, state_hist, state_hist_in)
+            call init_state_histogram_t(io_unit, qmc_in, reference_in, state_hist, state_hist_in)
         end if
         call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, io_unit, annihilation_flags, qs, uuid_restart, &
                       restart_version_restart, fciqmc_in=fciqmc_in, qmc_state_restart=qmc_state_restart)
