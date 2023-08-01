@@ -52,7 +52,7 @@ function(system_has_sse2 _result)
      string(TOLOWER "${_cpu_brand}" _cpu_brand)
      string(FIND _cpu_brand "apple" _apple_silicon)
      if(_apple_silicon)
-       set(${_sse2_found} FALSE)
+       set(_sse2_found FALSE)
      else()
        execute_process(
          COMMAND
