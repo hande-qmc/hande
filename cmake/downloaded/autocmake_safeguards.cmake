@@ -21,6 +21,7 @@ string(TOUPPER "${CMAKE_BUILD_TYPE}" cmake_build_type_toupper)
 if(NOT cmake_build_type_tolower STREQUAL "debug" AND
    NOT cmake_build_type_tolower STREQUAL "release" AND
    NOT cmake_build_type_tolower STREQUAL "minsizerel" AND
-   NOT cmake_build_type_tolower STREQUAL "relwithdebinfo")
+   NOT cmake_build_type_tolower STREQUAL "relwithdebinfo" AND
+   NOT cmake_build_type_tolower STREQUAL "relapplesilicon")
     message(FATAL_ERROR "Unknown build type \"${CMAKE_BUILD_TYPE}\". Allowed values are Debug, Release, RelWithDebInfo, and MinSizeRel (case-insensitive).")
 endif()
