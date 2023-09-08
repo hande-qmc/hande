@@ -570,6 +570,20 @@ contains
             ! Attempt to spawn.
             call spawner_ptr(rng, sys, qs, qs%spawn_store%spawn%cutoff, qs%psip_list%pop_real_factor, cdet1, pop, &
                             &gen_excit_ptr, weighted_probs, logging_info, nspawned, nspawned_im, connection)
+            if (sys%read_in%comp) then
+                ! Because of the way the code functions we end up
+                ! spawning to the transpose of our intended matrix element
+                ! for one of the spawning ends.
+                ! In the case of a real symmetric Hamiltonian this doesn't
+                ! matter because H_{ij} = H_{ji}.
+                ! However in the case of a conjugate symmetric Hamiltonian,
+                ! e.g. some ab initio system with PBCs, this causes issues
+                ! because H_{ij} =/= H_{ji}.
+                ! Instead, the appropriate relationship requires the
+                ! complex conjugate, so now H_{ij} = H_{ji}^(*).
+                ! This is taken care of here.
+                nspawned_im = -nspawned_im
+            end if
             if (imag_parent) then
                 ! If has imaginary parent have to factor into resulting signs/components
                 scratch = nspawned_im

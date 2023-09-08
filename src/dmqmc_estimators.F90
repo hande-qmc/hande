@@ -456,8 +456,12 @@ contains
         real(p) :: unweighted_walker_pop(psip_list%nspaces)
 
         ! Get excitation.
-        excitation = get_excitation(sys%nel, sys%basis, psip_list%states(:sys%basis%tot_string_len,idet), &
-                         psip_list%states((1+sys%basis%tot_string_len):sys%basis%tensor_label_len,idet))
+        excitation = get_excitation(&
+            sys%nel, &
+            sys%basis, &
+            psip_list%states((1+sys%basis%tot_string_len):sys%basis%tensor_label_len,idet), &
+            psip_list%states(:sys%basis%tot_string_len,idet)&
+        )
 
         ! When performing importance sampling the result is that certain
         ! excitation levels have smaller psips populations than the true density
