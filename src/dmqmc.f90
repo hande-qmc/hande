@@ -415,7 +415,7 @@ contains
                                           &qs%psip_list, qs, weighted_sampling%probs_old, dmqmc_estimates)
                 if (error) exit outer_loop
 
-                call update_shift_dmqmc(qmc_in, qs, qs%psip_list%tot_nparticles, tot_nparticles_old)
+                call update_shift_dmqmc(qmc_in, qs, qs%psip_list%tot_nparticles, tot_nparticles_old, sys%read_in%comp)
 
                 ! Forcibly disable update_tau as need to average over multiple loops over beta
                 ! and hence want to use the same timestep throughout.

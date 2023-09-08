@@ -368,25 +368,31 @@ contains
         type(qmc_state_t), intent(inout) :: qs
         real(dp), intent(in) :: loc_totnparticles(:)
         real(dp), intent(in) :: loc_totnparticles_old(:)
-        logical, intent(in), optional :: comp
-        logical :: comp_set
+        logical, intent(in) :: comp
+
         integer :: ireplica
+        real(dp) :: totnp, totnp_old
 
-        comp_set = .false.
-        if (present(comp)) comp_set = comp
-
-        do ireplica = 1, size(loc_totnparticles)
-            if (.not.comp_set .or. mod(ireplica, 2) /= 0) then
-                if (qs%vary_shift(ireplica)) then
-                    call update_shift(qs, qs%shift(ireplica), loc_totnparticles_old(ireplica), &
-                                     &loc_totnparticles(ireplica), qmc_in%ncycles)
-                end if
-                if (loc_totnparticles(ireplica) > qs%target_particles .and. (.not. qs%vary_shift(ireplica))) &
-                    qs%vary_shift(ireplica) = .true.
-            else
-                ! imaginary parts only needs to follow its real counterpart
+        do ireplica = 1, qs%psip_list%nspaces
+            ! imaginary parts only needs to follow its real counterpart
+            if (comp .and. mod(ireplica, 2) == 0) then
                 qs%shift(ireplica) = qs%shift(ireplica-1)
                 qs%vary_shift(ireplica) = qs%vary_shift(ireplica-1)
+                cycle
+            end if
+
+            totnp = loc_totnparticles(ireplica)
+            totnp_old = loc_totnparticles_old(ireplica)
+
+            if (comp) then
+                totnp = totnp + loc_totnparticles(ireplica+1)
+                totnp_old = totnp_old + loc_totnparticles_old(ireplica+1)
+            end if
+
+            if (qs%vary_shift(ireplica)) then
+                call update_shift(qs, qs%shift(ireplica), totnp_old, totnp, qmc_in%ncycles)
+            else if (totnp > qs%target_particles) then
+                qs%vary_shift(ireplica) = .true.
             end if
         end do
 
