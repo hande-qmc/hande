@@ -1069,4 +1069,160 @@ contains
 
     end subroutine propagator_restore
 
+    subroutine write_density_matrix_file(sys, pl, dmqmc_in, ref, beta_cycle, ireport)
+
+        ! Write the density matrix to a file. Useful for
+        ! debugging and for specific analysis of small systems.
+        ! **WARNING** Be mindful that the density matrix size
+        ! can grow quickly and so does the file size!
+
+        ! In:
+        !   sys: Information on the system under consideration.
+        !   pl: particle_t derived type information for the simulation.
+        !   dmqmc_in: Information set in the input for the calculation.
+        !   ref: reference_t derived type information for our system.
+        !   beta_cycle: The current loop that is being simulated.
+        !   ireport: The current report cycle of the simulation.
+
+        use parallel
+        use checking
+        use system, only: sys_t
+        use qmc_data, only: particle_t
+        use dmqmc_data, only: dmqmc_in_t
+        use reference_determinant, only: reference_t
+        use determinant_enumeration, only: enumerate_determinants
+        use search, only: binary_search
+
+        type(sys_t), intent(in) :: sys
+        type(particle_t), intent(in), target :: pl
+        type(dmqmc_in_t), intent(in) :: dmqmc_in
+        type(reference_t), intent(in) :: ref
+
+        integer, intent(in) :: beta_cycle, ireport
+
+        integer, allocatable :: syms(:)
+        integer(i0), allocatable :: determ_dets(:,:)
+        real(p), allocatable :: rho(:,:,:), trho(:,:,:)
+
+        integer :: ierr, tot_size, idet, ispc, tsl, pos1, pos2, fileunit, iunit
+        integer(i0) :: fcon(sys%basis%tensor_label_len)
+        real(p) :: rhoij
+        logical :: hit, dowrite, dodump, exists
+        character(1024) :: fname
+
+        ! Check if we should actually dump
+        dodump = dmqmc_in%dmdump
+        dodump = dodump .and. (mod(ireport - 1, dmqmc_in%dmdump_frequency) == 0)
+
+        if (.not. dodump) return
+
+        iunit = 6
+        if (parent) then
+            write (iunit, '(" # Dumping current density matrix.")')
+        end if
+
+        ! Start a fresh file for dumping (this will overwrite existing files).
+        if ((beta_cycle == 1) .and. (ireport == 1) .and. parent) then
+            inquire(file=trim(dmqmc_in%dmdump_filename), exist=exists)
+            if (exists) then
+                open(file=trim(dmqmc_in%dmdump_filename), newunit=fileunit, &
+                     status='replace', action='write')
+            else
+                open(file=trim(dmqmc_in%dmdump_filename), newunit=fileunit, &
+                     status='new', action='write')
+            end if 
+            close(fileunit)
+        end if
+
+        ierr = 0
+        tsl = sys%basis%tot_string_len
+
+        ! Count the number of determinants in the space.
+        call enumerate_determinants(sys, .true., .false., ref%ex_level, &
+                                    syms, tot_size, determ_dets, &
+                                    sys%symmetry, ref%occ_list0, .false.)
+
+        ! Actually store the determinants, in the determ_dets array.
+        call enumerate_determinants(sys, .false., .false., ref%ex_level, &
+                                    syms, tot_size, determ_dets, &
+                                    sys%symmetry, ref%occ_list0, .false.)
+
+        allocate(rho(pl%nspaces, tot_size, tot_size), stat=ierr)
+        call check_allocate('rho', pl%nspaces*tot_size*tot_size, ierr)
+        rho = 0.0_p
+
+        ! We need to search on the pl%states array rather than the determ_dets
+        ! array. Searching on determ_dets would be more efficient but requires
+        ! a non-binary search as its not ordered like pl%states. We could in
+        ! principle sort determ_dets and then search on it but that's more work
+        ! than is really needed for a simple routine like this. Furthermore,
+        ! the determ_dets order preserve the map of rho(i,j) to H(j,i).
+        do pos1 = 1, tot_size
+            do pos2 = 1, tot_size
+                fcon(:tsl) = determ_dets(:, pos1)
+                fcon(tsl+1:2*tsl) = determ_dets(:, pos2)
+                call binary_search(pl%states, fcon, 1, &
+                                   pl%nstates, hit, idet, .false.)
+
+                if (.not. hit) cycle
+
+                do ispc = 1, pl%nspaces
+                    rhoij = real(pl%pops(ispc,idet), p)/pl%pop_real_factor
+                    rho(ispc, pos1, pos2) = rhoij
+                end do
+            end do
+        end do
+
+#ifdef PARALLEL
+        if (parent) then
+            allocate(trho(pl%nspaces, tot_size, tot_size), stat=ierr)
+            call check_allocate('trho', pl%nspaces*tot_size*tot_size, ierr)
+            trho = 0.0_p
+        end if
+        call mpi_reduce(rho, trho, size(rho), mpi_preal, mpi_sum, &
+                        root, mpi_comm_world, ierr)
+        if (parent) then
+            rho = trho
+            deallocate(trho, stat=ierr)
+            call check_deallocate('trho', ierr)
+        end if
+#endif
+
+        if (parent) then
+
+            open(file=trim(dmqmc_in%dmdump_filename), newunit=fileunit, &
+                 status='old', position='append', action='write')
+
+            write(fileunit, '(a1, 1X, a10, 1X, a20)') '#', 'loop', 'ireport'
+            write(fileunit, '(a1, 1X, i10, 1X, i20)') '#', beta_cycle, ireport - 1
+
+            do pos1 = 1, tot_size
+                do pos2 = 1, tot_size
+
+                    ! Write only non-zero
+                    if (.not. any(abs(rho(:, pos1, pos2)) > depsilon)) then
+                        cycle
+                    end if
+
+                    write(fileunit, '(2(2x,i10))', advance='no') pos1, pos2
+
+                    do ispc = 1, pl%nspaces
+                        rhoij = rho(ispc, pos1, pos2)
+                        write(fileunit, '(2x, es26.12)', advance='no') rhoij
+                    end do
+
+                    write(fileunit, '()')
+
+                end do
+             end do
+
+            close(fileunit)
+
+        end if
+
+        deallocate(rho, stat=ierr)
+        call check_deallocate('rho', ierr)
+
+    end subroutine write_density_matrix_file
+
 end module dmqmc_procedures

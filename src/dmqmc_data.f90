@@ -247,6 +247,13 @@ type dmqmc_in_t
     ! Maximum momentum transfer to consider in structure factor (in terms of the Fermi wave vector).
     real(p) :: struc_fac_qmax = 0.0
 
+    ! For dumping the density matrix file, only advised for debugging.
+    logical :: dmdump = .false.
+    ! How often in report cycles we will dump.
+    integer :: dmdump_frequency = 1
+    ! The file we will write the dump to.
+    character(255) :: dmdump_filename = ''
+
 end type dmqmc_in_t
 
 ! Spawned lists for rdms.
@@ -406,6 +413,10 @@ contains
             call json_write_key(js, 'sampling_probs', dmqmc%sampling_probs)
         else
             call json_write_key(js, 'sampling_probs', '[]')
+        end if
+        if (dmqmc%dmdump) then
+            call json_write_key(js, 'dmdump_filename', dmqmc%dmdump_filename)
+            call json_write_key(js, 'dmdump_frequency', dmqmc%dmdump_frequency)
         end if
         call json_write_key(js, 'finish_varying_weights', dmqmc%finish_varying_weights)
         call json_write_key(js, 'fermi_temperature', dmqmc%fermi_temperature)

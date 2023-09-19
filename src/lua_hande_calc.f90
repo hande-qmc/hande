@@ -2155,6 +2155,8 @@ contains
         !     initiator_level = ilevel,
         !     symmetric_bloch = true/false,
         !     walker_scale_factor = factor,
+        !     dmdump_filename = 'filename',
+        !     dmdump_frequency = Nreports,
         ! }
         ! ipdmqmc = { -- sets ipdmqmc to true
         !     target_beta = b,
@@ -2227,11 +2229,12 @@ contains
         logical :: op, bloch_symmetry_unset
         character(len=13) :: str
 
-        character(30), parameter :: dmqmc_keys(15) = [character(30) :: 'replica_tricks', 'fermi_temperature', 'all_sym_sectors',  &
+        character(30), parameter :: dmqmc_keys(17) = [character(30) :: 'replica_tricks', 'fermi_temperature', 'all_sym_sectors',  &
                                                                        'all_spin_sectors', 'beta_loops', 'sampling_weights',      &
                                                                        'find_weights', 'find_weights_start', 'symmetrize',        &
                                                                        'vary_weights', 'initiator_level', 'symmetric_bloch',      &
-                                                                       'walker_scale_factor', 'final_beta', 'piecewise_shift']
+                                                                       'walker_scale_factor', 'final_beta', 'piecewise_shift',    &
+                                                                       'dmdump_filename', 'dmdump_frequency']
         character(30), parameter :: ip_keys(9)     = [character(30) :: 'target_beta', 'initial_beta', 'initial_matrix',           &
                                                                        'grand_canonical_initialisation', 'metropolis_attempts',   &
                                                                        'symmetric_interaction_picture', 'piecewise_beta',         &
@@ -2275,6 +2278,11 @@ contains
             end if
             if (aot_exists(lua_state, table, 'initiator_level')) then
                 call aot_get_val(dmqmc_in%initiator_level, err, lua_state, table, 'initiator_level')
+            end if
+            if (aot_exists(lua_state, table, 'dmdump_filename')) then
+                dmqmc_in%dmdump = .true.
+                call aot_get_val(dmqmc_in%dmdump_filename, err, lua_state, table, 'dmdump_filename')
+                call aot_get_val(dmqmc_in%dmdump_frequency, err, lua_state, table, 'dmdump_frequency')
             end if
             dmqmc_in%vary_weights = aot_exists(lua_state, table, 'vary_weights')
             call aot_get_val(dmqmc_in%finish_varying_weights, err, lua_state, table, 'vary_weights')

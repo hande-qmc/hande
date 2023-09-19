@@ -300,6 +300,8 @@ contains
                     call init_proc_pointers(sys, qmc_in, reference_in, iunit, dmqmc_in)
                 end if
 
+                call write_density_matrix_file(sys, qs%psip_list, dmqmc_in, qs%ref, beta_cycle, ireport)
+
                 do icycle = 1, qmc_in%ncycles
 
                     call init_mc_cycle(qs%psip_list, qs%spawn_store%spawn, nattempts, ndeath, complx=sys%read_in%comp)
