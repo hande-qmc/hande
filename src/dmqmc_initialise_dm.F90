@@ -192,7 +192,7 @@ contains
             psip_list%tot_nparticles = nparticles_temp
 #endif
         else
-            psip_list%tot_nparticles = target_nparticles_tot
+            psip_list%tot_nparticles(1) = target_nparticles_tot
         end if
 
         call direct_annihilation(sys, rng, qmc_state%ref, annihilation_flags, psip_list, spawn)
