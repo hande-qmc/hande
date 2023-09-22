@@ -650,10 +650,19 @@ contains
         integer :: occ_list(sys%nel)
         integer(i0) :: f(sys%basis%tot_string_len)
         integer :: ireplica, iorb
-        integer(int_p) :: nspawn, ipsip
+        integer(int_p) :: nspawn
         integer :: nalpha_allowed, nbeta_allowed, ngen
         logical :: found_lower_reference
         real(p) :: Hii, new_H00
+
+        integer(int_p) :: total_nspawns
+        real(dp) :: total_npsips
+
+        ! Variables for tracking the total number of successful
+        ! spawning events and the corresponding population on
+        ! this processor.
+        total_nspawns = 0_int_p
+        total_npsips = 0.0_dp
 
         ireplica = 1
         ! Default behaviour is we don't reweight populations.
@@ -686,8 +695,7 @@ contains
         ! normalisation and hence, the correct distribution. For small systems
         ! the number fluctuations are usually small, so this routine is quite
         ! fast.
-        ipsip = 0
-        do while (ipsip < npsips)
+        do
             occ_list = 0
             ! Select the alpha and beta spin orbitals and discard any
             ! determinant without the correct number of particles.
@@ -731,19 +739,17 @@ contains
                     if (.not. found_lower_reference) found_lower_reference = .true.
                 end if
 
-                if (dmqmc_in%count_diagonal_occupations) then
-                    ipsip = ipsip + 1
-                else
-                    ! Count the total number of particles spawned which
-                    ! can very depending on the reweighting step
-                    if (pop_real_factor >= 2_int_p) then
-                        ipsip = ipsip + abs(nspawn/pop_real_factor)
-                    else
-                        ipsip = ipsip + abs(nspawn)
-                    end if
-                end if
 
+                total_nspawns = total_nspawns + 1_int_p
+                total_npsips = total_npsips + real(nspawn, dp)/pop_real_factor
             end if
+
+            if (dmqmc_in%count_diagonal_occupations) then
+                if (total_nspawns >= npsips) exit
+            else
+                if (total_npsips >= real(npsips, dp)) exit
+            end if
+
         end do
 
         if (found_lower_reference) call stop_all('create_initial_density_matrix', &
