@@ -338,11 +338,11 @@ contains
                         ! Extract the real signs from the encoded signs.
                         real_population = real(qs%psip_list%pops(:,idet),p)/qs%psip_list%pop_real_factor
                         ! Is this density matrix element an initiator?
-                        if (qmc_in%initiator_approx) then
-                            call set_parent_flag_dmqmc(real_population(1), qmc_in%initiator_pop, cdet1%f, cdet1%f2, &
-                                                       dmqmc_in%initiator_level, cdet1%initiator_flag)
-                            cdet2%initiator_flag = cdet1%initiator_flag
-                        end if
+                        !if (qmc_in%initiator_approx) then
+                        !    call set_parent_flag_dmqmc(real_population(1), qmc_in%initiator_pop, cdet1%f, cdet1%f2, &
+                        !                               dmqmc_in%initiator_level, cdet1%initiator_flag)
+                        !    cdet2%initiator_flag = cdet1%initiator_flag
+                        !end if
 
                         ! Call wrapper function which calls routines to update
                         ! all estimators being calculated, and also always
@@ -367,6 +367,14 @@ contains
                         attempt_spawning = connection_exists(sys)
 
                         do ireplica = 1, qs%psip_list%nspaces
+
+                            ! Is this density matrix element an initiator?
+                            if (qmc_in%initiator_approx) then
+                                call set_parent_flag_dmqmc(real_population(ireplica), qmc_in%initiator_pop, &
+                                                           cdet1%f, cdet1%f2, dmqmc_in%initiator_level, &
+                                                           cdet1%initiator_flag)
+                                cdet2%initiator_flag = cdet1%initiator_flag
+                            end if
 
                             ! If the system is complex, ireplica will be:
                             ! { replica1_real, replica1_imag, replica2_real, replica2_imag }
