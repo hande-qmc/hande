@@ -132,7 +132,7 @@ contains
     end subroutine init_semi_stoch_t_flags
 
     subroutine init_semi_stoch_t(determ, ss_in, sys, propagator, psip_list, reference, &
-                                 annihilation_flags, spawn, mpi_barriers, io_unit)
+                                 annihilation_flags, spawn, mpi_barriers, io_unit, highest_dets_in)
 
         ! Create a semi_stoch_t object which holds all of the necessary
         ! information to perform a semi-stochastic calculation. The type of
@@ -150,17 +150,21 @@ contains
         !    spawn: spawn_t object to which deterministic spawning will occur.
         !    mpi_barriers: If true then use an mpi_barrier call to measure
         !        load balancing before semi-stochastic communication.
+        !    highest_dets_in(optional): highest_dets_t object containing a time-averaged wavefunction 
+        !        used to create the deterministic space.
 
         use checking, only: check_allocate, check_deallocate
         use calc, only: doing_calc, dmqmc_calc
         use qmc_data, only: empty_determ_space, high_pop_determ_space, read_determ_space, reuse_determ_space, ci_determ_space, &
-                            semi_stoch_separate_annihilation, particle_t, annihilation_flags_t, semi_stoch_in_t, propagator_t
+                            cas_determ_space, semi_stoch_separate_annihilation, particle_t, annihilation_flags_t, &
+                            semi_stoch_in_t, propagator_t, highest_dets_t
         use parallel
         use sort, only: qsort
         use spawn_data, only: spawn_t
         use system, only: sys_t
         use utils, only: int_fmt
         use reference_determinant, only: reference_t, dealloc_reference_t
+        use basis_types, only: reset_extra_info_bit_string
 
         type(semi_stoch_t), intent(inout) :: determ
         type(semi_stoch_in_t), intent(in) :: ss_in
@@ -172,6 +176,7 @@ contains
         type(spawn_t), intent(in) :: spawn
         logical, intent(in) :: mpi_barriers
         integer, intent(in) :: io_unit
+        type(highest_dets_t), intent(in), optional :: highest_dets_in
 
         integer :: i, ierr, determ_dets_mem, max_nstates, n_spawnees
         integer :: displs(0:nprocs-1)
@@ -233,7 +238,12 @@ contains
         ! deterministic space will be used. This is the default behaviour
         ! (space_type = empty_determ_space).
         if (ss_in%space_type == high_pop_determ_space) then
-            call create_high_pop_space(dets_this_proc, psip_list, spawn, ss_in%target_size, determ%sizes(iproc))
+            if (ss_in%average) then
+                call create_high_pop_space(sys, dets_this_proc, psip_list, spawn, ss_in%target_size, determ%sizes(iproc), &
+                                           highest_dets_in)
+            else
+                call create_high_pop_space(sys, dets_this_proc, psip_list, spawn, ss_in%target_size, determ%sizes(iproc))
+            end if
         else if (ss_in%space_type == read_determ_space) then
             call read_determ_from_file(dets_this_proc, determ, spawn, sys, ss_in%read_id, print_info, io_unit)
         else if (ss_in%space_type == reuse_determ_space) then
@@ -246,8 +256,10 @@ contains
             else if (allocated(ss_in%ci_space%occ_list0)) then
                 ci_ref%occ_list0 = ss_in%ci_space%occ_list0
             end if
-            call create_ci_determ_space(dets_this_proc, determ, spawn, sys, ci_ref)
+            call create_ci_determ_space(dets_this_proc, determ, spawn, sys, ci_ref, ss_in)
             call dealloc_reference_t(ci_ref)
+        else if (ss_in%space_type == cas_determ_space) then
+            call create_cas_determ_space(dets_this_proc, determ, spawn, sys, reference%occ_list0, ss_in)
         end if
 
         ! Let each process hold the number of deterministic states on each process.
@@ -317,7 +329,12 @@ contains
             determ%indices = 0
         end if
 
-        call qsort(dets_this_proc, .false.,determ%sizes(iproc)) 
+        ! Make compatible with even selection in CCMC
+        do i = 1, determ%sizes(iproc)
+            call reset_extra_info_bit_string(sys%basis, dets_this_proc(:,i))
+        end do
+
+        call qsort(dets_this_proc, .false., determ%sizes(iproc)) 
 
         ! If we're reusing the deterministic space then we don't need to
         ! allocate the dets array. It's already allocated to the correct size.
@@ -558,6 +575,7 @@ contains
         use qmc_data, only: propagator_t
         use spawning, only: calc_qn_weighting
         use reference_determinant, only: reference_t
+        use excitations, only: det_string
 
         type(semi_stoch_t), intent(inout) :: determ
         type(sys_t), intent(in) :: sys
@@ -617,6 +635,7 @@ contains
                         ! j (only this proc) to i (all deterministics)
                         ! The spawnee is i so this gets the quasinewton weight.
                         
+                        ! The extra calls to det_string is to take care of even selection in CCMC when doing ss-CCMC
                         hmatel = get_hmatel(sys, determ%dets(:,i), dets_this_proc(:,j))
                         diag_elem = i == j + displs(iproc)
                         ! Take the Hartree-Fock energy off the diagonal elements.
@@ -728,7 +747,7 @@ contains
     subroutine add_determ_dets_to_psip_list(determ, psip_list, sys, reference, annihilation_flags, dets_this_proc)
 
         ! Also set the deterministic flags of any deterministic states already
-        ! in particle_t%states, and add deterministic data to particle_t%popss and
+        ! in particle_t%states, and add deterministic data to particle_t%pops and
         ! particle_t%dat. All deterministic states not already in particle_t%states are
         ! set to have an initial sign of zero.
 
@@ -831,7 +850,7 @@ contains
         !    real_pop: (decoded) population on the determinant.
         ! In/Out:
         !    ndeterm_found: number of determinants in the deterministic space found.
-        !        Incrememted if idet corresponds to a determinant in the deterministic space.
+        !        Incremented if idet corresponds to a determinant in the deterministic space.
         !    determ: semi_stoch_t object.  vector and indices components are updated if the
         !        determinant is in the deterministic space.
         ! Out:
@@ -839,7 +858,7 @@ contains
 
         use qmc_data, only: semi_stoch_separate_annihilation
 
-        integer, intent(in) ::idet
+        integer, intent(in) :: idet
         real(p), intent(in) :: real_pop(:)
         integer, intent(inout) :: ndeterm_found
         type(semi_stoch_t), intent(inout) :: determ
@@ -855,6 +874,116 @@ contains
         end if
 
     end subroutine set_determ_info
+
+    subroutine set_determ_info_ccmc(idet, contrib, ndeterm_found, determ, cmplx)
+
+        ! In:
+        !    idet: index of the determinant (in determ%flags, also matches that in the main
+        !        determinant list).
+        !    contrib: information on the current cluster under consideration.
+        !    cmplx: whether we're doing a complex calculation
+        ! In/Out:
+        !    ndeterm_found: number of determinants in the deterministic space found.
+        !        Incremented if idet corresponds to a determinant in the deterministic space.
+        !    determ: semi_stoch_t object.  vector and indices components are updated if the
+        !        determinant is in the deterministic space.
+
+        use qmc_data, only: semi_stoch_separate_annihilation
+        use search, only: binary_search
+        use ccmc_data, only: wfn_contrib_t
+        use parallel, only: iproc
+
+        integer(int_64), intent(in) :: idet
+        type(wfn_contrib_t), intent(in) :: contrib
+        integer, intent(inout) :: ndeterm_found
+        type(semi_stoch_t), intent(inout) :: determ
+        logical, intent(in) :: cmplx
+
+        integer :: pos, i, istart, iend
+        logical :: hit
+
+        ! With OpenMP the noncomposite loop iterations won't be gone through deterministically, 
+        ! so instead of relying on idet, we have to do a binary search over (a small number of) deterministic states.
+
+        if (determ%flags(idet) == 0) then
+            istart = 1
+            do i = 0, iproc-1
+                istart = istart + determ%sizes(i)
+            end do
+
+            iend = istart + determ%sizes(iproc) - 1
+
+            call binary_search(determ%dets, contrib%cdet%f, istart, iend, hit, pos, .false.) 
+
+            ! With OpenMP the noncomposite loop iterations are not absolutely guaranteed to come first, 
+            ! so make sure we don't accidentally overwrite. Also no need to reweight by pgen as they're all 1.0_p for nc clusters.
+            determ%vector(1,pos-istart+1) = determ%vector(1,pos-istart+1) + real(contrib%cluster%amplitude, p)
+            if (cmplx) determ%vector(2,pos-istart+1) = aimag(contrib%cluster%amplitude)
+            if (determ%projection_mode == semi_stoch_separate_annihilation) then
+                determ%indices(pos-istart+1) = idet
+            end if
+        end if
+
+    end subroutine set_determ_info_ccmc
+
+    subroutine set_determ_info_ccmc_stochastic(contrib, determ, cmplx, spawn)
+
+        ! In:
+        !    idet: index of the determinant (in determ%flags, also matches that in the main
+        !        determinant list).
+        !    contrib: information on the current cluster under consideration.
+        !    cmplx: whether we're doing a complex calculation
+        !    spawn: the spawn array containing information for assigning determinants to processors.
+        ! In/Out:
+        !    determ: semi_stoch_t object.  vector and indices components are updated if the
+        !        determinant is in the deterministic space.
+
+        use qmc_data, only: semi_stoch_separate_annihilation
+        use ccmc_data, only: wfn_contrib_t
+        use search, only: binary_search
+        use sort, only: qsort
+        use parallel, only: iproc, nprocs
+        use spawn_data, only: spawn_t
+        use spawning, only: assign_particle_processor
+
+        type(wfn_contrib_t), intent(in) :: contrib
+        type(semi_stoch_t), intent(inout) :: determ
+        logical, intent(in) :: cmplx
+        type(spawn_t), intent(in) :: spawn
+
+        integer :: pos, cdet_proc, cdet_slot_pos, i, istart, iend, idet
+        logical :: hit
+
+        ! Check if this composite deterministic cluster is already on this processor, and only augment the deterministic 
+        ! population if it is, because otherwise it'll entail MPI communications, 
+        ! which could be added in the future, espcially for sepparate annihilation (full vector collected).
+        call assign_particle_processor(contrib%cdet%f, spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, &
+                                       nprocs, cdet_proc, cdet_slot_pos, spawn%proc_map%map, spawn%proc_map%nslots)
+
+        if (cdet_proc == iproc) then
+            istart = 1
+            do i = 0, iproc-1
+                istart = istart + determ%sizes(i)
+            end do
+
+            iend = istart + determ%sizes(iproc) - 1
+
+            call binary_search(determ%dets, contrib%cdet%f, istart, iend, hit, pos, .false.)
+            ! It's possible multiple threads will be writing to pos at the same time, hence the atomic
+            !$omp atomic
+            determ%vector(1,pos-istart+1) = determ%vector(1,pos-istart+1) + &
+                                            real(contrib%cluster%amplitude/contrib%cluster%pselect, p)
+            !$omp end atomic
+
+            if (cmplx) then
+                !$omp atomic
+                determ%vector(2,pos-istart+1) = determ%vector(2,pos-istart+1) + &
+                                                aimag(contrib%cluster%amplitude/contrib%cluster%pselect)
+                !$omp end atomic
+            end if
+        end if
+            
+    end subroutine set_determ_info_ccmc_stochastic
 
     subroutine determ_projection(rng, qmc_in, qs, spawn, determ)
 
@@ -1195,7 +1324,7 @@ contains
 
     end subroutine add_det_to_determ_space
 
-    subroutine create_high_pop_space(dets_this_proc, psip_list, spawn, target_size, determ_size_this_proc)
+    subroutine create_high_pop_space(sys, dets_this_proc, psip_list, spawn, target_size, determ_size_this_proc, highest_dets)
 
         ! Find the most highly populated determinants in psip_list%states and use
         ! these to define the deterministic space.
@@ -1204,6 +1333,7 @@ contains
         !    dets_this_proc: The deterministic states belonging to this
         !        processor in the final created deterministic space.
         ! In:
+        !    sys: system under study
         !    psip_list: particle_t object containing psip information.
         !    spawn: spawn_t object to which deterministic spawning will occur.
         !    target_size: Size of deterministic space to use if possible. If
@@ -1214,15 +1344,18 @@ contains
         !        on this processor only.
 
         use checking, only: check_allocate, check_deallocate
-        use qmc_data, only: particle_t
+        use qmc_data, only: particle_t, highest_dets_t
         use parallel
         use spawn_data, only: spawn_t
+        use system, only: sys_t
 
+        type(sys_t), intent(in) :: sys
         integer(i0), intent(out) :: dets_this_proc(:,:)
         type(particle_t), intent(in) :: psip_list
         type(spawn_t), intent(in) :: spawn
         integer, intent(in) :: target_size
         integer, intent(out) :: determ_size_this_proc
+        type(highest_dets_t), intent(in), optional :: highest_dets
 
         integer :: ndets, ndets_tot, determ_size
         integer :: all_ndets(0:nprocs-1), displs(0:nprocs)
@@ -1233,89 +1366,115 @@ contains
         integer :: i, ind_local, ierr
         logical :: on_this_proc
 
-        ! If there are less determinants on this processor than the target
-        ! number then obviously we need to consider a smaller number.
-        ndets = min(target_size, psip_list%nstates)
+        if (.not. present(highest_dets)) then
 
-        ! all_ndets will hold the values of ndets from each processor.
+            ! If there are less determinants on this processor than the target
+            ! number then obviously we need to consider a smaller number.
+            ndets = min(target_size, psip_list%nstates)
+
+            ! all_ndets will hold the values of ndets from each processor.
 #ifdef PARALLEL
-        call mpi_allgather(ndets, 1, mpi_integer, all_ndets, 1, mpi_integer, MPI_COMM_WORLD, ierr)
+            call mpi_allgather(ndets, 1, mpi_integer, all_ndets, 1, mpi_integer, MPI_COMM_WORLD, ierr)
 #else
-        all_ndets = ndets
+            all_ndets = ndets
 #endif
-        ndets_tot = sum(all_ndets)
+            ndets_tot = sum(all_ndets)
 
-        ! Displacements used for MPI communication.
-        displs(0) = 0
-        do i = 1, nprocs-1
-            displs(i) = displs(i-1) + all_ndets(i-1)
-        end do
-        displs(nprocs) = ndets_tot
+            ! Displacements used for MPI communication.
+            displs(0) = 0
+            do i = 1, nprocs-1
+                displs(i) = displs(i-1) + all_ndets(i-1)
+            end do
+            displs(nprocs) = ndets_tot
 
-        determ_size = target_size
-        ! If there are fewer determinants on all processors than the target
-        ! number then we will have to use a smaller deterministic space than
-        ! requested.
-        if (target_size > ndets_tot) determ_size = ndets_tot
+            determ_size = target_size
+            ! If there are fewer determinants on all processors than the target
+            ! number then we will have to use a smaller deterministic space than
+            ! requested.
+            if (target_size > ndets_tot) determ_size = ndets_tot
 
-        allocate(determ_dets(size(dets_this_proc, dim=1), ndets), stat=ierr)
-        call check_allocate('determ_dets', size(dets_this_proc, dim=1)*ndets, ierr)
-        allocate(determ_pops(ndets), stat=ierr)
-        call check_allocate('determ_pops', ndets, ierr)
-        allocate(all_determ_pops(ndets_tot), stat=ierr)
-        call check_allocate('all_determ_pops', ndets_tot, ierr)
-        allocate(indices(determ_size), stat=ierr)
-        call check_allocate('indices', determ_size, ierr)
+            allocate(determ_dets(size(dets_this_proc, dim=1), ndets), stat=ierr)
+            call check_allocate('determ_dets', size(dets_this_proc, dim=1)*ndets, ierr)
+            allocate(determ_pops(ndets), stat=ierr)
+            call check_allocate('determ_pops', ndets, ierr)
+            allocate(all_determ_pops(ndets_tot), stat=ierr)
+            call check_allocate('all_determ_pops', ndets_tot, ierr)
+            allocate(indices(determ_size), stat=ierr)
+            call check_allocate('indices', determ_size, ierr)
 
-        ! In determ_dets and determ_pops, return the determinants and
-        ! populations of the most populated determinants on this processor.
-        call find_most_populated_dets(psip_list%states, psip_list%pops, &
-                                      psip_list%nstates, ndets, determ_dets, determ_pops)
+            ! In determ_dets and determ_pops, return the determinants and
+            ! populations of the most populated determinants on this processor.
+            call find_most_populated_dets(psip_list%states, psip_list%pops, &
+                                          psip_list%nstates, ndets, determ_dets, determ_pops)
 
-        ! Create a joined list, all_determ_pops, of the most populated
-        ! determinants from each processor.
+            ! Create a joined list, all_determ_pops, of the most populated
+            ! determinants from each processor.
 #ifdef PARALLEL
-        call mpi_allgatherv(determ_pops, ndets, mpi_pop_integer, all_determ_pops, all_ndets, &
-                            displs(0:nprocs-1), mpi_pop_integer, MPI_COMM_WORLD, ierr)
+            call mpi_allgatherv(determ_pops, ndets, mpi_pop_integer, all_determ_pops, all_ndets, &
+                                displs(0:nprocs-1), mpi_pop_integer, MPI_COMM_WORLD, ierr)
 #else
-        ! In serial these arrays are of equal size.
-        all_determ_pops = determ_pops
+            ! In serial these arrays are of equal size.
+            all_determ_pops = determ_pops
 #endif
+            ! In the array indices return a list of indices of the determ_size
+            ! populations in all_determ_pops which are largest.
+            call find_indices_of_most_populated_dets(ndets_tot, determ_size, all_determ_pops, indices)
 
-        ! In the array indices return a list of indices of the determ_size
-        ! populations in all_determ_pops which are largest.
-        call find_indices_of_most_populated_dets(ndets_tot, determ_size, all_determ_pops, indices)
+            ! Zero before we fill in below.
+            determ_size_this_proc = 0
 
-        ! Zero before we fill in below.
-        determ_size_this_proc = 0
+            do i = 1, determ_size
+                ! In determ_pops populations corresponding to determinants on
+                ! processor 0 are all stored first, then processor 1, etc...
+                ! We can use this to find which processor a particular determinant
+                ! belongs to.
+                on_this_proc = indices(i) > displs(iproc) .and. indices(i) < displs(iproc+1) + 1
+                if (on_this_proc) then
+                    ! Find the index of this determinant in determ_dets, which only
+                    ! contains determinants on this processor.
+                    ind_local = indices(i) - displs(iproc)
+                    call add_det_to_determ_space(determ_size_this_proc, dets_this_proc, spawn, &
+                                                 determ_dets(:,ind_local), .false.)
+                end if
+            end do
 
-        do i = 1, determ_size
-            ! In determ_pops populations corresponding to determinants on
-            ! processor 0 are all stored first, then processor 1, etc...
-            ! We can use this to find which processor a particular determinant
-            ! belongs to.
-            on_this_proc = indices(i) > displs(iproc) .and. indices(i) < displs(iproc+1) + 1
-            if (on_this_proc) then
-                ! Find the index of this determinant in determ_dets, which only
-                ! contains determinants on this processor.
-                ind_local = indices(i) - displs(iproc)
-                call add_det_to_determ_space(determ_size_this_proc, dets_this_proc, spawn, &
-                                             determ_dets(:,ind_local), .false.)
+            deallocate(determ_pops, stat=ierr)
+            call check_deallocate('determ_pops', ierr)
+            deallocate(all_determ_pops, stat=ierr)
+            call check_deallocate('all_determ_pops', ierr)
+            deallocate(indices, stat=ierr)
+            call check_deallocate('indices', ierr)
+        else
+            if (highest_dets%using_target) then
+                ndets = highest_dets%target_ndets
+            else if (highest_dets%using_weightage) then
+                ndets = highest_dets%ndets
             end if
-        end do
+            determ_size = ndets
+
+            allocate(determ_dets(size(dets_this_proc, dim=1), ndets), stat=ierr)
+            call check_allocate('determ_dets', size(dets_this_proc, dim=1)*ndets, ierr)
+
+            if (highest_dets%using_target) then
+                determ_dets(:,1:ndets) = highest_dets%det_list_main(3:,highest_dets%ndets-ndets+1:highest_dets%ndets)
+            else if (highest_dets%using_weightage) then
+                determ_dets(:,1:ndets) = highest_dets%det_list_main(1:sys%basis%bit_string_len,1:ndets)
+            end if
+
+            ! Zero before we fill in below.
+            determ_size_this_proc = 0
+
+            do i = 1, determ_size
+                call add_det_to_determ_space(determ_size_this_proc, dets_this_proc, spawn, determ_dets(:,i), .false.)
+            end do
+        end if
 
         deallocate(determ_dets, stat=ierr)
         call check_deallocate('determ_dets', ierr)
-        deallocate(determ_pops, stat=ierr)
-        call check_deallocate('determ_pops', ierr)
-        deallocate(all_determ_pops, stat=ierr)
-        call check_deallocate('all_determ_pops', ierr)
-        deallocate(indices, stat=ierr)
-        call check_deallocate('indices', ierr)
 
     end subroutine create_high_pop_space
 
-    pure subroutine find_most_populated_dets(dets_in, pops_in, ndets_in, ndets_out, dets_out, pops_out)
+    pure subroutine find_most_populated_dets(dets_in, pops_in, ndets_in, ndets_out, dets_out, pops_out, abs_pop)
 
         ! On output dets_out and pops_out hold the determinants and populations
         ! corresponding to the ndets_out most populated determinants, as
@@ -1331,56 +1490,102 @@ contains
         !    ndets_out: The number of determinants to keep when finding the
         !        most populated determinants. Anything beyond ndets_out in
         !        dets_out and pops_out may be garbage.
+        !    abs_pop (optional): if true (default), return the sum of absolute population, 
+        !        otherwise return the sum of signed populations. Most useful when there's just one type of population.
         ! Out:
         !    dets_out: List of most populated determinants.
-        !    pops_out: Populations corresponding to the determinants in dets_out.
+        !    pops_out: Absolute populations corresponding to the determinants in dets_out.
 
         ! dets_in(:,i) holds determinant i.
         integer(i0), intent(in) :: dets_in(:,:) 
         ! pops_in(j,i) holds the population of particle type j on determinant i.
-        integer(int_p), intent(in) :: pops_in(:,:)
+        integer(i0), intent(in) :: pops_in(:,:)
         integer, intent(in) :: ndets_in, ndets_out
         ! dets_out(:,i) holds determinant i.
         integer(i0), intent(out) :: dets_out(:,:)
-        ! pops_in(j,i) holds the population of particle type j on determinant i.
-        integer(int_p), intent(out) :: pops_out(:)
+        ! pops_out(i) holds the sum of absolute populations of all particle types on determinant i.
+        integer(i0), intent(out) :: pops_out(:)
+        logical, optional, intent(in) :: abs_pop
 
         integer :: i, j, min_ind
-        integer(int_p) :: min_pop
+        integer(i0) :: min_pop
+        logical :: abs_loc
 
-        ! To start with add the first ndets_out determinants to the list.
-        dets_out(:,1:ndets_out) = dets_in(:,1:ndets_out)
-        pops_out(1) = sum(abs(pops_in(:,1)))
-        min_pop = pops_out(1)
-        min_ind = 1
-        do i = 2, ndets_out
-            pops_out(i) = sum(abs(pops_in(:,i)))
-            if (pops_out(i) < min_pop) then
-                min_pop = pops_out(i)
-                min_ind = i
-            end if
-        end do
+        if (present(abs_pop)) then
+            abs_loc = abs_pop
+        else
+            abs_loc = .true.
+        end if
 
-        ! Now loop over all remaining determinants and see if any have a larger
-        ! amplitude than those in the list already.
-        do i = ndets_out+1, ndets_in
-            if (sum(abs(pops_in(:,i))) > min_pop) then
-                ! Add this determinant to the list in the position of the
-                ! previous smallest population.
-                dets_out(:,min_ind) = dets_in(:,i)
-                pops_out(min_ind) = sum(abs(pops_in(:,i)))
-                ! Now find the position and value of the new smallest
-                ! population.
-                min_pop = pops_out(1)
-                min_ind = 1
-                do j = 2, ndets_out
-                    if (pops_out(j) < min_pop) then
-                        min_pop = pops_out(j)
-                        min_ind = j
-                    end if
-                end do
-            end if
-        end do
+        if (abs_loc) then
+            ! To start with add the first ndets_out determinants to the list.
+            dets_out(:,1:ndets_out) = dets_in(:,1:ndets_out)
+            pops_out(1) = sum(abs(pops_in(:,1)))
+            min_pop = pops_out(1)
+            min_ind = 1
+            do i = 2, ndets_out
+                pops_out(i) = sum(abs(pops_in(:,i)))
+                if (pops_out(i) < min_pop) then
+                    min_pop = pops_out(i)
+                    min_ind = i
+                end if
+            end do
+
+            ! Now loop over all remaining determinants and see if any have a larger
+            ! amplitude than those in the list already.
+            do i = ndets_out+1, ndets_in
+                if (sum(abs(pops_in(:,i))) > min_pop) then
+                    ! Add this determinant to the list in the position of the
+                    ! previous smallest population.
+                    dets_out(:,min_ind) = dets_in(:,i)
+                    pops_out(min_ind) = sum(abs(pops_in(:,i)))
+                    ! Now find the position and value of the new smallest
+                    ! population.
+                    min_pop = pops_out(1)
+                    min_ind = 1
+                    do j = 2, ndets_out
+                        if (pops_out(j) < min_pop) then
+                            min_pop = pops_out(j)
+                            min_ind = j
+                        end if
+                    end do
+                end if
+            end do
+        else
+            ! To start with add the first ndets_out determinants to the list.
+            dets_out(:,1:ndets_out) = dets_in(:,1:ndets_out)
+            pops_out(1) = sum(pops_in(:,1))
+            min_pop = sum(abs(pops_in(:,1)))
+            min_ind = 1
+            do i = 2, ndets_out
+                pops_out(i) = sum(pops_in(:,i))
+                if (sum(abs(pops_in(:,i))) < min_pop) then
+                    min_pop = sum(abs(pops_in(:,i)))
+                    min_ind = i
+                end if
+            end do
+
+            ! Now loop over all remaining determinants and see if any have a larger
+            ! amplitude than those in the list already.
+            do i = ndets_out+1, ndets_in
+                if (sum(abs(pops_in(:,i))) > min_pop) then
+                    ! Add this determinant to the list in the position of the
+                    ! previous smallest population.
+                    dets_out(:,min_ind) = dets_in(:,i)
+                    pops_out(min_ind) = sum(pops_in(:,i))
+                    ! Now find the position and value of the new smallest
+                    ! population.
+                    min_pop = abs(pops_out(1))
+                    min_ind = 1
+                    do j = 2, ndets_out
+                        if (abs(pops_out(j)) < min_pop) then
+                            min_pop = abs(pops_out(j))
+                            min_ind = j
+                        end if
+                    end do
+                end if
+            end do
+        end if
 
     end subroutine find_most_populated_dets
 
@@ -1389,7 +1594,7 @@ contains
         ! On output indices will store the indices of the nind_out largest
         ! populations in pops.
 
-        ! NOTE: If nind_out > npops_in then all indices beyond npops_in  will be
+        ! NOTE: If nind_out > npops_in then all indices beyond npops_in will be
         ! returned as zero.
 
         ! In:
@@ -1760,7 +1965,7 @@ contains
 
     end subroutine recreate_determ_space
 
-    subroutine create_ci_determ_space(dets_this_proc, determ, spawn, sys, ss_ref)
+    subroutine create_ci_determ_space(dets_this_proc, determ, spawn, sys, ss_ref, ss_in)
 
         ! Create a deterministic space from a small CI space.
 
@@ -1779,21 +1984,24 @@ contains
         !    sys: system being studied.
         !    ss_ref: reference_t object defining the CI space.  Currently only
         !        occ_list0 and ex_level are used.
+        !    ss_in: semi_stoch_in_t object defining CI range, if used.
 
         use checking, only: check_allocate, check_deallocate
 
         use determinants, only: spin_orb_list
-        use determinant_enumeration, only: enumerate_determinants
+        use determinant_enumeration, only: enumerate_determinants, enumerate_determinants_specific_levels
         use parallel, only: iproc
         use reference_determinant, only: reference_t
         use spawn_data, only: spawn_t
         use system, only: sys_t
+        use qmc_data, only: semi_stoch_in_t
 
         integer(i0), intent(inout), allocatable :: dets_this_proc(:,:)
         type(semi_stoch_t), intent(inout) :: determ
         type(spawn_t), intent(in) :: spawn
         type(sys_t), intent(in) :: sys
         type(reference_t), intent(in) :: ss_ref
+        type(semi_stoch_in_t), intent(in) :: ss_in
 
         integer(i0), allocatable :: determ_dets(:,:)
         integer, allocatable :: sym_space_size(:)
@@ -1802,13 +2010,18 @@ contains
 
         spin_flip = spin_orb_list(sys%basis%basis_fns, ss_ref%occ_list0) /= sys%Ms
 
-        ! Count the number of determinants in the space.
-        call enumerate_determinants(sys, .true., spin_flip, ss_ref%ex_level, sym_space_size, determ%tot_size, determ_dets, &
-                                    sys%symmetry, ss_ref%occ_list0, .false.)
+        if (ss_in%use_ci_range) then
+            call enumerate_determinants_specific_levels(sys, spin_flip, ss_in%ci_range, determ%tot_size, sys%symmetry, &
+                                                        ss_ref%occ_list0, determ_dets)
+        else
+            ! Count the number of determinants in the space.
+            call enumerate_determinants(sys, .true., spin_flip, ss_ref%ex_level, sym_space_size, determ%tot_size, determ_dets, &
+                                        sys%symmetry, ss_ref%occ_list0, .false.)
 
-        ! Actually store the determinants, in the determ_dets array.
-        call enumerate_determinants(sys, .false., spin_flip, ss_ref%ex_level, sym_space_size, determ%tot_size, determ_dets, &
-                                    sys%symmetry, ss_ref%occ_list0, .false.)
+            ! Actually store the determinants, in the determ_dets array.
+            call enumerate_determinants(sys, .false., spin_flip, ss_ref%ex_level, sym_space_size, determ%tot_size, determ_dets, &
+                                        sys%symmetry, ss_ref%occ_list0, .false.)
+        end if
 
         determ%sizes(iproc) = 0
 
@@ -1821,5 +2034,73 @@ contains
         call check_deallocate('determ_dets', ierr)
 
     end subroutine create_ci_determ_space
+
+    subroutine create_cas_determ_space(dets_this_proc, determ, spawn, sys, occ_list0, ss_in)
+
+        ! Create a deterministic space from a CAS criterion.
+
+        ! In/Out:
+        !    dets_this_proc: The deterministic states belonging to this
+        !        processor in the created deterministic space.
+        !    determ: semi_stoch_t object.  On output, the tot_size value will
+        !        be equal to the total size of the deterministic space on all
+        !        processors, and the component of the sizes array corresponding
+        !        to this processor will equal the number of deterministic
+        !        states on this processor (but values for other processors
+        !        will not be set). All other components of this object are
+        !        unchanged from their input status, on output.
+        ! In:
+        !    spawn: spawn_t object to which deterministic spawning will occur.
+        !    sys: system being studied.
+        !    occ_list0: the occupation vector of the reference..
+        !    ss_in: semi_stoch_in_t object defining the CAS.
+
+        use checking, only: check_deallocate
+        use errors, only: stop_all
+
+        use determinants, only: spin_orb_list
+        use determinant_enumeration, only: enumerate_determinants
+        use parallel, only: iproc
+        use spawn_data, only: spawn_t
+        use system, only: sys_t
+        use qmc_data, only: semi_stoch_in_t
+
+        integer(i0), intent(inout), allocatable :: dets_this_proc(:,:)
+        type(semi_stoch_t), intent(inout) :: determ
+        type(spawn_t), intent(in) :: spawn
+        type(sys_t), intent(in) :: sys
+        integer, intent(in) :: occ_list0(:)
+        type(semi_stoch_in_t), intent(in) :: ss_in
+
+        integer(i0), allocatable :: determ_dets(:,:)
+        integer, allocatable :: sym_space_size(:)
+        integer :: i, ierr
+        logical :: spin_flip
+
+        spin_flip = spin_orb_list(sys%basis%basis_fns, occ_list0) /= sys%Ms
+
+        ! [todo]: if we can check this earlier in read in, do that instead.
+        if (spin_flip) call stop_all('create_cas_determ_space', &
+                                     'CAS determ space does not currently support spin flip calculations!')
+
+        ! Count the number of determinants in the space.
+        call enumerate_determinants(sys, .true., spin_flip, 0, sym_space_size, determ%tot_size, determ_dets, &
+                                    sys%symmetry, occ_list0, .false., ss_in%cas)
+
+        ! Actually store the determinants, in the determ_dets array.
+        call enumerate_determinants(sys, .false., spin_flip, 0, sym_space_size, determ%tot_size, determ_dets, &
+                                    sys%symmetry, occ_list0, .false., ss_in%cas)
+
+        determ%sizes(iproc) = 0
+
+        do i = 1, determ%tot_size
+            call add_det_to_determ_space(determ%sizes(iproc), dets_this_proc, spawn, determ_dets(:,i), .true., &
+                                         sys%basis%info_string_len)
+        end do
+
+        deallocate(determ_dets, stat=ierr)
+        call check_deallocate('determ_dets', ierr)
+
+    end subroutine create_cas_determ_space
 
 end module semi_stoch

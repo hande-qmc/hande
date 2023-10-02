@@ -357,7 +357,11 @@ contains
             imsa = (3 + ims)/2
             isyma = sys%read_in%cross_product_sym_ptr(sys%read_in, sys%basis%basis_fns(i)%sym, sys%read_in%pg_sym%gamma_sym)
         
+#ifdef OPENMP_DETERM
+            !$omp parallel do default(none) schedule(static, 200) &
+#else
             !$omp parallel do default(none) &
+#endif
             !$omp shared(sys,i,imsa,isyma,pp,ref,single_excitation_weight_ptr) &
             !$omp private(a) reduction(+:ia_s_weights_tot)
             do a = 1, sys%read_in%pg_sym%nbasis_sym_spin(imsa,isyma)

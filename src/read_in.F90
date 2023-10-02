@@ -330,10 +330,10 @@ contains
             call insertion_rank(sp_eigv(1::2), sp_eigv_rank(1::2), tolerance=depsilon)
             call insertion_rank(sp_eigv(2::2), sp_eigv_rank(2::2), tolerance=depsilon)
             ! Interweave so the basis functions remain with alternating spins.
-            forall (i = 1:sys%basis%nbasis-1:2)
+            do concurrent (i = 1:sys%basis%nbasis-1:2)
                 sp_eigv_rank(i) = 2*sp_eigv_rank(i) - 1
                 sp_eigv_rank(i+1) = 2*sp_eigv_rank(i+1)
-            end forall
+            end do
         else
             ! RHF case is much easier, as spin channels are degenerate and have
             ! the same spatial components.
@@ -427,7 +427,9 @@ contains
         ! turn symmetry off.
         if (.not. momentum_sym .and. minval(sys%basis%basis_fns(:)%sym) < 0) then
             if (parent) write (iunit,'(1X,a62,/)') 'Unconverged symmetry found.  Turning point group symmetry off.'
-            forall (i=1:sys%basis%nbasis) sys%basis%basis_fns(i)%sym = 0
+            do concurrent (i=1:sys%basis%nbasis)
+                sys%basis%basis_fns(i)%sym = 0
+            end do
         end if
 
         ! Set up symmetry information.

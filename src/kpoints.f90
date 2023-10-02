@@ -27,7 +27,9 @@ contains
         real(p) :: kc(sys%lattice%ndim)
 
         ! Note sys%lattice%rlattice is stored in units of 2pi.
-        forall (i=1:sys%lattice%ndim) kc(i) = sum((k+sys%k_lattice%ktwist)*sys%lattice%rlattice(i,:))
+        do concurrent (i=1:sys%lattice%ndim)
+            kc(i) = sum((k+sys%k_lattice%ktwist)*sys%lattice%rlattice(i,:))
+        end do
 
         select case(sys%system)
         case(hub_k)
@@ -82,7 +84,9 @@ contains
             else
                 ! Test to see if delta_k is 0 up to a reciprocal lattice vector
                 ! of the primitive cell.
-                forall (i=1:sys%lattice%ndim) kc(i) = sum(k*sys%lattice%rlattice(i,:))
+                do concurrent (i=1:sys%lattice%ndim)
+                    kc(i) = sum(k*sys%lattice%rlattice(i,:))
+                end do
                 t_rlv = all(abs(kc - nint(kc)) < depsilon)
             end if
         end select

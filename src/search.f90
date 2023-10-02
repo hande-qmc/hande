@@ -6,7 +6,7 @@ use excitations, only: get_excitation_level
 implicit none
 
 private
-public :: binary_search, tree_t, node_t, tree_add, tree_search
+public :: binary_search, linear_search, tree_t, node_t, tree_add, tree_search
 
 type node_t
     ! For use in BK-tree search of secondary references
@@ -42,7 +42,42 @@ interface binary_search
     module procedure binary_search_real_p
 end interface binary_search
 
+interface linear_search
+    ! Add more types when need arises.
+    module procedure linear_search_i0_list
+end interface linear_search
+
 contains
+
+    pure subroutine linear_search_i0_list(list, item, istart, iend, hit, pos)
+
+        ! Like binary search, but searches through an unsorted list, which is useful when the list is sorted by 
+        ! other conditions (such as the population on the determinant). The rest of the interface is kept the same.
+
+        use const, only: i0
+        use bit_utils, only: bit_str_cmp
+
+        integer(i0), intent(in) :: list(:,:), item(:)
+        integer, intent(in) :: istart, iend
+        logical, intent(out) :: hit
+        integer, intent(out) :: pos
+
+        integer :: i, compare
+
+        hit = .false.
+
+        do i = istart, iend
+            compare = bit_str_cmp(list(:,i), item)
+            if (compare == 0) then
+                ! Since the list isn't sorted, we can't narrow down the range with the lt/gt information.
+                hit = .true.
+                pos = i
+                exit
+            end if
+        end do
+
+    end subroutine linear_search_i0_list
+
 
     pure subroutine binary_search_i0_list(list, item, istart, iend, hit, pos, reverse)
 
@@ -101,7 +136,7 @@ contains
 
                 compare = bit_str_cmp_internal(list(:,pos), item, reverse)
                 select case(compare)
-                case (0)
+                case(0)
                     ! hit!
                     hit = .true.
                     exit
@@ -132,7 +167,7 @@ contains
             if (hi == lo) then
                 compare = bit_str_cmp_internal(list(:,hi), item, reverse)
                 select case(compare)
-                case (0)
+                case(0)
                     ! hit!
                     hit = .true.
                     pos = hi
@@ -142,7 +177,7 @@ contains
                     pos = hi + 1
                 case(-1)
                     ! list(:,pos) is "greater" than item.
-                    ! item should ber placed here.
+                    ! item should be placed here.
                     pos = hi
                 end select
             end if

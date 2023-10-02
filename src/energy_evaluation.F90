@@ -13,6 +13,8 @@ implicit none
 ! comments below).
 enum, bind(c)
     enumerator :: proj_energy_ind = 1
+    enumerator :: proj_energy_determ_ind
+    enumerator :: proj_energy_stoch_ind
     enumerator :: D0_pop_ind
     enumerator :: D0_noncomp_pop_ind
     ! [todo] - having a separate index for each space is not very general.
@@ -308,8 +310,9 @@ contains
         ! Each particle type's population (there are nspaces of these) is listed in each proc's buffer,
         !  starting at proc_data_info(1, nparticles_indx)
         associate(real_start_ind => proc_data_info(1, nparticles_indx))
-            forall (i=real_start_ind:real_start_ind+qs%psip_list%nspaces-1,j=0:nprocs-1) &
-                    rep_info_sum(i+j) = sum(rep_loop_reduce(i+j::data_size))
+            do concurrent (i=real_start_ind:real_start_ind+qs%psip_list%nspaces-1,j=0:nprocs-1)
+                rep_info_sum(i+j) = sum(rep_loop_reduce(i+j::data_size))
+            end do
         end associate
 
         call communicated_energy_estimators(qmc_in, qs, rep_info_sum, ntot_particles_old, load_bal_in, doing_lb, &
@@ -377,6 +380,10 @@ contains
             if (qs%psip_list%nspaces > 1) then
                 rep_loop_loc(proj_energy_replica_ind) = qs%estimators(2)%proj_energy
                 rep_loop_loc(D0_pop_replica_ind) = qs%estimators(2)%D0_population
+            end if
+            if (qs%estimators(1)%semi_stoch_sep_stats) then
+                rep_loop_loc(proj_energy_determ_ind) = qs%estimators(1)%proj_energy_determ
+                rep_loop_loc(proj_energy_stoch_ind) = qs%estimators(1)%proj_energy_stoch
             end if
         end if
         rep_loop_loc(rspawn_ind) = qs%spawn_store%rspawn
@@ -507,6 +514,10 @@ contains
 
         qs%estimators(1)%proj_energy = real(rep_loop_sum(proj_energy_ind), p)
         qs%estimators(1)%D0_population = real(rep_loop_sum(D0_pop_ind), p)
+        if (qs%estimators(1)%semi_stoch_sep_stats) then
+            qs%estimators(1)%proj_energy_determ = real(rep_loop_sum(proj_energy_determ_ind), p)
+            qs%estimators(1)%proj_energy_stoch = real(rep_loop_sum(proj_energy_stoch_ind), p)
+        end if
         qs%estimators(1)%D0_noncomposite_population = real(rep_loop_sum(D0_noncomp_pop_ind), p)
         if (size(qs%estimators) > 1) then
             qs%estimators(2)%proj_energy = real(rep_loop_sum(proj_energy_replica_ind), p)
@@ -569,6 +580,8 @@ contains
         qs%estimators%proj_energy = qs%estimators%proj_energy/(qmc_in%ncycles*qs%cheby_prop%order)
         qs%estimators%D0_population = qs%estimators%D0_population/(qmc_in%ncycles*qs%cheby_prop%order)
         qs%estimators%D0_noncomposite_population = qs%estimators%D0_noncomposite_population/(qmc_in%ncycles*qs%cheby_prop%order)
+        qs%estimators%proj_energy_determ = qs%estimators%proj_energy_determ/(qmc_in%ncycles*qs%cheby_prop%order)
+        qs%estimators%proj_energy_stoch = qs%estimators%proj_energy_stoch/(qmc_in%ncycles*qs%cheby_prop%order)
         ! Similarly for the HFS estimator
         qs%estimators%D0_hf_population = qs%estimators%D0_hf_population/qmc_in%ncycles
         qs%estimators%proj_hf_O_hpsip = qs%estimators%proj_hf_O_hpsip/qmc_in%ncycles
@@ -690,9 +703,6 @@ contains
         real(p), intent(inout) :: loc_shift
         real(dp), intent(in) :: nparticles_old, nparticles
         integer, intent(in) :: nupdate_steps
-
-        real(p) :: tau_update
-        integer :: icycle, icheb
 
         ! dmqmc_factor is included to account for a factor of 1/2 introduced into tau in
         ! DMQMC calculations. In all other calculation types, it is set to 1, and so can be ignored.
@@ -966,6 +976,13 @@ contains
                 hmatel = slater_condon1_mol_excit(sys, cdet%occ_list, excitation%from_orb(1), excitation%to_orb(1), &
                                                   excitation%perm)
                 estimators%proj_energy = estimators%proj_energy + hmatel%r*pop(1)
+                if (estimators%semi_stoch_sep_stats) then
+                    if (cdet%is_determ) then
+                        estimators%proj_energy_determ = estimators%proj_energy_determ + hmatel%r*pop(1)
+                    else
+                        estimators%proj_energy_stoch = estimators%proj_energy_stoch + hmatel%r*pop(1)
+                    end if
+                end if
             end if
         case(2)
             ! Have a determinant connected to the reference determinant by
@@ -980,6 +997,13 @@ contains
                                                       excitation%to_orb(1), excitation%to_orb(2),     &
                                                       excitation%perm)
                     estimators%proj_energy = estimators%proj_energy + hmatel%r*pop(1)
+                    if (estimators%semi_stoch_sep_stats) then
+                        if (cdet%is_determ) then
+                            estimators%proj_energy_determ = estimators%proj_energy_determ + hmatel%r*pop(1)
+                        else
+                            estimators%proj_energy_stoch = estimators%proj_energy_stoch + hmatel%r*pop(1)
+                        end if
+                    end if
                 end if
             end if
         end select

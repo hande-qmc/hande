@@ -20,7 +20,7 @@ end interface
 
 contains
 
-    subroutine write_qmc_report_header(ntypes, cmplx_est, rdm_energy, nattempts, io_unit)
+    subroutine write_qmc_report_header(ntypes, cmplx_est, rdm_energy, nattempts, io_unit, semi_stoch_sep_stats)
 
         ! In:
         !    ntypes: number of particle types being sampled.
@@ -30,18 +30,26 @@ contains
         !    nattempts: Print out number of attempts made each iteration
         !       (for CCMC).
         !    io_unit: io unit to write to.
+        !    semi_stoch_sep_stats: separate projected energy into deterministic and stochastic contributions.
 
         use calc, only: doing_calc, hfs_fciqmc_calc, uccmc_calc, trot_uccmc_calc
 
         integer, intent(in) :: ntypes
-        logical, optional, intent(in) :: cmplx_est, rdm_energy, nattempts
+        logical, optional, intent(in) :: cmplx_est, rdm_energy, nattempts, semi_stoch_sep_stats
         integer, intent(in), optional :: io_unit
-        logical :: cmplx_est_set
+
+        logical :: cmplx_est_set, semi_stoch_sep_stats_loc
         integer :: i, nreplicas, iunit
         character(20) :: column_title
 
         iunit = 6
         if (present(io_unit)) iunit = io_unit
+
+        if (present(semi_stoch_sep_stats)) then
+            semi_stoch_sep_stats_loc = semi_stoch_sep_stats
+        else
+            semi_stoch_sep_stats_loc = .false.
+        end if
 
         cmplx_est_set = .false.
         if (present(cmplx_est)) cmplx_est_set = cmplx_est
@@ -51,14 +59,17 @@ contains
         write (iunit,'(1X,"Shift: the energy offset calculated at the end of the report loop.")')
         write (iunit,'(1X,"H_0j: <D_0|H|D_j>, Hamiltonian matrix element.")')
         write (iunit,'(1X,"N_j: population of Hamiltonian particles on determinant D_j.")')
-        if(doing_calc(uccmc_calc) .or. doing_calc(trot_uccmc_calc)) & 
+        if (semi_stoch_sep_stats_loc) then
+            write (iunit,'(1X,"D{\sum H_0j N_j}: deterministic contribution to E_proj.")')
+            write (iunit,'(1X,"S{\sum H_0j N_j}: stochastic contribution to E_proj.")')
+        end if
+        if (doing_calc(uccmc_calc) .or. doing_calc(trot_uccmc_calc)) & 
             write (iunit,'(1X,"N_j UCCMC: true UCC population of Hamiltonian particles on determinant D_j.")')
         if (doing_calc(hfs_fciqmc_calc)) then
             write (iunit,'(1X,"O_0j: <D_0|O|D_j>, operator matrix element.")')
             write (iunit,'(1X,a67)') "N'_j: population of Hellmann--Feynman particles on determinant D_j."
             write (iunit,'(1X,"# HF psips: current total population of Hellmann--Feynman particles.")')
         end if
-
         write (iunit,'(1X,"# H psips: current total population of Hamiltonian particles.")')
         write (iunit,'(1X,"# states: number of many-particle states occupied.")')
         write (iunit,'(1X,"spawn_events: number of successful spawning events across all processors.")')
@@ -102,6 +113,22 @@ contains
                 call write_column_title(iunit, 'Im{N_0}')
                 call write_column_title(iunit, '# H psips')
             end do
+        else if (semi_stoch_sep_stats_loc) then
+            do i = 1, ntypes
+                call write_column_title(iunit, 'Shift')
+                call write_column_title(iunit, '\sum H_0j N_j')
+                call write_column_title(iunit, 'D{\sum H_0j N_j}')
+                call write_column_title(iunit, 'S{\sum H_0j N_j}')
+                call write_column_title(iunit, 'N_0')
+                if (doing_calc(hfs_fciqmc_calc)) then
+                    call write_column_title(iunit, 'HF shift')
+                    call write_column_title(iunit, '\sum O_0j N_j')
+                    call write_column_title(iunit, "\sum H_0j N'_j")
+                    call write_column_title(iunit, "N'_0")
+                end if
+                call write_column_title(iunit, '# H psips')
+                if (doing_calc(hfs_fciqmc_calc)) call write_column_title(iunit, '# HF psips')
+            end do
         else
             do i = 1, ntypes
                 call write_column_title(iunit, 'Shift')
@@ -123,8 +150,8 @@ contains
             if (rdm_energy) call write_column_title(iunit, 'RDM energy num.')
             if (rdm_energy) call write_column_title(iunit, 'RDM trace')
         end if
-        call write_column_title(iunit, '# states', int_val=.true., justify=1)
-        call write_column_title(iunit, '# spawn_events', int_val=.true., justify=1)
+        call write_column_title(iunit, '# states', int_64_val=.true., justify=1)
+        call write_column_title(iunit, '# spawn_events', int_64_val=.true., justify=1)
         if (present(nattempts)) then
             if (nattempts) call write_column_title(iunit, '# attempts', int_64_val=.true., justify=1)
         end if
@@ -342,8 +369,8 @@ contains
         end if
 
         call write_column_title(iunit, '# particles')
-        call write_column_title(iunit, '# states', int_val=.true., justify=1)
-        call write_column_title(iunit, '# spawn_events', int_val=.true., justify=1)
+        call write_column_title(iunit, '# states', int_64_val=.true., justify=1)
+        call write_column_title(iunit, '# spawn_events', int_64_val=.true., justify=1)
         call write_column_title(iunit, 'R_spawn', low_prec_val=.true.)
         call write_column_title(iunit, '  time', low_prec_val=.true., justify=2)
 
@@ -410,7 +437,7 @@ contains
     end subroutine write_column_title
 
     subroutine write_qmc_report(qmc_in, qs, ireport, ntot_particles, elapsed_time, comment, non_blocking_comm, io_unit, cmplx_est, &
-                                rdm_energy, nattempts)
+                                rdm_energy, nattempts, semi_stoch_sep_stats)
 
         ! Write the report line at the end of a report loop.
 
@@ -428,6 +455,8 @@ contains
         !       so need to print extra parameters.
         !    rdm_energy: Print energy calculated from RDM.
         !    nattempts: Print number of selection attempts made. Only used in CCMC.
+        !    semi_stoch_sep_stats: True if doing semi-stochastic and report 
+        !       deterministic and stochastic contributions to E_proj separately.
 
         use calc, only: doing_calc, uccmc_calc, trot_uccmc_calc
         use qmc_data, only: qmc_in_t, qmc_state_t
@@ -438,10 +467,17 @@ contains
         real(dp), intent(in) :: ntot_particles(:)
         real, intent(in) :: elapsed_time
         logical, intent(in) :: comment, non_blocking_comm
-        logical, intent(in), optional :: cmplx_est, rdm_energy, nattempts
+        logical, intent(in), optional :: cmplx_est, rdm_energy, nattempts, semi_stoch_sep_stats
         integer, intent(in), optional :: io_unit
-        logical :: cmplx_est_set, nattempts_set
+
+        logical :: cmplx_est_set, nattempts_set, semi_stoch_sep_stats_loc
         integer :: mc_cycles, ntypes, i, iunit
+
+        if (present(semi_stoch_sep_stats)) then
+            semi_stoch_sep_stats_loc = semi_stoch_sep_stats
+        else
+            semi_stoch_sep_stats_loc = .false.
+        end if
 
         ntypes = size(ntot_particles)
         iunit = 6
@@ -476,6 +512,15 @@ contains
                 call write_qmc_var(iunit, real(qs%estimators(i)%D0_population_comp, p))
                 call write_qmc_var(iunit, aimag(qs%estimators(i)%D0_population_comp))
                 call write_qmc_var(iunit, ntot_particles(i)+ntot_particles(i+1))
+            end do
+        else if (semi_stoch_sep_stats_loc) then
+            do i = 1, ntypes
+                call write_qmc_var(iunit, qs%shift(i))
+                call write_qmc_var(iunit, qs%estimators(i)%proj_energy)
+                call write_qmc_var(iunit, qs%estimators(i)%proj_energy_determ)
+                call write_qmc_var(iunit, qs%estimators(i)%proj_energy_stoch)
+                call write_qmc_var(iunit, qs%estimators(i)%D0_population)
+                call write_qmc_var(iunit, ntot_particles(i))
             end do
         else
             do i = 1, ntypes

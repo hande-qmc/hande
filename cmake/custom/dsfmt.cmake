@@ -31,32 +31,52 @@ function(system_has_sse2 _result)
   set(_cpu_family)
   set(_cpu_model)
   set(_cpu_flags)
+  set(_cpu_brand)
+  set(_apple_silicon)
   if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
      file(READ "/proc/cpuinfo" _cpuinfo)
      string(REGEX REPLACE ".*vendor_id[ \t]*:[ \t]+([a-zA-Z0-9_-]+).*" "\\1" _vendor_id "${_cpuinfo}")
      string(REGEX REPLACE ".*cpu family[ \t]*:[ \t]+([a-zA-Z0-9_-]+).*" "\\1" _cpu_family "${_cpuinfo}")
      string(REGEX REPLACE ".*model[ \t]*:[ \t]+([a-zA-Z0-9_-]+).*" "\\1" _cpu_model "${_cpuinfo}")
      string(REGEX REPLACE ".*flags[ \t]*:[ \t]+([^\n]+).*" "\\1" _cpu_flags "${_cpuinfo}")
+     string(FIND _cpu_flags "sse2" _sse2_found)
   elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
      execute_process(
        COMMAND
-         "/usr/sbin/sysctl" "-n" "machdep.cpu.vendor" "machdep.cpu.model" "machdep.cpu.family" "machdep.cpu.features"
+         "/usr/sbin/sysctl" "-n" "machdep.cpu.brand_string"
        OUTPUT_VARIABLE
-         _sysctl_output_string
+         _sysctl_output
        OUTPUT_STRIP_TRAILING_WHITESPACE
-       )
-     string(REPLACE "\n" ";" _sysctl_output ${_sysctl_output_string})
-     list(GET _sysctl_output 0 _vendor_id)
-     list(GET _sysctl_output 1 _cpu_model)
-     list(GET _sysctl_output 2 _cpu_family)
-     list(GET _sysctl_output 3 _cpu_flags)
+     )
+     list(GET _sysctl_output 0 _cpu_brand)
+     string(TOLOWER "${_cpu_brand}" _cpu_brand)
+     string(FIND _cpu_brand "apple" _apple_silicon)
+     if(_apple_silicon)
+       set(_sse2_found FALSE)
+     else()
+       execute_process(
+         COMMAND
+           "/usr/sbin/sysctl" "-n" "machdep.cpu.vendor" "machdep.cpu.model" "machdep.cpu.family" "machdep.cpu.features"
+         OUTPUT_VARIABLE
+           _sysctl_output_string
+         OUTPUT_STRIP_TRAILING_WHITESPACE
+         )
+       string(REPLACE "\n" ";" _sysctl_output ${_sysctl_output_string})
+       list(GET _sysctl_output 0 _vendor_id)
+       list(GET _sysctl_output 1 _cpu_model)
+       list(GET _sysctl_output 2 _cpu_family)
+       list(GET _sysctl_output 3 _cpu_flags)
 
-     string(TOLOWER "${_cpu_flags}" _cpu_flags)
-     string(REPLACE "." "_" _cpu_flags "${_cpu_flags}")
+       string(TOLOWER "${_cpu_flags}" _cpu_flags)
+       string(REPLACE "." "_" _cpu_flags "${_cpu_flags}")
+       string(FIND _cpu_flags "sse2" _sse2_found)
+     endif()
   endif()
-  string(FIND _cpu_flags "sse2" _sse2_found)
   if(_sse2_found)
     set(${_result} TRUE PARENT_SCOPE)
     message(STATUS "CPU ${_vendor_id} with SSE2 instruction set FOUND")
+  elseif(_apple_silicon)
+    set(${_result} FALSE PARENT_SCOPE)
+    message(STATUS "Apple silicon detected, disabling SSE2 instruction set")
   endif()
 endfunction()

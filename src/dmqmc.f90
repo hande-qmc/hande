@@ -268,7 +268,7 @@ contains
 
             ! Allow the shift to vary from the very start of the beta loop, if
             ! shift_harmonic_forcing is not equal to zero. 
-            if (qmc_in_loc%shift_harmonic_forcing .ne. 0.00_p) then
+            if (abs(qmc_in_loc%shift_harmonic_forcing) .gt. 0.00_p) then
                 qs%vary_shift = .true.
             else
             ! Allow the shift to vary from the very start of the beta loop, if

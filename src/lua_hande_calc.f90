@@ -383,7 +383,7 @@ contains
         call read_qmc_in(lua_state, opts, qmc_in)
         call read_fciqmc_in(lua_state, opts, fciqmc_in)
         call read_blocking_in(lua_state, opts, blocking_in)
-        call read_semi_stoch_in(lua_state, opts, qmc_in, semi_stoch_in)
+        call read_semi_stoch_in(lua_state, opts, qmc_in, semi_stoch_in, sys)
         call read_restart_in(lua_state, opts, restart_in)
         call read_load_bal_in(lua_state, opts, load_bal_in)
         call read_reference_t(lua_state, opts, reference, sys)
@@ -438,6 +438,7 @@ contains
         !       logging = { ... },
         !       output = { ... },
         !       blocking = { ... },
+        !       semi_stoch = { ... },
         !       qmc_state = qmc_state,
         !       psip_list = psip_list,
         !    }
@@ -458,7 +459,7 @@ contains
         use lua_hande_utils, only: warn_unused_args, register_timing
         use lua_hande_calc_utils, only: init_output_unit, end_output_unit
         use qmc_data, only: qmc_in_t, ccmc_in_t, semi_stoch_in_t, restart_in_t, load_bal_in_t, &
-                            qmc_state_t, output_in_t, blocking_in_t, particle_t
+                            qmc_state_t, output_in_t, blocking_in_t, particle_t, empty_determ_space
         use logging, only: logging_in_t
         use reference_determinant, only: reference_t
         use system, only: sys_t
@@ -467,6 +468,8 @@ contains
         use calc_system_init, only: set_spin_polarisation, set_symmetry_aufbau
         use errors, only: warning
         use excitations, only: end_excitations, init_excitations
+
+        use errors, only: stop_all
 
         integer(c_int) :: nresult
         type(c_ptr), value :: L
@@ -488,8 +491,8 @@ contains
         logical :: have_restart_state, have_psip_list
         integer :: opts, io_unit
         integer(p) :: t1, t2, count_rate, count_max
-        character(10), parameter :: keys(10) = [character(10) :: 'sys', 'qmc', 'ccmc', 'restart', 'reference', 'qmc_state', &
-                                                                'logging', 'output', 'blocking', 'psip_list']
+        character(10), parameter :: keys(11) = [character(10) :: 'sys', 'qmc', 'ccmc', 'restart', 'reference', 'qmc_state', &
+                                                                'logging', 'output', 'blocking', 'semi_stoch', 'psip_list']
 
         call system_clock(t1, count_rate, count_max)
 
@@ -513,8 +516,8 @@ contains
         end if
 
         call read_blocking_in(lua_state, opts, blocking_in)
-        ! note that semi-stochastic is not (yet) available in CCMC.
-        !call read_semi_stoch_in(lua_state, opts, qmc_in, semi_stoch_in)
+
+        call read_semi_stoch_in(lua_state, opts, qmc_in, semi_stoch_in, sys)
         call read_restart_in(lua_state, opts, restart_in)
         ! load balancing is not available in CCMC; must use default settings.
         call read_reference_t(lua_state, opts, reference, sys)
@@ -527,6 +530,10 @@ contains
         call get_psip_list(lua_state, have_psip_list, psip_list_in)
         call warn_unused_args(lua_state, keys, opts)
         call aot_table_close(lua_state, opts)
+
+        if (semi_stoch_in%space_type /= empty_determ_space .and. .not. ccmc_in%full_nc) then
+            call stop_all('lua_ccmc', 'Full noncomposite needed for semi-stochastic CCMC')
+        end if
 
         calc_type = ccmc_calc
         allocate(qmc_state_out)
@@ -564,7 +571,7 @@ contains
 
         if (t2 < t1) t2 = t2 + count_max
 
-        call register_timing(lua_state, "CCMC calculation", real(t2-t1)/count_rate)
+        call register_timing(lua_state, "CCMC calculation", real((t2-t1)/count_rate))
 
     end function lua_ccmc
 
@@ -1271,6 +1278,7 @@ contains
         !     pattempt_parallel = prob,
         !     initial_shift = shift,
         !     shift_damping = damp_factor,
+        !     shift_harmonic_forcing_vary_shift = true/false,
         !     shift_harmonic_forcing = harmonic_force_factor,
         !     shift_harmonic_crit_damp = true/false,
         !     initiator = true/false,
@@ -1278,6 +1286,8 @@ contains
         !     use_mpi_barriers = true/false,
         !     vary_shift_from = shift or "proje",
         !     vary_shift = true/false,
+        !     read_in_dist = true,
+        !     read_in_dist_file = filename,
         !     chebyshev = {
         !           chebyshev_order = order,
         !           chebyshev_shift = float,
@@ -1295,6 +1305,7 @@ contains
         ! Out:
         !    qmc_in: qmc_in_t object containing generic QMC input options.
 
+        use, intrinsic :: iso_fortran_env, only: iostat_end
         use flu_binding, only: flu_State
         use aot_table_module, only: aot_get_val, aot_exists, aot_table_open, aot_table_close
 
@@ -1305,17 +1316,21 @@ contains
         use lua_hande_utils, only: warn_unused_args, get_rng_seed
         use parallel, only: parent
         use errors, only: stop_all, warning
+        use const, only: p, int_s
+        use checking, only: check_allocate
 
         type(flu_State), intent(inout) :: lua_state
         integer, intent(in) :: opts
         type(qmc_in_t), intent(out) :: qmc_in
         logical, intent(in), optional :: short
 
-        integer :: qmc_table, err, chebyshev_table
+        integer :: qmc_table, err, chebyshev_table, ir, ios, i, ncols, nrows
         character(len=30) :: str
-        logical :: skip, no_renorm
+        logical :: skip, no_renorm, read_in_dist_file_exists
+        integer(int_s) :: test_arr(50)
+        character(1000) :: test_line
 
-        character(32), parameter :: keys(37) = [character(32) :: 'tau', 'init_pop', 'mc_cycles', 'nreports', 'state_size', &
+        character(32), parameter :: keys(39) = [character(32) :: 'tau', 'init_pop', 'mc_cycles', 'nreports', 'state_size', &
                                                                  'spawned_state_size', 'rng_seed', 'target_population', &
                                                                  'real_amplitudes', 'spawn_cutoff', 'no_renorm', 'tau_search', &
                                                                  'real_amplitude_force_32', &
@@ -1329,7 +1344,8 @@ contains
                                                                  'vary_shift_from', 'excit_gen', 'power_pitzer_min_weight', &
                                                                  'reference_target', 'vary_shift', 'quasi_newton', &
                                                                  'quasi_newton_threshold', 'quasi_newton_value', &
-                                                                 'quasi_newton_pop_control', 'chebyshev']
+                                                                 'quasi_newton_pop_control', 'read_in_dist', 'read_in_dist_file', &
+                                                                 'chebyshev']
 
         if (present(short)) then
             skip = short
@@ -1496,6 +1512,50 @@ contains
             end if
         end if
 
+        call aot_get_val(qmc_in%read_in_dist, err, lua_state, qmc_table, 'read_in_dist')
+        if (qmc_in%read_in_dist) then
+            call aot_get_val(qmc_in%read_in_dist_file, err, lua_state, qmc_table, 'read_in_dist_file')
+            ! Inquire if file exists first
+            inquire(file=qmc_in%read_in_dist_file, exist=read_in_dist_file_exists)
+            if (.not. read_in_dist_file_exists) call stop_all('read_qmc_in', 'read_in_dist_file not found!')
+
+            ! Determine the number of columns in the file, for when bit_string_len > 1
+            open(newunit=ir, file=qmc_in%read_in_dist_file, status='old', form='formatted', action='read')
+            read(ir, '(A)') test_line
+            test_line = trim(test_line)
+            ! ios==iostat_end occurs 1 iteration after the actual end, 
+            ! i.e., if there are two columns, ios==iostat_end will occur at i==3, therefore ncols start at 0.
+            ncols = 0
+            do i = 1, size(test_arr)
+                read(test_line, *, iostat=ios) test_arr(1:i)
+                ! The smallest i for which the test_line can be read is the number of columns.
+                if (ios == iostat_end) exit
+                ncols = ncols + 1
+            end do
+
+            qmc_in%read_in_dist_bit_string_len = ncols - 1
+
+            ! Now determine the number of rows
+            rewind(ir)
+            nrows = 0
+            do
+                read(ir, *, iostat=ios)
+                if (ios == iostat_end) exit
+                nrows = nrows + 1
+            end do
+
+            ! Time to read the actual thing in
+            allocate(qmc_in%dist(ncols, nrows), stat=err)
+            call check_allocate('qmc_in%dist', ncols*nrows, err)
+
+            rewind(ir)
+            do i = 1, nrows
+                read(ir, *) qmc_in%dist(:, i)
+            end do
+
+            close(ir)
+        end if
+
         call warn_unused_args(lua_state, keys, qmc_table)
 
         call aot_table_close(lua_state, qmc_table)
@@ -1516,12 +1576,19 @@ contains
         !     select_reference_det = {
         !        update_every = mc_cycles,
         !        pop_factor = factor,
-        !     }
+        !     },
         !     quadrature_initiator = true/false,
         !     replica_tricks = true/false,
         !     density_matrices = true/false,
         !     density_matrix_file = filename,
         !     density_matrix_report = report,
+        !     mrcc_model_space_selection = {
+        !        target_ndets = integer,
+        !        wfn_weightage = float,
+        !        max_ndets = integer,
+        !        nreports = integer,
+        !        dets_file = filename,
+        !     },
         ! }
 
         ! In/Out:
@@ -1543,14 +1610,14 @@ contains
         integer, intent(in) :: opts
         type(fciqmc_in_t), intent(out) :: fciqmc_in
 
-        integer :: fciqmc_table, ref_det, err
+        integer :: fciqmc_table, ref_det, mrcc_selection, err
         character(len=12) :: str
         logical :: ref_det_flag
-        character(31), parameter :: keys(11) = [character(31) :: 'non_blocking_comm', 'load_balancing', 'guiding_function', &
+        character(31), parameter :: keys(12) = [character(31) :: 'non_blocking_comm', 'load_balancing', 'guiding_function', &
                                                                  'init_spin_inverse_reference_det', 'trial_function', &
                                                                  'select_reference_det', 'quadrature_initiator', &
                                                                  'replica_tricks', 'density_matrices', 'density_matrix_file', &
-                                                                 'density_matrix_report']
+                                                                 'density_matrix_report', 'mrcc_model_space_selection']
 
         if (aot_exists(lua_state, opts, 'fciqmc')) then
 
@@ -1585,6 +1652,7 @@ contains
                     call aot_table_close(lua_state, ref_det)
                 end if
             end if
+
             if (aot_exists(lua_state, fciqmc_table, 'guiding_function')) then
                 call aot_get_val(str, err, lua_state, fciqmc_table, 'guiding_function')
                 select case(trim(str))
@@ -1597,6 +1665,7 @@ contains
                     if (parent) call stop_all('read_fciqmc_in', 'Unknown guiding function')
                 end select
             end if
+
             if (aot_exists(lua_state, fciqmc_table, 'trial_function')) then
                 call aot_get_val(str, err, lua_state, fciqmc_table, 'trial_function')
                 select case(trim(str))
@@ -1609,6 +1678,32 @@ contains
                 end select
             end if
 
+            if (aot_exists(lua_state, fciqmc_table, 'mrcc_model_space_selection')) then
+                fciqmc_in%doing_fciqmc_tailored_mrccmc = .true.
+                call aot_table_open(lua_state, fciqmc_table, mrcc_selection, 'mrcc_model_space_selection')
+
+                if (aot_exists(lua_state, mrcc_selection, 'target_ndets') .and. & 
+                    aot_exists(lua_state, mrcc_selection, 'wfn_weightage')) then
+                    call stop_all('read_fciqmc_in', 'Both target_ndets and wfn_weightage are provided, choose one!')
+                else if (.not. aot_exists(lua_state, mrcc_selection, 'target_ndets') .and. & 
+                         .not. aot_exists(lua_state, mrcc_selection, 'wfn_weightage')) then
+                    call stop_all('read_fciqmc_in', 'One of target_ndets and wfn_weightage needs to be provided!')
+                end if
+
+                if (aot_exists(lua_state, mrcc_selection, 'wfn_weightage')) then
+                    call aot_get_val(fciqmc_in%mrcc_selection_det_list_new_size, err, lua_state, mrcc_selection, &
+                                     'det_list_new_size')
+                end if
+
+                call aot_get_val(fciqmc_in%mrcc_selection_target_ndets, err, lua_state, mrcc_selection, 'target_ndets')
+                call aot_get_val(fciqmc_in%mrcc_selection_wfn_weightage, err, lua_state, mrcc_selection, 'wfn_weightage')
+                call aot_get_val(fciqmc_in%mrcc_selection_max_ndets, err, lua_state, mrcc_selection, 'max_ndets')
+                call aot_get_val(fciqmc_in%mrcc_selection_nreports, err, lua_state, mrcc_selection, 'nreports')
+                call aot_get_val(fciqmc_in%mrcc_selection_dets_file, err, lua_state, mrcc_selection, 'dets_file')
+
+                call aot_table_close(lua_state, mrcc_selection)
+            end if 
+
             call warn_unused_args(lua_state, keys, fciqmc_table)
 
             call aot_table_close(lua_state, fciqmc_table)
@@ -1617,19 +1712,21 @@ contains
 
     end subroutine read_fciqmc_in
 
-    subroutine read_semi_stoch_in(lua_state, opts, qmc_in, semi_stoch_in)
+    subroutine read_semi_stoch_in(lua_state, opts, qmc_in, semi_stoch_in, sys)
 
         ! Read in an semi_stoch table (if it exists) to an semi_stoch_in object.
 
         ! semi_stoch = {
-        !     space = 'read'/'high'/'ci',       -- required if semi_stoch table exists.
-        !     size = target_pop,                -- required if space == 'high'
+        !     space = 'read'/'high'/'ci'/'cas', -- required if semi_stoch table exists.
+        !     size = target_pop,                -- required if space == 'high', and average == 'false'.
         !     start_iteration = mc_cycles,
-        !     shift_start_iteration = mc_cycle, -- overrides start_iteration
+        !     shift_start_iteration = mc_cycle, -- overrides start_iteration.
         !     separate_annihilation = true/false,
         !     write = true/false/id,
         !     read = id,
-        !     ci_space = { ... },               -- required if space == 'ci'.  Reference table.
+        !     ci_space = { ... },               -- one of these required if space == 'ci'. Reference table.
+        !     ci_range = {lo, hi},              -- one of these required if space == 'ci'. Two-integer array.
+        !     separate_stats = true/false, 
         ! }
 
         ! In/Out:
@@ -1638,29 +1735,35 @@ contains
         !        options are present, then qmc_in%real_amplitudes is forced to be true.
         ! In:
         !    opts: handle for the table containing the semi_stoch table.
+        !    sys: system under consideration.
         ! Out:
         !    semi_stoch_in: semi_stoch_in_t object containing semi-stochastic-specific input options.
 
         use flu_binding, only: flu_State
         use aot_table_module, only: aot_get_val, aot_exists, aot_table_open, aot_table_close
+        use aot_vector_module, only: aot_get_val
         use parallel, only: parent
         use errors, only: stop_all, warning
+        use system, only: sys_t
 
         use qmc_data, only: qmc_in_t, semi_stoch_in_t, high_pop_determ_space, read_determ_space, ci_determ_space, &
-                            semi_stoch_combined_annihilation, semi_stoch_separate_annihilation
+                            cas_determ_space, semi_stoch_combined_annihilation, semi_stoch_separate_annihilation
         use lua_hande_utils, only: warn_unused_args, get_flag_and_id
 
         type(flu_State), intent(inout) :: lua_state
         integer, intent(in) :: opts
         type(qmc_in_t), intent(inout) :: qmc_in
         type(semi_stoch_in_t), intent(out) :: semi_stoch_in
+        type(sys_t), intent(in) :: sys
 
         integer :: semi_stoch_table, err
         character(len=10) :: str
         logical :: separate_annihilation
-        character(21), parameter :: keys(9) = [character(21) :: 'space', 'size', 'start_iteration', 'separate_annihilation', &
+        integer, allocatable :: ci_range(:), cas(:), err_arr(:)
+        character(21), parameter :: keys(16) = [character(21) :: 'space', 'size', 'start_iteration', 'separate_annihilation', &
                                                                 'shift_start_iteration', 'write_determ_space', 'write', 'read', &
-                                                                'ci_space']
+                                                                'ci_space', 'separate_stats', 'average', 'wfn_weightage', &
+                                                                'max_ndets', 'nreports', 'ci_range', 'cas']
 
         if (aot_exists(lua_state, opts, 'semi_stoch')) then
 
@@ -1679,13 +1782,57 @@ contains
                     semi_stoch_in%target_size = -1
                 case('high')
                     semi_stoch_in%space_type = high_pop_determ_space
-                    call aot_get_val(semi_stoch_in%target_size, err, lua_state, semi_stoch_table, 'size')
-                    if (err /= 0 .and. parent) call stop_all('read_semi_stoch_in', 'Target space size not given.')
+                    !call aot_get_val(semi_stoch_in%average, err, lua_state, semi_stoch_table, 'average') ! This option will be enabled when the tailoring PR goes through
+                    if (.not. semi_stoch_in%average) then
+                        call aot_get_val(semi_stoch_in%target_size, err, lua_state, semi_stoch_table, 'size')
+                        if (err /= 0 .and. parent) call stop_all('read_semi_stoch_in', 'Target space size not given.')
+                        if (semi_stoch_in%target_size < 1) call stop_all('read_semi_stoch_in', 'Target space size smaller than 1.')
+                    else
+                        !if (.not. aot_exists(lua_state, semi_stoch_table, 'shift_start_iteration')) &
+                        !    call stop_all('read_semi_stoch_in', 'If averaging, shift_start_iteration must be set!')
+                        call aot_get_val(semi_stoch_in%target_size, err, lua_state, semi_stoch_table, 'size')
+                        call aot_get_val(semi_stoch_in%wfn_weightage, err, lua_state, semi_stoch_table, 'wfn_weightage')
+                        if (aot_exists(lua_state, semi_stoch_table, 'size') .and. & 
+                            aot_exists(lua_state, semi_stoch_table, 'wfn_weightage')) then
+                            call stop_all('read_semi_stoch_in', 'Both size and wfn_weightage are provided, choose one!')
+                        else if (.not. aot_exists(lua_state, semi_stoch_table, 'size') .and. & 
+                                 .not. aot_exists(lua_state, semi_stoch_table, 'wfn_weightage')) then
+                            call stop_all('read_semi_stoch_in', 'One of size and wfn_weightage needs to be provided!')
+                        end if
+                        if (aot_exists(lua_state, semi_stoch_table, 'size')) then
+                            call aot_get_val(semi_stoch_in%max_ndets, err, lua_state, semi_stoch_table, 'max_ndets')
+                            if (semi_stoch_in%max_ndets < semi_stoch_in%target_size) &
+                                call stop_all('read_semi_stoch_in', 'max_ndets smaller than target space size!') 
+                        end if
+                        call aot_get_val(semi_stoch_in%nreports, err, lua_state, semi_stoch_table, 'nreports')
+                    end if
                 case('ci')
                     semi_stoch_in%space_type = ci_determ_space
                     call read_reference_t(lua_state, semi_stoch_table, semi_stoch_in%ci_space, ref_table_name='ci_space')
-                    if (semi_stoch_in%ci_space%ex_level < 0) &
-                        call stop_all('read_semi_stoch_in', 'Max excitation level not given for ci_space')
+                    call aot_get_val(ci_range, err_arr, 2, lua_state, semi_stoch_table, key='ci_range')
+                    if (semi_stoch_in%ci_space%ex_level < 0 .and. size(ci_range) == 0) &
+                        call stop_all('read_semi_stoch_in', 'Neither max excitation level nor ci_range given for ci_space')
+                    if (size(ci_range) == 1 .or. size(ci_range) > 2) &
+                        call stop_all('read_semi_stoch_in', 'ci_range not specified correctly.')
+                    if (semi_stoch_in%ci_space%ex_level > 0 .and. size(ci_range) == 2) &
+                        call stop_all('read_semi_stoch_in', 'Both max excitation level and ci_range given for ci_space')
+                    if (size(ci_range) == 2) then
+                        semi_stoch_in%use_ci_range = .true.
+                        semi_stoch_in%ci_range = ci_range
+                    end if
+                    deallocate(ci_range)
+                case('cas')
+                    semi_stoch_in%space_type = cas_determ_space
+                    call aot_get_val(cas, err_arr, 2, lua_state, semi_stoch_table, key='cas')
+                    if (size(cas) == 0) call stop_all('read_semi_stoch_in', 'CAS space not specified!')
+                    if (size(cas) /= 2) call stop_all('read_semi_stoch_in', 'CAS space not specified correctly.')
+                    if (size(cas) == 2) then
+                        if (cas(1) > sys%nel) call stop_all('read_semi_stoch_in', 'More CAS electron than available.')
+                        if (mod(cas(1),2) /= 0) call stop_all('read_semi_stoch_in', 'Only even # of CAS electrons supported.')
+                        if (cas(2)*2 > sys%basis%nbasis) call stop_all('read_semi_stoch_in', 'More CAS basis fns than available.')
+                        semi_stoch_in%cas = cas
+                    end if
+                    deallocate(cas)
                 case default
                     if (parent) call stop_all('read_semi_stoch_in', 'Unknown semi stochastic space type')
                 end select
@@ -1703,6 +1850,7 @@ contains
             else
                 semi_stoch_in%projection_mode = semi_stoch_combined_annihilation
             end if
+            call aot_get_val(semi_stoch_in%separate_stats, err, lua_state, semi_stoch_table, 'separate_stats')
 
             ! Optional arguments requiring special care.
             if (aot_exists(lua_state, semi_stoch_table, 'write_determ_space')) then

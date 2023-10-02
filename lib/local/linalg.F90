@@ -5,8 +5,9 @@ module linalg
 implicit none
 
 private
-public :: syev, heev, geev, gemm, gemv, geqrf, orgqr, psyev, pheev, plaprnt, syev_wrapper, &
-            heev_wrapper, geev_wrapper, qr_wrapper, psyev_wrapper, pheev_wrapper
+public :: syev, heev, geev, gemm, gemv, geqrf, orgqr, ungqr, psyev, pheev, plaprnt, &
+          syev_wrapper, heev_wrapper, geev_wrapper, qr_wrapper, qr_wrapper_comp, &
+          psyev_wrapper, pheev_wrapper
 
 interface syev
     module procedure ssyev_f90
@@ -26,22 +27,33 @@ end interface geev
 interface gemm
     module procedure sgemm_f90
     module procedure dgemm_f90
+    module procedure cgemm_f90
+    module procedure zgemm_f90
 end interface gemm
 
 interface gemv
     module procedure sgemv_f90
     module procedure dgemv_f90
+    module procedure cgemv_f90
+    module procedure zgemv_f90
 end interface gemv
 
 interface geqrf
     module procedure sgeqrf_f90
     module procedure dgeqrf_f90
+    module procedure cgeqrf_f90
+    module procedure zgeqrf_f90
 end interface geqrf
 
 interface orgqr
     module procedure sorgqr_f90
     module procedure dorgqr_f90
 end interface orgqr
+
+interface ungqr
+    module procedure cungqr_f90
+    module procedure zungqr_f90
+end interface ungqr
 
 interface psyev
     module procedure pssyev_f90
@@ -288,6 +300,40 @@ contains
         call dgemm(transA, transB, M, N, K, alpha, A, lda, B, ldb, beta, C, ldc)
         
     end subroutine dgemm_f90
+
+    subroutine cgemm_f90(transA, transB, M, N, K, alpha, A, lda, B, ldb, beta, C, ldc)
+
+        ! See LAPACK cgemm procedure for details
+
+        use const, only: sp
+
+        character, intent(in) :: transA, transB
+        integer, intent(in) :: M, N, K, lda, ldb, ldc
+        complex(sp), intent(in) :: alpha, beta
+        complex(sp), intent(in) :: A(lda,*), B(ldb,*)
+        complex(sp), intent(inout) :: C(ldc,*)
+
+        call cgemm(transA, transB, M, N, K, alpha, A, lda, B, ldb, beta, C, ldc)
+        
+    end subroutine cgemm_f90
+
+    subroutine zgemm_f90(transA, transB, M, N, K, alpha, A, lda, B, ldb, beta, C, ldc)
+
+        ! See LAPACK zgemm procedure for details
+
+        use const, only: dp
+
+        character, intent(in) :: transA, transB
+        integer, intent(in) :: M, N, K, lda, ldb, ldc
+        complex(dp), intent(in) :: alpha, beta
+        complex(dp), intent(in) :: A(lda,*), B(ldb,*)
+        complex(dp), intent(inout) :: C(ldc,*)
+
+        call zgemm(transA, transB, M, N, K, alpha, A, lda, B, ldb, beta, C, ldc)
+        
+    end subroutine zgemm_f90
+
+
     
     subroutine sgemv_f90(trans, M, N, alpha, A, lda, x, incx, beta, y, incy)
 
@@ -320,6 +366,38 @@ contains
         call dgemv(trans, M, N, alpha, A, lda, x, incx, beta, y, incy)
 
     end subroutine dgemv_f90
+    
+    subroutine cgemv_f90(trans, M, N, alpha, A, lda, x, incx, beta, y, incy)
+
+        ! See LAPACK cgemv procedure for details
+
+        use const, only: sp
+
+        character, intent(in) :: trans
+        integer, intent(in) :: M, N, incx, incy, lda
+        complex(sp), intent(in) :: alpha, beta
+        complex(sp), intent(in) :: A(lda,*), x(*)
+        complex(sp), intent(inout) :: y(*)
+
+        call cgemv(trans, M, N, alpha, A, lda, x, incx, beta, y, incy)
+
+    end subroutine cgemv_f90
+
+    subroutine zgemv_f90(trans, M, N, alpha, A, lda, x, incx, beta, y, incy)
+
+        ! See LAPACK zgemv procedure for details
+
+        use const, only: dp
+
+        character, intent(in) :: trans
+        integer, intent(in) :: M, N, incx, incy, lda
+        complex(dp), intent(in) :: alpha, beta
+        complex(dp), intent(in) :: A(lda,*), x(*)
+        complex(dp), intent(inout) :: y(*)
+
+        call zgemv(trans, M, N, alpha, A, lda, x, incx, beta, y, incy)
+
+    end subroutine zgemv_f90
 
     subroutine sgeqrf_f90(M, N, A, lda, tau, work, lwork, info)
 
@@ -353,6 +431,38 @@ contains
 
     end subroutine dgeqrf_f90
 
+    subroutine cgeqrf_f90(M, N, A, lda, tau, work, lwork, info)
+
+        ! See LAPACK cgeqrf procedure for details
+
+        use const, only: sp
+
+        integer, intent(in) :: M, N, lda, lwork
+        complex(sp), intent(inout) :: A(lda,*)
+        complex(sp), intent(out) :: tau(*)
+        complex(sp), intent(in) :: work(*)
+        integer, intent(out) :: info
+
+        call cgeqrf(M, N, A, lda, tau, work, lwork, info)
+
+    end subroutine cgeqrf_f90
+
+    subroutine zgeqrf_f90(M, N, A, lda, tau, work, lwork, info)
+
+        ! See LAPACK zgeqrf procedure for details
+
+        use const, only: dp
+
+        integer, intent(in) :: M, N, lda, lwork
+        complex(dp), intent(inout) :: A(lda,*)
+        complex(dp), intent(out) :: tau(*)
+        complex(dp), intent(in) :: work(*)
+        integer, intent(out) :: info
+
+        call zgeqrf(M, N, A, lda, tau, work, lwork, info)
+
+    end subroutine zgeqrf_f90
+
     subroutine sorgqr_f90(M, N, K, A, lda, tau, work, lwork, info)
 
         ! See LAPACK sorgqr procedure for details
@@ -384,6 +494,38 @@ contains
         call dorgqr(M, N, K, A, lda, tau, work, lwork, info)
 
     end subroutine dorgqr_f90
+
+    subroutine cungqr_f90(M, N, K, A, lda, tau, work, lwork, info)
+
+        ! See LAPACK cungqr procedure for details
+
+        use const, only: sp
+
+        integer, intent(in) :: M, N, K, lda, lwork
+        complex(sp), intent(inout) :: A(lda,*)
+        complex(sp), intent(out) :: tau(*)
+        complex(sp), intent(in) :: work(*)
+        integer, intent(out) :: info
+
+        call cungqr(M, N, K, A, lda, tau, work, lwork, info)
+
+    end subroutine cungqr_f90
+
+    subroutine zungqr_f90(M, N, K, A, lda, tau, work, lwork, info)
+
+        ! See LAPACK zungqr procedure for details
+
+        use const, only: dp
+
+        integer, intent(in) :: M, N, K, lda, lwork
+        complex(dp), intent(inout) :: A(lda,*)
+        complex(dp), intent(out) :: tau(*)
+        complex(dp), intent(in) :: work(*)
+        integer, intent(out) :: info
+
+        call zungqr(M, N, K, A, lda, tau, work, lwork, info)
+
+    end subroutine zungqr_f90
 
     subroutine qr_wrapper(M, N, A, lda, info)
 
@@ -424,6 +566,46 @@ contains
         end do
 
     end subroutine qr_wrapper
+
+    subroutine qr_wrapper_comp(M, N, A, lda, info)
+
+        ! Wrapper around the geqrf (QR decomposition) and ungqr (extracting the Q matrix from the output of geqrf)
+        ! subroutines, which automates using optimal workspace.
+
+        use checking, only: check_allocate, check_deallocate
+        use const, only: p
+
+        integer, intent(in) :: M, N, lda
+        complex(p), intent(inout) :: A(lda,*)
+        integer, intent(out) :: info
+
+        integer :: lwork, ierr, i
+        complex(p), allocatable :: tau(:), work(:)
+
+        allocate(tau(min(M,N)), stat=ierr)
+        call check_allocate('tau', min(M,N), ierr)
+
+        lwork = -1
+        do i = 1, 2
+            allocate(work(abs(lwork)), stat=ierr)
+            call check_allocate('work', abs(lwork), ierr)
+            call geqrf(M, N, A, lda, tau, work, lwork, info)
+            lwork = nint(abs(work(1)))
+            deallocate(work, stat=ierr)
+            call check_deallocate('work', ierr)
+        end do
+
+        lwork = -1
+        do i = 1, 2
+            allocate(work(abs(lwork)), stat=ierr)
+            call check_allocate('work', abs(lwork), ierr)
+            call ungqr(M, N, min(M,N), A, lda, tau, work, lwork, info)
+            lwork = nint(abs(work(1)))
+            deallocate(work)
+            call check_deallocate('work', ierr)
+        end do
+
+    end subroutine qr_wrapper_comp
 
     subroutine pssyev_f90(job, uplo, N, A, IA, JA, desca, W, Z, IZ, JZ, descz, work, lwork, info)
 

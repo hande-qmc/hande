@@ -118,8 +118,11 @@ contains
                     ij_sym = sys%read_in%sym_conj_ptr(sys%read_in, cross_product_basis_read_in(sys, i_tmp, j_tmp))
                     ija_weights_tot = 0.0_p
                     i_weight_extra = 0.0_p
-            
+#ifdef OPENMP_DETERM
+                    !$omp parallel do default(none) schedule(static, 200) &
+#else
                     !$omp parallel do default(none) &
+#endif
                     !$omp shared(sys,i,j,i_tmp,j_tmp,hb,ij_sym,j_nonzero,slater_condon2_excit_ptr,abs_hmatel_ptr) &
                     !$omp private(a,ija_weight,isymb,ijab_weight,b,a_tmp,b_tmp,hmatel) &
                     !$omp reduction(+:i_weight_extra,ij_weight,ija_weights_tot)
@@ -171,7 +174,11 @@ contains
                     i_weight = i_weight + i_weight_extra
                     hb%hb_ija%weights_tot(j,i) = hb%hb_ija%weights_tot(j,i) + ija_weights_tot
                 else
+#ifdef OPENMP_DETERM
+                    !$omp parallel do default(none) schedule(static, 200) &
+#else
                     !$omp parallel do default(none) &
+#endif
                     !$omp shared(hb,i,j,sys) &
                     !$omp private(a,b)
                     do a = 1, sys%basis%nbasis

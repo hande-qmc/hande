@@ -83,6 +83,7 @@ contains
         use replica_rdm, only: update_rdm_from_spawns, calc_rdm_energy, write_final_rdm
         use propagators, only: update_chebyshev
         use state_histograms
+        use mrcc_utils, only: init_highest_dets_t, update_highest_dets, write_out_highest_dets
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -161,7 +162,7 @@ contains
 
         ! Initialise data.
         if (state_hist_in%state_histograms) then
-            call init_state_histogram_t(iunit, qmc_in, reference_in, state_hist, state_hist_in)
+            call init_state_histogram_t(io_unit, qmc_in, reference_in, state_hist, state_hist_in)
         end if
         call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, io_unit, annihilation_flags, qs, uuid_restart, &
                       restart_version_restart, fciqmc_in=fciqmc_in, qmc_state_restart=qmc_state_restart)
@@ -236,6 +237,9 @@ contains
 
         call init_semi_stoch_t_flags(determ, size(qs%psip_list%states, dim=2))
 
+        ! Accumulate deterministic and stochastic contributions to E_proj separately
+        if (semi_stoch_in%separate_stats) qs%estimators%semi_stoch_sep_stats = .true.
+
         ! from restart
         nparticles_old = qs%psip_list%tot_nparticles
 
@@ -252,9 +256,16 @@ contains
             rdm = 0.0_p
         end if
 
+        if (fciqmc_in%doing_fciqmc_tailored_mrccmc) then
+            ! Initiate parameters and arrays needed to accumulate highest occupied determinants.
+            print*, 'initialising highest dets'
+            call init_highest_dets_t(qs, sys, fciqmc_in)
+        end if
+
         ! Main fciqmc loop.
         if (parent) call write_qmc_report_header(qs%psip_list%nspaces, cmplx_est=sys%read_in%comp, &
-                                                 rdm_energy=fciqmc_in%density_matrices, io_unit=io_unit)
+                                                 rdm_energy=fciqmc_in%density_matrices, io_unit=io_unit, &
+                                                 semi_stoch_sep_stats=semi_stoch_in%separate_stats)
         restart_proj_est = present(qmc_state_restart) .or. (restart_in%read_restart .and. restart_version_restart >= 2)
         if (.not.restart_proj_est) call initial_ci_projected_energy(sys, qs, fciqmc_in%non_blocking_comm, nparticles_old)
         if (fciqmc_in%non_blocking_comm) then
@@ -438,7 +449,8 @@ contains
                 if (bloom_stats%nblooms_curr > 0) call bloom_stats_warning(bloom_stats, io_unit=io_unit)
                 call write_qmc_report(qmc_in, qs, ireport, nparticles_old, t2-t1, .false., &
                                         fciqmc_in%non_blocking_comm, io_unit=io_unit, &
-                                        cmplx_est=sys%read_in%comp, rdm_energy=fciqmc_in%density_matrices)
+                                        cmplx_est=sys%read_in%comp, rdm_energy=fciqmc_in%density_matrices, &
+                                        semi_stoch_sep_stats=semi_stoch_in%separate_stats)
                 if (blocking_in%blocking_on_the_fly) then
                     call do_blocking(bl, qs, qmc_in, ireport, iter, iunit, blocking_in, sys%read_in%comp)
                 end if
@@ -454,6 +466,22 @@ contains
                                            sys%basis%info_string_len, rng)
 
             qs%psip_list%tot_nparticles = nparticles_old
+
+            if (all(qs%vary_shift) .and. qs%averaging) then
+                ! Accumulate highest occupied determinants
+                if (qs%highest_dets%ireport < qs%highest_dets%nreports) then
+                    call update_highest_dets(qs, sys)
+                    if (qs%highest_dets%error) then
+                        call write_out_highest_dets(qs, sys, qs%highest_dets, trim(qs%highest_dets%det_file))
+                        soft_exit = .true.
+                    end if
+                    qs%highest_dets%ireport = qs%highest_dets%ireport + 1
+                else
+                    call update_highest_dets(qs, sys)
+                    call write_out_highest_dets(qs, sys, qs%highest_dets, trim(qs%highest_dets%det_file))
+                    soft_exit = .true.
+                end if
+            end if
 
             if (soft_exit) exit
 

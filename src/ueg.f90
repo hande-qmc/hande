@@ -62,7 +62,9 @@ contains
 
         allocate(sys%ueg%basis%offset_inds(sys%lattice%ndim), stat=ierr)
         call check_allocate('sys%ueg%basis%offset_inds', sys%lattice%ndim, ierr)
-        forall (i=1:sys%lattice%ndim) sys%ueg%basis%offset_inds(i) = N_kx**(i-1)
+        do concurrent (i=1:sys%lattice%ndim)
+            sys%ueg%basis%offset_inds(i) = N_kx**(i-1)
+        end do
 
         ! Wish the indexing array to be 1-indexed.
         k_min = -sys%ueg%basis%kmax ! Bottom corner of grid.
