@@ -250,6 +250,23 @@ fciqmc options
 
     The minimum report cycle the 2-RDM statistics are collected after.
 
+``quadrature_initiator``
+    type: logical.
+
+    Optional. Default: true.
+
+    The initiator approximation in a complex spaces could be applied in (at least) two different
+    ways.
+    If this parameter is true, the magnitude of the instantaneous complex coefficient at each site
+    is used to determine initiator properties for both real and imaginary parents.
+
+    If this parameter is false, the magnitude of the real and imaginary populations are compared
+    separately and initiator flags for real and imaginary set individually.
+
+    .. note::
+
+        The comparative efficacy of these two approaches is currently under investigation.
+
 .. _load_bal_table:
 
 load_bal options
