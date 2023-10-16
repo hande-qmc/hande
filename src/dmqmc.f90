@@ -129,7 +129,7 @@ contains
 
         ! Initialise data.
         if (state_hist_in%state_histograms) then
-            call init_state_histogram_t(iunit, qmc_in, reference_in, state_hist, state_hist_in, dmqmc_in)
+            call init_state_histogram_t(iunit, qmc_in, reference_in, state_hist, state_hist_in, sys%read_in%comp, dmqmc_in)
         end if
         call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, 6, annihilation_flags, qs, uuid_restart, &
                       restart_version_restart, dmqmc_in=dmqmc_in, qmc_state_restart=qmc_state_restart)
@@ -337,12 +337,6 @@ contains
 
                         ! Extract the real signs from the encoded signs.
                         real_population = real(qs%psip_list%pops(:,idet),p)/qs%psip_list%pop_real_factor
-                        ! Is this density matrix element an initiator?
-                        !if (qmc_in%initiator_approx) then
-                        !    call set_parent_flag_dmqmc(real_population(1), qmc_in%initiator_pop, cdet1%f, cdet1%f2, &
-                        !                               dmqmc_in%initiator_level, cdet1%initiator_flag)
-                        !    cdet2%initiator_flag = cdet1%initiator_flag
-                        !end if
 
                         ! Call wrapper function which calls routines to update
                         ! all estimators being calculated, and also always
