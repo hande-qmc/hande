@@ -295,6 +295,31 @@ dmqmc options
     .. warning::
 
         This feature is experimental, and results should be tested for accuracy.
+``dmdump_filename``
+    type: string
+
+    Optional.  Default: ''.
+
+    Set a file name to dump the density matrix to at certain intervals
+    determined by the **dmdump_frequency** keyword. If no filename is provided
+    no dump will be generated.
+
+    .. warning::
+
+        This feature is intended for debugging only, and the cost for this
+        feature grows rapidly with system size. This is because the bit labels
+        are converted to integer labels using FCI routines, so that the
+        Hamiltonian can be used with the reported density matrix. As such,
+        expect this routine to be at least as expensive as FCI, if not more,
+        in terms of compute time, memory, and storage costs.
+``dmdump_frequency``
+    type: integer
+
+    Optional.  Default: 1.
+
+    Set the frequency to report the density matrix to the **dmdump_filename**
+    file. This is in report cycles, and the default is to dump the density
+    matrix every report cycle.
 
 .. _ipdmqmc_table:
 
