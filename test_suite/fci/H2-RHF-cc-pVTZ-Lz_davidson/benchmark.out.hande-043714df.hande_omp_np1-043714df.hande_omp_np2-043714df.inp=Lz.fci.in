@@ -4,52 +4,52 @@
  ================================================================
 Version information
 -------------------
-Version       | v1.5-509-gcf07666
-Commit hash   | cf076667d9f540506f71c35bc4a3f4eb8557039d
-Commit author | Brian Zhao
-Commit date   | Mon Jun 20 18:11:28 2022 +0100
-Branch        | main
+Version       | v1.5-676-g043714d
+Commit hash   | 043714dfb8d6a9ddc71aae618a38be3cb2fef1ea
+Commit author | Alex Thom
+Commit date   | Mon Oct 30 17:20:04 2023 +0000
+Branch        | bug_fix/davidson-test-suite
 
 Configuration and build information
 -----------------------------------
-Who compiled             | maf63
-Compilation hostname     | serenity
-Operating system         | Linux-5.4.0-110-generic
-CMake version            | 3.16.3
+Who compiled             | vanbenschoten
+Compilation hostname     | CHEM-M235
+Operating system         | Darwin-22.6.0
+CMake version            | 3.26.4
 CMake generator          | Unix Makefiles
-Build type               | debug
-Configuration time       | 2022-06-20 17:24:01 [UTC]
-Python version           | 3.7.0
-Fortran compiler         | /usr/local/shared/ubuntu-20.04/x86_64/openmpi-4.1.2-gnu/bin/mpif90
-C compiler               | /usr/local/shared/ubuntu-20.04/x86_64/openmpi-4.1.2-gnu/bin/mpicc
+Build type               | relapplesilicon
+Configuration time       | 2023-10-30 17:34:48 [UTC]
+Python version           | 3.10.9
+Fortran compiler         | /usr/local/bin/mpifort
+C compiler               | /usr/local/bin/mpicc
 DET_SIZE set to          | 64
 POP_SIZE set to          | 64
 dSFMT Mersenne exponent  | 19937
 MPI parallelization      | ON
-MPI launcher             | /usr/local/shared/ubuntu-20.04/x86_64/openmpi-4.1.2-gnu/bin/mpiexec
-OpenMP parallelization   | OFF
-Lua version              | 5.3.5
-HDF5 library version     | 1.10.4
+MPI launcher             | /usr/local/bin/mpiexec
+OpenMP parallelization   | ON
+Lua version              | 5.4.6
+HDF5 library version     | 1.14.1-2
 
 Further components
 ------------------
 DISABLE_HDF5 not defined.  HDF5 enabled.
-DISABLE_UUID not defined.  UUID enabled.
+DISABLE_UUID defined.  UUID disabled.
 PARALLEL defined.  MPI parallelization enabled.
 DISABLE_MPI3 not defined.  MPI-3 functionality enabled.
 PARALLEL defined. DISABLE_MPI3 and ENABLE_SHMEM_POSIX not defined. MPI-3 in use.
-DISABLE_SCALAPACK defined.  ScaLAPACK disabled.
+DISABLE_SCALAPACK not defined.  ScaLAPACK enabled.
 SINGLE_PRECISION not defined.  Double precision used throughout.
 USE_POPCNT not defined. Internal POPCNT procedure used.
 
 Runtime information
 -------------------
 Hostname:
-    serenity
+    CHEM-M235
 Current working dir:
-    /home/maf63/hande-release/test_suite/fci/H2-RHF-cc-pVTZ-Lz_davidson
-Started running on 20/06/2022 at 21:52:12
- Calculation UUID: ca59e489-7410-47bf-b316-0965b40325bb.
+    /Users/vanbenschoten/Chemistry/codes/hande-dev-rerun-Lz-davidson/test_suite/fci/H2-RHF-cc-pVTZ-Lz_davidson
+Started running on 30/10/2023 at 12:43:46
+ Calculation UUID: UNKNOWN: UUID GENERATION DISABLED.  .
  ================================================================
 
  Input options
@@ -73,7 +73,7 @@ fci {
         ndavidson_eigv = 4,
         ndavidson_trialvec = 8,
         davidson_maxsize = 50,
-        davidson_tol = 1e-8,
+        davidson_tol = 1e-14,
         davidson_maxiter = 200,
     },
 }
@@ -232,7 +232,7 @@ fci {
          "ndavidson_eigv": 4,   
          "ndavidson_trialvec": 8,   
          "davidson_maxsize": 50,   
-         "davidson_tol": 0.00000001,   
+         "davidson_tol": 0.00000000,   
          "hamiltonian_diagonal_only": false,   
      },
      "reference": {
@@ -274,53 +274,75 @@ fci {
  Performing Davidson diagonalisation...
 
  Davidson initialisation done!
- Time taken for Davidson initialisation 0.000064 s
+ Time taken for Davidson initialisation 0.000021 s
 
  Iteration   Basis size    delta rmsE      Time  
-         1            8   1.279287E+00    0.000698
-         2           16   4.035889E-01    0.006738
-         3           24   3.571042E-02    0.001096
-         4           32   1.505639E-02    0.000988
-         5           40   1.127360E-02    0.001363
-         6           48   4.154376E-03    0.001876
+         1            8   1.279287E+00    0.000702
+         2           16   4.035889E-01    0.000069
+         3           24   3.571042E-02    0.000106
+         4           32   1.505639E-02    0.000160
+         5           40   1.111179E-02    0.000273
+         6           48   4.268152E-03    0.000365
  Collapsing subspace...
-         7            8   4.681733E-15    0.000126
-         8           16   1.910264E-03    0.000386
-         9           24   4.463168E-04    0.000597
-        10           32   1.155592E-04    0.000961
-        11           40   2.825781E-05    0.001317
-        12           48   6.982884E-06    0.001693
+         7            8   8.002275E-15    0.000025
+         8           16   2.013383E-03    0.000069
+         9           24   4.536737E-04    0.000114
+        10           32   1.090052E-04    0.000170
+        11           40   3.026341E-05    0.000269
+        12           48   8.045911E-06    0.000390
  Collapsing subspace...
-        13            8   3.992174E-15    0.000117
-        14           16   1.253481E-06    0.000346
-        15           24   6.081517E-07    0.000523
-        16           32   2.122679E-07    0.000862
-        17           40   6.705586E-08    0.001234
-        18           48   2.496258E-08    0.001662
+        13            8   3.142147E-15    0.000023
+        14           16   1.530137E-06    0.000067
+        15           24   7.049008E-07    0.000113
+        16           32   2.175232E-07    0.000169
+        17           40   8.758321E-08    0.000279
+        18           48   3.399801E-08    0.000372
  Collapsing subspace...
-        19            8   2.592436E-15    0.000114
-        20           16   6.301052E-09    0.000333
- Eigenvalue tolerance of 1.0000E-08 reached, printing results...
+        19            8   4.754555E-15    0.000023
+        20           16   9.983892E-09    0.000065
+        21           24   4.245789E-09    0.000108
+        22           32   1.602563E-09    0.000158
+        23           40   6.353472E-10    0.000245
+        24           48   2.465119E-10    0.000337
+ Collapsing subspace...
+        25            8   3.392999E-15    0.000022
+        26           16   8.832464E-11    0.000063
+        27           24   4.807133E-11    0.000104
+        28           32   2.605847E-11    0.000158
+        29           40   1.077631E-11    0.000244
+        30           48   3.506796E-12    0.000336
+ Collapsing subspace...
+        31            8   3.128880E-15    0.000021
+        32           16   1.284152E-12    0.000065
+        33           24   5.942745E-13    0.000104
+        34           32   1.993601E-13    0.000157
+        35           40   8.452766E-14    0.000241
+        36           48   3.408371E-14    0.000341
+ Collapsing subspace...
+        37            8   1.076401E-15    0.000022
+        38           16   1.210449E-14    0.000063
+        39           24   5.274728E-15    0.000104
+ Eigenvalue tolerance of 1.0000E-14 reached, printing results...
  Davidson diagonalisation results
  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
   State     Energy
       1    -1.145758846665
-      2    -0.622330308093
-      3    -0.538417004192
-      4    -0.365633761257
+      2    -0.622330308365
+      3    -0.538417004463
+      4    -0.365633764501
 
  Timing breakdown
  ----------------
 
  Wall time for each calculation section (seconds):
 
- Generic system initialisation: .06
- FCI calculation              : .27
+ Generic system initialisation: .04
+ FCI calculation              : .01
 
  ================================================================
- Finished running on 20/06/2022 at 21:52:12
- Wall time (seconds):                               0.09
- CPU time (per processor, seconds):                 0.33
+ Finished running on 30/10/2023 at 12:43:46
+ Wall time (seconds):                               0.07
+ CPU time (per processor, seconds):                 0.06
  ================================================================
 
