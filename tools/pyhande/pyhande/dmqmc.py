@@ -433,6 +433,8 @@ results : :class:`pandas.DataFrame`
     if very_very_loud:
         shift, trace, energy_numerator, population, beta_loop_count = [True]*5
 
+    iscomplex = False
+
     (metadata, data) = ([], [])
     for (md, df) in hande_out:
         if 'DMQMC' in md['calc_type'] and not md['dmqmc']['find_weights']:
@@ -443,12 +445,19 @@ results : :class:`pandas.DataFrame`
             df.rename(columns={'iterations' : 'Beta'}, inplace=True)
             df['Beta'] = df['Beta']*tau
             data.append(df)
+            if 'system' in md and 'read_in' in md['system']:
+                iscomplex = iscomplex or md['system']['read_in']['complex']
     if data:
         if calc_number is not None:
             data = data[calc_number]
             metadata = metadata[calc_number]
         else:
             data = pd.concat(data)
+
+    if iscomplex:
+        warnings.warn('Complex DMQMC energy estimation is currently '
+                      'experimental and it is up to the user to check '
+                      'results for accuracy and meaningfulness.')
 
     # Sanity check: Same time step used in all calculations?
     # Only check for new metadata format...
