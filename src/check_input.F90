@@ -403,11 +403,22 @@ contains
         if (dmqmc_in%grand_canonical_initialisation .and. dmqmc_in%replica_tricks) then
             call stop_all(this, 'Grand canonical initialisation is currently incompatible with replica tricks.')
         end if
-        if (dmqmc_in%symmetric .and. dmqmc_in%ipdmqmc .and. .not. (sys%system /= ueg .or. sys%system /= read_in)) then
-            call stop_all(this, 'Symmetric propagation is only implemented for the UEG and read_in. Please implement.')
-        else if (dmqmc_in%symmetric .and. dmqmc_in%ipdmqmc .and. (sys%system == read_in)) then
-            call warning(this, 'Symmetric IP-DMQMC propagation is experimental for read_in.')
+
+        ! Some checks specific to when using symmetric IP-DMQMC.
+        if (dmqmc_in%symmetric .and. dmqmc_in%ipdmqmc) then
+            if (sys%system == read_in) then
+                if (sys%read_in%comp) then
+                    call stop_all(this, 'The symmetric interaction picture is not implemented '&
+                                        'for complex read_in Hamiltonians. Please send patches!')
+                else
+                    call warning(this, 'Symmetric IP-DMQMC propagation is experimental for read_in.')
+                end if
+            else if (sys%system /= ueg) then
+                call stop_all(this, 'Symmetric propagation is only implemented for '&
+                                    'the UEG and read_in. Please implement.')
+            end if
         end if
+
         if (sys%system == ueg .and. dmqmc_in%fermi_temperature .and. sys%Ms /= 0 .and. sys%Ms /= sys%nel) then
             call stop_all(this, 'The fermi energy, and therefore fermi_temperature &
                                  &is incorrect for the spin polarization. Please implement.')

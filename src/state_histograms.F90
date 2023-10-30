@@ -170,7 +170,7 @@ end type state_histogram_t
 
 contains
 
-    subroutine init_state_histogram_t(iunit, qmc_in, reference_in, hist, hist_in, dmqmc_in)
+    subroutine init_state_histogram_t(iunit, qmc_in, reference_in, hist, hist_in, iscomplex, dmqmc_in)
 
         ! Set up the parameters and arrays for supporting the
         ! state histogram data collection and reporting.
@@ -181,6 +181,7 @@ contains
         !    reference_in: A type for the reference determinant, contains
         !       information about the systems maximum excitation level
         !    state_hist_in: input options related to state_histograms.
+        !    iscomplex: A boolean indicating if the system has complex walkers.
         !    dmqmc_in (optional): if present, beta_loops is used to scale
         !       the memory estimate of the output files
         ! In/Out:
@@ -202,8 +203,15 @@ contains
         type(dmqmc_in_t), intent(in), optional :: dmqmc_in
 
         integer, intent(in) :: iunit
+        logical, intent(in) :: iscomplex
 
         integer :: bytes_est, nfiles, ierr
+
+        if (iscomplex) then
+            call stop_all('init_state_histogram_t', &
+                          'The histogram code does not work for complex systems. '&
+                          'Please send patches if you would like this feature!')
+        end if
 
         ierr = 0
 

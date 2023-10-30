@@ -129,7 +129,7 @@ contains
 
         ! Initialise data.
         if (state_hist_in%state_histograms) then
-            call init_state_histogram_t(iunit, qmc_in, reference_in, state_hist, state_hist_in, dmqmc_in)
+            call init_state_histogram_t(iunit, qmc_in, reference_in, state_hist, state_hist_in, sys%read_in%comp, dmqmc_in)
         end if
         call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, 6, annihilation_flags, qs, uuid_restart, &
                       restart_version_restart, dmqmc_in=dmqmc_in, qmc_state_restart=qmc_state_restart)
@@ -300,6 +300,8 @@ contains
                     call init_proc_pointers(sys, qmc_in, reference_in, iunit, dmqmc_in)
                 end if
 
+                call write_density_matrix_file(sys, qs%psip_list, dmqmc_in, qs%ref, beta_cycle, ireport)
+
                 do icycle = 1, qmc_in%ncycles
 
                     call init_mc_cycle(qs%psip_list, qs%spawn_store%spawn, nattempts, ndeath, complx=sys%read_in%comp)
@@ -335,12 +337,6 @@ contains
 
                         ! Extract the real signs from the encoded signs.
                         real_population = real(qs%psip_list%pops(:,idet),p)/qs%psip_list%pop_real_factor
-                        ! Is this density matrix element an initiator?
-                        if (qmc_in%initiator_approx) then
-                            call set_parent_flag_dmqmc(real_population(1), qmc_in%initiator_pop, cdet1%f, cdet1%f2, &
-                                                       dmqmc_in%initiator_level, cdet1%initiator_flag)
-                            cdet2%initiator_flag = cdet1%initiator_flag
-                        end if
 
                         ! Call wrapper function which calls routines to update
                         ! all estimators being calculated, and also always
@@ -365,6 +361,14 @@ contains
                         attempt_spawning = connection_exists(sys)
 
                         do ireplica = 1, qs%psip_list%nspaces
+
+                            ! Is this density matrix element an initiator?
+                            if (qmc_in%initiator_approx) then
+                                call set_parent_flag_dmqmc(real_population(ireplica), qmc_in%initiator_pop, &
+                                                           cdet1%f, cdet1%f2, dmqmc_in%initiator_level, &
+                                                           cdet1%initiator_flag)
+                                cdet2%initiator_flag = cdet1%initiator_flag
+                            end if
 
                             ! If the system is complex, ireplica will be:
                             ! { replica1_real, replica1_imag, replica2_real, replica2_imag }
@@ -415,7 +419,7 @@ contains
                                           &qs%psip_list, qs, weighted_sampling%probs_old, dmqmc_estimates)
                 if (error) exit outer_loop
 
-                call update_shift_dmqmc(qmc_in, qs, qs%psip_list%tot_nparticles, tot_nparticles_old)
+                call update_shift_dmqmc(qmc_in, qs, qs%psip_list%tot_nparticles, tot_nparticles_old, sys%read_in%comp)
 
                 ! Forcibly disable update_tau as need to average over multiple loops over beta
                 ! and hence want to use the same timestep throughout.
@@ -570,6 +574,20 @@ contains
             ! Attempt to spawn.
             call spawner_ptr(rng, sys, qs, qs%spawn_store%spawn%cutoff, qs%psip_list%pop_real_factor, cdet1, pop, &
                             &gen_excit_ptr, weighted_probs, logging_info, nspawned, nspawned_im, connection)
+            if (sys%read_in%comp) then
+                ! Because of the way the code functions we end up
+                ! spawning to the transpose of our intended matrix element
+                ! for one of the spawning ends.
+                ! In the case of a real symmetric Hamiltonian this doesn't
+                ! matter because H_{ij} = H_{ji}.
+                ! However in the case of a conjugate symmetric Hamiltonian,
+                ! e.g. some ab initio system with PBCs, this causes issues
+                ! because H_{ij} =/= H_{ji}.
+                ! Instead, the appropriate relationship requires the
+                ! complex conjugate, so now H_{ij} = H_{ji}^(*).
+                ! This is taken care of here.
+                nspawned_im = -nspawned_im
+            end if
             if (imag_parent) then
                 ! If has imaginary parent have to factor into resulting signs/components
                 scratch = nspawned_im

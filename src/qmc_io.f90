@@ -368,6 +368,11 @@ contains
             call write_momentum_array_header(' Sud_', .true., estimates%struc_fac%kpoints)
         end if
 
+        if (complx_est_set) then
+            call write_column_title(iunit, 'Re{# particles}')
+            call write_column_title(iunit, 'Im{# particles}')
+        end if
+
         call write_column_title(iunit, '# particles')
         call write_column_title(iunit, '# states', int_64_val=.true., justify=1)
         call write_column_title(iunit, '# spawn_events', int_64_val=.true., justify=1)
@@ -734,7 +739,14 @@ contains
                                       dmqmc_estimates%struc_fac%kpoints(2:endp:2), .true.)
         end if
 
-        call write_qmc_var(iunit, ntot_particles(1))
+        if (complx_est_set) then
+            call write_qmc_var(iunit, ntot_particles(1))
+            call write_qmc_var(iunit, ntot_particles(2))
+            call write_qmc_var(iunit, ntot_particles(1) + ntot_particles(2))
+        else
+            call write_qmc_var(iunit, ntot_particles(1))
+        end if
+
         call write_qmc_var(iunit, qs%estimators(1)%tot_nstates)
         call write_qmc_var(iunit, qs%estimators(1)%tot_nspawn_events)
         call write_qmc_var(iunit, qs%spawn_store%rspawn, low_prec=.true.)
