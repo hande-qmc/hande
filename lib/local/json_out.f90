@@ -477,13 +477,13 @@ contains
         integer, intent(in) :: io
         real(sp), intent(in) :: val
 
-        if (abs(val) < 1.0_sp) then
+        if (abs(val) < 1.0_sp .and. abs(val)>= 1.0e-5_sp) then
             if (val < 0.0_sp) then
                 write (io, '(f11.8)', advance='no') val
             else
                 write (io, '(f10.8)', advance='no') val
             end if
-        else if (abs(val) < 1.0e20_sp) then
+        else if (abs(val) < 1.0e20_sp .and. abs(val)>= 1.0e-5_sp) then
             write (io, '(f0.8)', advance='no') val
         else
             if (val < 0.0_sp) then
@@ -502,13 +502,13 @@ contains
         integer, intent(in) :: io
         real(dp), intent(in) :: val
 
-        if (abs(val) < 1.0_dp) then
+        if (abs(val) < 1.0_dp .and. abs(val)>= 1.0e-5_dp) then
             if (val < 0.0_dp) then
                 write (io, '(f11.8)', advance='no') val
             else
                 write (io, '(f10.8)', advance='no') val
             end if
-        else if (abs(val) < 1.0e20_dp) then
+        else if (abs(val) < 1.0e20_dp .and. abs(val)>= 1.0e-5_dp) then
             write (io, '(f0.8)', advance='no') val
         else
             if (val < 0.0_dp) then
