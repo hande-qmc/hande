@@ -795,7 +795,7 @@ contains
 
         opts = aot_table_top(lua_state)
         call read_qmc_in(lua_state, opts, qmc_in)
-        call read_dmqmc_in(lua_state, sys%basis%nbasis, opts, sys%system, dmqmc_in, dmqmc_estimates%subsys_info)
+        call read_dmqmc_in(lua_state, sys%basis%nbasis, opts, sys%system, dmqmc_in, dmqmc_estimates%subsys_info, qmc_in)
 
         ! We are required to handle the tensor length ourselves.
         sys%basis%tensor_label_len = 2*sys%basis%tot_string_len
@@ -2136,7 +2136,7 @@ contains
 
     end subroutine read_uccmc_in
 
-    subroutine read_dmqmc_in(lua_state, nbasis, opts, system_name, dmqmc_in, subsys_info)
+    subroutine read_dmqmc_in(lua_state, nbasis, opts, system_name, dmqmc_in, subsys_info, qmc_in)
 
         ! Read in DMQMC-related input options from various tables to a dmqmc_in_t object.
 
@@ -2202,6 +2202,7 @@ contains
         !    opts: handle for the table containing the above tables.
         !    nbasis: number of single-particle basis functions in the basis set of the system.
         !    system_name: system being studied.
+        !    qmc_in: The qmc calculation information, used to set final_beta if unset.
         ! Out:
         !    dmqmc_in: dmqmc_in_t object containing DMQMC input options.
         !    subsys_info: array of subsys_t objects containing the subsystem
@@ -2212,6 +2213,7 @@ contains
         use aot_vector_module, only: aot_get_val
 
         use calc
+        use qmc_data, only: qmc_in_t
         use dmqmc_data, only: dmqmc_in_t, subsys_t, hartree_fock_dm, free_electron_dm
         use checking, only: check_allocate
         use parallel, only: parent
@@ -2223,6 +2225,7 @@ contains
         integer, intent(in) :: nbasis, opts, system_name
         type(dmqmc_in_t), intent(out) :: dmqmc_in
         type(subsys_t), intent(out), allocatable :: subsys_info(:)
+        type(qmc_in_t), intent(in) :: qmc_in
 
         integer :: table, subtable, err, i
         integer, allocatable :: err_arr(:)
@@ -2297,10 +2300,6 @@ contains
         if (aot_exists(lua_state, opts, 'ipdmqmc')) then
             dmqmc_in%ipdmqmc = .true.
             call aot_table_open(lua_state, opts, table, 'ipdmqmc')
-            if (aot_exists(lua_state, table, 'initial_beta')) then
-                call aot_get_val(dmqmc_in%target_beta, err, lua_state, table, 'initial_beta')
-                if (parent) call warning('read_dmqmc_in', 'initial_beta is deprecated.  Please use target_beta instead.')
-            end if
             call aot_get_val(dmqmc_in%target_beta, err, lua_state, table, 'target_beta')
             if (aot_exists(lua_state, table, 'initial_matrix')) then
                 call aot_get_val(str, err, lua_state, table, 'initial_matrix')
@@ -2407,6 +2406,15 @@ contains
         if (dmqmc_in%all_spin_sectors .and. .not. dmqmc_in%all_sym_sectors .and. system_name /= heisenberg .and. parent) &
                                             & call stop_all('read_dmqmc_in', 'specified symmetry averaging not imlemented')
 
+        ! We did not read in a final_beta so manually set it here.
+        if (dmqmc_in%final_beta < 0.0_p) then
+            if (dmqmc_in%target_beta > 0.0_p) then
+                dmqmc_in%final_beta = dmqmc_in%target_beta
+            else
+                dmqmc_in%final_beta = real(qmc_in%nreport*qmc_in%ncycles, p)*qmc_in%tau
+            end if
+        end if
+    
     end subroutine read_dmqmc_in
 
     subroutine read_load_bal_in(lua_state, opts, load_bal_in)

@@ -205,8 +205,9 @@ type dmqmc_in_t
     logical :: grand_canonical_initialisation = .false.
     ! Interpret input target_beta as the inverse reduced temperature, i.e., Beta = 1\Theta = T_F/T.
     logical :: fermi_temperature = .false.
-    ! Value of beta which we propagate the density matrix to.
-    real(p) :: target_beta = 1.0_p
+    ! Value of beta which we propagate the density matrix to
+    ! when using the interaction picture.
+    real(p) :: target_beta = -1.0_p
     ! Number of metropolis attempts (per psip) we use when generating
     ! the trial density matrix.
     integer :: metropolis_attempts = 0

@@ -139,41 +139,15 @@ contains
         allocate(real_population(qs%psip_list%nspaces), stat=ierr)
         call check_allocate('real_population', qs%psip_list%nspaces, ierr)
 
-        ! It is convenient to setup calculations using a final beta and
-        ! target beta instead of calculating the nreports from tau and mc_cycles.
-        ! So we do the nreport calculation here instead.
-        ! Additionally we use piecewise_propagation and prop_switch_report
-        ! when running piecewise ip-dmqmc, this is the report at which the propagator changes.
-        ! Otherwise, if neither beta values are defined we default to
-        ! the standard behavior of using nreport from the input.
-        piecewise_propagation = .false.
-        prop_switch_report = -1
-        if (dmqmc_in%final_beta > 0.0_p) then
-            nreport = int(ceiling(dmqmc_in%final_beta/(qmc_in%ncycles*qmc_in%tau)))
-        else
-            nreport = qmc_in%nreport
-        end if
-
-        if (dmqmc_in%ipdmqmc) then
-            if (dmqmc_in%final_beta < dmqmc_in%target_beta) then
-                nreport = int(ceiling(dmqmc_in%target_beta/(qmc_in%ncycles*qmc_in%tau)))
-            else
-                piecewise_propagation = .true.
-                prop_switch_report = int(ceiling(dmqmc_in%target_beta/(qmc_in%ncycles*qmc_in%tau))) + 1
-            end if
-        end if
-
-        ! When we accumulate data throughout a run, we are actually accumulating
-        ! results from the psips distribution from the previous iteration.
-        ! For example, in the first iteration, the trace calculated will be that
-        ! of the initial distribution, which corresponds to beta=0. Hence, in the
-        ! output we subtract one from the iteration number, and run for one more
-        ! report loop, asimplemented in the line of code below.
-        nreport = nreport + 1
+        ! Set information about our propagation.
+        nreport = 1 + int(ceiling(dmqmc_in%final_beta/(qmc_in%ncycles*qmc_in%tau)))
+        prop_switch_report = 1 + int(ceiling(dmqmc_in%target_beta/(qmc_in%ncycles*qmc_in%tau)))
+        piecewise_propagation = (dmqmc_in%final_beta > dmqmc_in%target_beta) .and. dmqmc_in%ipdmqmc
 
         ! Initialise all the required arrays, ie to store thermal quantities,
         ! and to initalise reduced density matrix quantities if necessary.
         call init_dmqmc(sys, qmc_in, dmqmc_in, qs%psip_list%nspaces, qs, dmqmc_estimates, weighted_sampling)
+
         ! Determine the chemical potential if doing the ip-dmqmc algorithm with 
         ! grand canonical initialisation enabled.
         if (dmqmc_in%ipdmqmc .and. dmqmc_in%grand_canonical_initialisation) then
@@ -275,9 +249,6 @@ contains
             ! this condition is met.
                 qs%vary_shift = qs%psip_list%tot_nparticles >= qs%target_particles 
             end if
-
-            ! DMQMC quasi-newton not functional, so we artificially set this value to 0 which should not affect non-QN calcs.
-            qs%estimators%proj_energy_old = 0_p
 
             do ireport = 1, nreport
 
@@ -727,6 +698,10 @@ contains
         ! Reset the random number generator with new_seed = old_seed +
         ! nprocs (each beta loop)
         call dSFMT_init(new_seed, 50000, rng)
+
+        ! DMQMC quasi-newton not functional, so we artificially set this value
+        ! to 0 which should not affect non-QN calcs.
+        qs%estimators%proj_energy_old = 0_p
 
     end subroutine init_dmqmc_beta_loop
 
