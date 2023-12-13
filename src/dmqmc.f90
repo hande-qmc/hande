@@ -59,13 +59,12 @@ contains
         use logging, only: logging_t
         use reference_determinant, only: reference_t, reference_t_json
         use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t, dmqmc_weighted_sampling_t, dmqmc_in_t_json, ipdmqmc_in_t_json, &
-                              rdm_in_t_json, operators_in_t_json, hartree_fock_dm
+                              rdm_in_t_json, operators_in_t_json
         use qmc_io, only: write_dmqmc_report_header, write_dmqmc_report
         use check_input, only: check_qmc_opts, check_dmqmc_opts
         use spawn_data, only: write_memcheck_report, dealloc_spawn_t
         use idmqmc, only: set_parent_flag_dmqmc
         use hash_table, only: free_hash_table
-        use chem_pot, only: find_chem_pot
         use errors, only: stop_all
         use calc, only: doing_dmqmc_calc, dmqmc_ref_proj_energy
         use state_histograms
@@ -81,24 +80,21 @@ contains
         type(state_histogram_in_t), intent(in) :: state_hist_in
         type(qmc_state_t), intent(inout), optional :: qmc_state_restart
         real(p), intent(out), allocatable :: sampling_probs(:)
-        real(p) :: mu(1:2)
 
         integer :: idet, ireport, icycle, iteration, ireplica, ierr
         integer :: beta_cycle, nreport, prop_switch_report
         integer :: unused_int_1 = -1, unused_int_2 = 0
         integer(int_64) :: init_tot_nparticles
-        real(dp), allocatable :: tot_nparticles_old(:)
         real(p), allocatable :: real_population(:)
+        real(p) :: energy_shift, mu(1:2)
         integer(int_64) :: nattempts
-        integer :: nel_temp
         type(det_info_t) :: cdet1, cdet2
         integer(int_p) :: ndeath
-        integer :: nspawn_events
+        integer :: nspawn_events, tot_nspawn_events
         logical :: imag, calc_ref_proj_energy, piecewise_propagation
         logical :: soft_exit, write_restart_shift, update_tau
         logical :: error, rdm_error, attempt_spawning, restarting
-        real :: t1, t2
-        real(p) :: energy_shift
+        real :: t1, t2, elapsed_time
         type(dSFMT_t) :: rng
         type(bloom_stats_t) :: bloom_stats
         type(annihilation_flags_t) :: annihilation_flags
@@ -131,35 +127,16 @@ contains
         if (state_hist_in%state_histograms) then
             call init_state_histogram_t(iunit, qmc_in, reference_in, state_hist, state_hist_in, sys%read_in%comp, dmqmc_in)
         end if
+
         call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, 6, annihilation_flags, qs, uuid_restart, &
                       restart_version_restart, dmqmc_in=dmqmc_in, qmc_state_restart=qmc_state_restart)
 
-        allocate(tot_nparticles_old(qs%psip_list%nspaces), stat=ierr)
-        call check_allocate('tot_nparticles_old', qs%psip_list%nspaces, ierr)
-        allocate(real_population(qs%psip_list%nspaces), stat=ierr)
-        call check_allocate('real_population', qs%psip_list%nspaces, ierr)
-
-        ! Set information about our propagation.
-        nreport = 1 + int(ceiling(dmqmc_in%final_beta/(qmc_in%ncycles*qmc_in%tau)))
-        prop_switch_report = 1 + int(ceiling(dmqmc_in%target_beta/(qmc_in%ncycles*qmc_in%tau)))
-        piecewise_propagation = (dmqmc_in%final_beta > dmqmc_in%target_beta) .and. dmqmc_in%ipdmqmc
-
-        ! Initialise all the required arrays, ie to store thermal quantities,
-        ! and to initalise reduced density matrix quantities if necessary.
-        call init_dmqmc(sys, qmc_in, dmqmc_in, qs%psip_list%nspaces, qs, dmqmc_estimates, weighted_sampling)
-
-        ! Determine the chemical potential if doing the ip-dmqmc algorithm with 
-        ! grand canonical initialisation enabled.
-        if (dmqmc_in%ipdmqmc .and. dmqmc_in%grand_canonical_initialisation) then
-            mu = find_chem_pot(sys, qs%target_beta)
-            if (dmqmc_in%initial_matrix == hartree_fock_dm) then
-                energy_shift = energy_diff_ptr(sys, qs%ref%occ_list0)
-            else
-                energy_shift = 0.0_p
-            end if
-        else
-            mu = 0.0_p
-        end if
+        ! Set important variables and initialise all the required arrays
+        ! (ie to store thermal quantities, and to initialise reduced
+        ! density matrix quantities if necessary).
+        call init_dmqmc(sys, qmc_in, dmqmc_in, qs%psip_list%nspaces, qs, dmqmc_estimates, &
+                        weighted_sampling, real_population, mu, energy_shift, &
+                        nreport, prop_switch_report, piecewise_propagation, calc_ref_proj_energy)
 
         if (parent) then
             call json_object_init(js, tag=.true.)
@@ -212,7 +189,6 @@ contains
         ! Initialise timer.
         call cpu_time(t1)
 
-        if (dmqmc_in%all_spin_sectors) nel_temp = sys%nel
         init_tot_nparticles = nint(qmc_in%D0_population, int_64)
 
         ! Should we dump a restart file just before the shift is turned on?
@@ -225,8 +201,6 @@ contains
         call copy_sys_spin_info(sys, sys_copy)
 
         rdm_error = .false.
-        calc_ref_proj_energy = .false.
-        if (doing_dmqmc_calc(dmqmc_ref_proj_energy)) calc_ref_proj_energy = .true.
 
         outer_loop: do beta_cycle = 1, dmqmc_in%beta_loops
 
@@ -238,7 +212,7 @@ contains
             ! Distribute psips uniformly along the diagonal of the density matrix.
             call create_initial_density_matrix(rng, sys, qmc_in, dmqmc_in, qs, annihilation_flags, &
                                                init_tot_nparticles, qs%psip_list, qs%spawn_store%spawn, &
-                                               mu, energy_shift)
+                                               mu, energy_shift, nspawn_events)
 
             ! Allow the shift to vary from the very start of the beta loop, if
             ! shift_harmonic_forcing is not equal to zero. 
@@ -253,15 +227,20 @@ contains
             do ireport = 1, nreport
 
                 call init_dmqmc_report_loop(calc_ref_proj_energy, dmqmc_in%calc_excit_dist, dmqmc_in%calc_mom_dist, &
-                                            dmqmc_in%calc_struc_fac, bloom_stats, dmqmc_estimates, qs%spawn_store%rspawn)
-                tot_nparticles_old = qs%psip_list%tot_nparticles
+                                            dmqmc_in%calc_struc_fac, bloom_stats, dmqmc_estimates, qs%spawn_store%rspawn, &
+                                            tot_nspawn_events)
+                dmqmc_estimates%old%tot_nparticles = qs%psip_list%tot_nparticles
 
                 if (ireport .eq. 1) then
-                    ! If we have just initalized the density matrix, print out
-                    ! the number of diagonal elemenets that were occupied.
+                    ! If we have just initialized the density matrix, print out
+                    ! the number of diagonal elements that were occupied.
+                    ! Use nspawn_events because tot_nspawn_events will be zeroed.
                     call dmqmc_estimate_comms(dmqmc_in, error, nspawn_events, sys%max_number_excitations, qmc_in%ncycles, &
                                               qs%psip_list, qs, weighted_sampling%probs_old, dmqmc_estimates)
                     if (parent) write (iunit,'(1X,"# Initial diagonal density matrix element(s):",1X,I0)') qs%estimators%tot_nstates
+                    call cpu_time(t2)
+                    elapsed_time = t2 - t1
+                    t1 = t2
                 end if
 
                 ! If we are propagating past IP-DMQMC target beta.
@@ -328,6 +307,16 @@ contains
                                                          qs%ref%f0)
                         end if
 
+                        ! In DMQMC we gather statistics only at the first
+                        ! cycle of a report, this is mainly because 1) we
+                        ! want to report the initial distribution and 2) we
+                        ! average over beta loops and each iteration is a
+                        ! unique temperature.
+                        ! This results in an additional report of cycles
+                        ! for spawning and cloning/death which are unnecessary
+                        ! and to prevent this we cycle here.
+                        if (ireport == nreport) cycle
+
                         ! Only attempt spawning if a valid connection exists.
                         attempt_spawning = connection_exists(sys)
 
@@ -366,11 +355,15 @@ contains
                         end do
                     end do
 
+                    ! See above for why this is done.
+                    if (ireport == nreport) exit
+
                     ! Perform the annihilation step where the spawned walker
                     ! list is merged with the main walker list, and walkers of
                     ! opposite sign on the same sites are annihilated.
-                    call direct_annihilation(sys, rng, qs%ref, annihilation_flags, qs%psip_list, qs%spawn_store%spawn, &
-                                             nspawn_events)
+                    call direct_annihilation(sys, rng, qs%ref, annihilation_flags, qs%psip_list, &
+                                             qs%spawn_store%spawn, nspawn_events)
+                    tot_nspawn_events = tot_nspawn_events + nspawn_events
 
                     call end_mc_cycle(nspawn_events, ndeath, qs%psip_list%pop_real_factor, nattempts, qs%spawn_store%rspawn)
 
@@ -382,24 +375,37 @@ contains
                         call update_sampling_weights(rng, sys%basis, qmc_in, qs%psip_list, &
                                                      sys%max_number_excitations, weighted_sampling)
 
+                    ! Keep a count for the number of cycles completed
+                    qs%mc_cycles_done = qs%mc_cycles_done + 1
+
                 end do
+
+                ! Store these quantities as they were when the report values are stored.
+                dmqmc_estimates%old%shift = qs%shift
+                dmqmc_estimates%old%tot_nstates = qs%estimators%tot_nstates
+                dmqmc_estimates%old%tot_nspawn_events = qs%estimators%tot_nspawn_events
+                dmqmc_estimates%old%elapsed_time = elapsed_time
 
                 ! Sum all quantities being considered across all MPI processes.
                 error = qs%spawn_store%spawn%error .or. qs%psip_list%error .or. rdm_error
-                call dmqmc_estimate_comms(dmqmc_in, error, nspawn_events, sys%max_number_excitations, qmc_in%ncycles, &
+                call dmqmc_estimate_comms(dmqmc_in, error, tot_nspawn_events, sys%max_number_excitations, qmc_in%ncycles, &
                                           &qs%psip_list, qs, weighted_sampling%probs_old, dmqmc_estimates)
                 if (error) exit outer_loop
 
-                call update_shift_dmqmc(qmc_in, qs, qs%psip_list%tot_nparticles, tot_nparticles_old, sys%read_in%comp)
+                call update_shift_dmqmc(qmc_in, qs, qs%psip_list%tot_nparticles, &
+                                        dmqmc_estimates%old%tot_nparticles, sys%read_in%comp)
 
                 ! Forcibly disable update_tau as need to average over multiple loops over beta
                 ! and hence want to use the same timestep throughout.
                 update_tau = .false.
-                call end_report_loop(iunit, qmc_in, iteration, update_tau, qs, tot_nparticles_old, &
+                call end_report_loop(iunit, qmc_in, iteration, update_tau, qs, dmqmc_estimates%old%tot_nparticles, &
                                      nspawn_events, unused_int_1, unused_int_2, soft_exit, &
                                      load_bal_in, .false., bloom_stats=bloom_stats)
 
+                ! Update the time for the start of the next iteration.
                 call cpu_time(t2)
+                elapsed_time = (t2 - t1)/qmc_in%ncycles
+                t1 = t2
 
                 if (state_hist_in%state_histograms) then
                     call comm_and_report_state_histogram(state_hist, ireport, iunit, &
@@ -408,12 +414,9 @@ contains
 
                 if (parent) then
                     if (bloom_stats%nblooms_curr > 0) call bloom_stats_warning(bloom_stats)
-                    call write_dmqmc_report(sys, qmc_in, qs, ireport, tot_nparticles_old, t2-t1, .false., &
-                                            dmqmc_in, dmqmc_estimates, sys%read_in%comp)
+                    call write_dmqmc_report(sys, qmc_in, qs, ireport, .false., dmqmc_in, &
+                                            dmqmc_estimates, sys%read_in%comp)
                 end if
-
-                ! Update the time for the start of the next iteration.
-                t1 = t2
 
                 if (soft_exit) exit outer_loop
 
@@ -433,12 +436,6 @@ contains
         call load_balancing_report(qs%psip_list%nparticles, qs%psip_list%nstates, qmc_in%use_mpi_barriers, &
                                    qs%spawn_store%spawn%mpi_time)
         call write_memcheck_report(qs%spawn_store%spawn)
-
-        if (soft_exit .or. error) then
-            qs%mc_cycles_done = qs%mc_cycles_done + qmc_in%ncycles*ireport
-        else
-            qs%mc_cycles_done = qs%mc_cycles_done + qmc_in%ncycles*nreport
-        end if
 
         if (restart_in%write_restart) then
             call dump_restart_hdf5(qs, qs%mc_cycles_done, qs%psip_list%tot_nparticles, sys%basis%nbasis, .false., &
@@ -672,6 +669,7 @@ contains
         ! Set all quantities back to their starting values.
         nstates_active = 0
         qs%shift = qmc_in%initial_shift
+        qs%mc_cycles_done = 0
         nparticles = 0.0_dp
         if (allocated(dmqmc_estimates%ground_rdm%rdm)) dmqmc_estimates%ground_rdm%rdm = 0.0_p
         if (dmqmc_in%vary_weights) accumulated_probs = 1.0_p
@@ -706,7 +704,8 @@ contains
     end subroutine init_dmqmc_beta_loop
 
     subroutine init_dmqmc_report_loop(calc_ref_proj_energy, calc_excit_dist, calc_mom_dist, &
-                                      calc_struc_fac, bloom_stats, dmqmc_estimates, rspawn)
+                                      calc_struc_fac, bloom_stats, dmqmc_estimates, rspawn, &
+                                      tot_nspawn_events)
 
         ! Initialise a report loop (basically zero quantities accumulated over
         ! a report loop).
@@ -722,6 +721,7 @@ contains
         !    dmqmc_estimates: type containing estimates of observables.
         ! Out:
         !    rspawn: spawning rate.
+        !    tot_nspawn_events: The total number of spawning events.
 
         use bloom_handler, only: bloom_stats_t, bloom_stats_init_report_loop
         use dmqmc_data, only: dmqmc_estimates_t
@@ -733,10 +733,14 @@ contains
         type(bloom_stats_t), intent(inout) :: bloom_stats
         type(dmqmc_estimates_t), intent(inout) :: dmqmc_estimates
         real(p), intent(out) :: rspawn
+        integer, intent(out) :: tot_nspawn_events
 
         call bloom_stats_init_report_loop(bloom_stats)
 
+        dmqmc_estimates%old%rspawn = rspawn
+
         rspawn = 0.0_p
+        tot_nspawn_events = 0
         if (calc_excit_dist) dmqmc_estimates%excit_dist = 0.0_p
         dmqmc_estimates%trace = 0.0_p
         dmqmc_estimates%numerators = 0.0_p
