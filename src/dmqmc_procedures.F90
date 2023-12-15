@@ -93,20 +93,23 @@ contains
                 ireport_start = 1
                 beta_cycle_start = beta_cycle_start + 1
                 restarting = .false.
-            else if (ireport_start > prop_switch_report) then
-                ! Handle the case where we are past the propagator switch
-                ! but the check in do_dmqmc won't recognize this so the
-                ! default propagator will remain, this will ensure the change
-                ! in the propagator happens.
-                ! Reset back to normal in init_dmqmc_beta_loop.
-                prop_switch_report = ireport_start
-            else if ((qs%last_beta == qs%final_beta) .and. (qs%target_beta == qs%final_beta)) then
-                ! We are restarting an IP-DMQMC only calculation to add more beta
-                ! using a change in the propagator. The restart logic doesn't
-                ! handle this case well so we manually need to set the shift here.
-                do i = 1, size(qs%psip_list%tot_nparticles)
-                    qs%shift(i) = dmqmc_in%piecewise_shift
-                end do
+            else if (piecewise_propagation) then
+                ! Some piecewise propagation specific edge cases
+                if (ireport_start > prop_switch_report) then
+                    ! Handle the case where we are past the propagator switch
+                    ! but the check in do_dmqmc won't recognize this so the
+                    ! default propagator will remain, this will ensure the change
+                    ! in the propagator happens.
+                    ! Reset back to normal in init_dmqmc_beta_loop.
+                    prop_switch_report = ireport_start
+                else if ((qs%last_beta == qs%final_beta) .and. (qs%target_beta == qs%final_beta)) then
+                    ! We are restarting an IP-DMQMC only calculation to add more beta
+                    ! using a change in the propagator. The restart logic doesn't
+                    ! handle this case well so we manually need to set the shift here.
+                    do i = 1, size(qs%psip_list%tot_nparticles)
+                        qs%shift(i) = dmqmc_in%piecewise_shift
+                    end do
+                end if
             end if
         else
             ireport_start = 1
