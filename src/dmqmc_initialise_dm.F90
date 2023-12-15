@@ -18,7 +18,7 @@ contains
 
     subroutine create_initial_density_matrix(rng, sys, qmc_in, dmqmc_in, qmc_state, annihilation_flags, &
                                              target_nparticles_tot, psip_list, spawn, chem_pot, energy_shift, &
-                                             nspawn_events)
+                                             nspawn_events, restarting)
 
         ! Create a starting density matrix by sampling the elements of the
         ! (unnormalised) identity matrix. This is a sampling of the
@@ -34,6 +34,7 @@ contains
         !       matrix on output.
         !    spawn: spawn_t object.  Reset on input and output.  Used to
         !       communicate the generated particles.
+        !    restarting: True if we are initializing from a restart calculation.
         ! In:
         !    qmc_in: input options relating to QMC methods.
         !    dmqmc_in: input options relating to DMQMC.
@@ -66,6 +67,7 @@ contains
         real(p), intent(in) :: energy_shift, chem_pot(1:2)
         type(particle_t), intent(inout) :: psip_list
         type(spawn_t), intent(inout) :: spawn
+        logical, intent(inout) :: restarting
 
         real(dp) :: nparticles_temp(psip_list%nspaces)
         integer :: nel, ireplica, ialpha, ms
@@ -76,6 +78,11 @@ contains
 #ifdef PARALLEL
         integer :: ierr
 #endif
+
+        if (restarting) then
+            restarting = .false.
+            return
+        end if
 
         npsips_this_proc = target_nparticles_tot/nprocs
         ! If the initial number of psips does not split evenly between all
@@ -232,6 +239,17 @@ contains
                 qmc_state%psip_list%pops(ireplica,:qmc_state%psip_list%nstates) = &
                     int(dmqmc_in%walker_scale_factor, p)*qmc_state%psip_list%pops(ireplica,:qmc_state%psip_list%nstates)
             end do
+        end if
+
+        ! Determine if the shift should vary from the start.
+        if (abs(qmc_in%shift_harmonic_forcing) .gt. 0.00_p) then
+            ! Allow the shift to vary from the very start of the beta loop, if
+            ! shift_harmonic_forcing is not equal to zero.
+            qmc_state%vary_shift = .true.
+        else
+            ! Allow the shift to vary from the very start of the beta loop, if
+            ! this condition is met.
+            qmc_state%vary_shift = qmc_state%psip_list%tot_nparticles >= qmc_state%target_particles
         end if
 
     end subroutine create_initial_density_matrix

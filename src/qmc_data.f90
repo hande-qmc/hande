@@ -1027,8 +1027,15 @@ type qmc_state_t
     logical :: shift_harmonic_crit_damp = .false.
     ! Stores information used by the excitation generator
     type(excit_gen_data_t) :: excit_gen_data
-    ! Value of beta which we propagate the density matrix to. Only used for DMQMC.
-    real(p) :: target_beta = 1.0
+    ! Value of beta which we propagate the density matrix to.
+    ! Only used for DMQMC and when the interaction picture is being used.
+    real(p) :: target_beta
+    ! Value of the simulations current beta. Only used in DMQMC.
+    real(p) :: last_beta
+    ! Value of the final beta for the simulation. Only used in DMQMC.
+    real(p) :: final_beta
+    ! Value for the beta loop number of the simulation. Only used in DMQMC.
+    integer :: beta_cycle
     ! Information about the propagator (currently just quasi_newton)
     type(propagator_t) :: propagator
     ! Convenience handles.

@@ -87,6 +87,12 @@ module restart_hdf5
     !      state                       # (Version 3) State of DSFMT RNG.
     !      distribution                # (Version 3) Type of pre-computed random numbers
     !      random_store                # (Version 3) Set of pre-computed (but unused) random numbers.
+    !
+    !  dmqmc/ # (All version 4), will be empty in non-DMQMC calculations
+    !        last_beta # The beta the checkpoint was generated at
+    !        target_beta # The intended target beta (for IP-DMQMC only)
+    !        final_beta # The final beta for the simulation
+    !        beta_cycle # The beta loop the checkpoint was generated at
 
     ! where XXX/ indicates a group called XXX, YYY indicates a dataset called
     ! YYY and a nested structure indicates group membership and # is used to
@@ -126,7 +132,7 @@ module restart_hdf5
     ! needed following updates to code.
     ! In addition it might be helpful when writing post-processing utilities which act upon
     ! restart files.
-    integer, parameter :: restart_version = 3
+    integer, parameter :: restart_version = 4
 
     ! Group names...
     character(*), parameter :: gmetadata = 'metadata',  &
@@ -136,7 +142,8 @@ module restart_hdf5
                                gpattempt_single_data = 'pattempt_single_data',        &
                                gref = 'reference',      &
                                grng = 'rng',            &
-                               gbasis = 'basis'
+                               gbasis = 'basis',        &
+                               gdmqmc = 'dmqmc'
 
     ! Dataspace names...
     character(*), parameter :: drestart = 'restart version',        &
@@ -181,7 +188,11 @@ module restart_hdf5
                                dh_pgen_doubles_sum = 'h_pgen_doubles_sum', &
                                dexcit_gen_singles = 'excit_gen_singles', &
                                dexcit_gen_doubles = 'excit_gen_doubles', &
-                               dcounter = 'counter'
+                               dcounter = 'counter', &
+                               dlast_beta = 'last_beta', &
+                               dtarget_beta = 'target_beta', &
+                               dfinal_beta = 'final_beta', &
+                               dbeta_cycle = 'beta_cycle'
 
     contains
 
@@ -325,7 +336,7 @@ module restart_hdf5
             use hdf5
             use hdf5_helper, only: hdf5_kinds_t, hdf5_write, hdf5_file_close
             use parallel, only: nprocs
-            use calc, only: calc_type, GLOBAL_META
+            use calc, only: calc_type, dmqmc_calc, GLOBAL_META
 #else
             use parallel, only: parent
 #endif
@@ -527,6 +538,16 @@ module restart_hdf5
             call hdf5_write(group_id, dinfo_string_len, info_string_len)
             call h5gclose_f(group_id, ierr)
 
+            ! --- dmqmc group ---
+            call h5gcreate_f(file_id, gdmqmc, group_id, ierr)
+            if (calc_type == dmqmc_calc) then
+                call hdf5_write(group_id, dlast_beta, qs%last_beta)
+                call hdf5_write(group_id, dtarget_beta, qs%target_beta)
+                call hdf5_write(group_id, dfinal_beta, qs%final_beta)
+                call hdf5_write(group_id, dbeta_cycle, qs%beta_cycle)
+            end if
+            call h5gclose_f(group_id, ierr)
+
             ! And terminate HDF5.
             call hdf5_file_close(file_id)
             call h5close_f(ierr)
@@ -561,7 +582,7 @@ module restart_hdf5
             use hdf5
             use hdf5_helper, only: hdf5_kinds_t, hdf5_read, dtype_equal, dset_shape, hdf5_path, hdf5_file_close
             use restart_utils, only: convert_dets, convert_ref, convert_pops, change_pop_scaling, change_nbasis
-            use calc, only: calc_type, exact_diag, davidson_diag, mc_hilbert_space
+            use calc, only: calc_type, dmqmc_calc, exact_diag, davidson_diag, mc_hilbert_space
             use parallel
 #endif
             use errors, only: stop_all, warning
@@ -915,6 +936,18 @@ module restart_hdf5
                     end associate
                 end if
             call h5gclose_f(group_id, ierr)
+
+            ! --- dmqmc group ---
+            if (restart_version_restart > 3) then
+                call h5gopen_f(file_id, gdmqmc, group_id, ierr)
+                if (calc_type == dmqmc_calc) then
+                    call hdf5_read(group_id, dlast_beta, qs%last_beta)
+                    call hdf5_read(group_id, dtarget_beta, qs%target_beta)
+                    call hdf5_read(group_id, dfinal_beta, qs%final_beta)
+                    call hdf5_read(group_id, dbeta_cycle, qs%beta_cycle)
+                end if
+                call h5gclose_f(group_id, ierr)
+            end if
 
             ! And terminate HDF5.
             call hdf5_file_close(file_id)

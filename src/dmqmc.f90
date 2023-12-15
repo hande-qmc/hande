@@ -65,7 +65,6 @@ contains
         use spawn_data, only: write_memcheck_report, dealloc_spawn_t
         use idmqmc, only: set_parent_flag_dmqmc
         use hash_table, only: free_hash_table
-        use errors, only: stop_all
         use calc, only: doing_dmqmc_calc, dmqmc_ref_proj_energy
         use state_histograms
 
@@ -83,6 +82,7 @@ contains
 
         integer :: idet, ireport, icycle, iteration, ireplica, ierr
         integer :: beta_cycle, nreport, prop_switch_report
+        integer :: beta_cycle_start, ireport_start
         integer :: unused_int_1 = -1, unused_int_2 = 0
         integer(int_64) :: init_tot_nparticles
         real(p), allocatable :: real_population(:)
@@ -99,7 +99,6 @@ contains
         type(bloom_stats_t) :: bloom_stats
         type(annihilation_flags_t) :: annihilation_flags
         type(dmqmc_weighted_sampling_t) :: weighted_sampling
-        type(restart_info_t) :: ri
         type(sys_t) :: sys_copy
         type(json_out_t) :: js
         type(qmc_in_t) :: qmc_in_loc
@@ -117,8 +116,9 @@ contains
             write (iunit,'(1X,"-----",/)')
         end if
 
+        restarting = present(qmc_state_restart) .or. restart_in%read_restart
+
         if (parent) then
-            restarting = present(qmc_state_restart) .or. restart_in%read_restart
             call check_qmc_opts(qmc_in, sys, .not. present(qmc_state_restart), restarting)
             call check_dmqmc_opts(sys, dmqmc_in, qmc_in)
         end if
@@ -136,7 +136,8 @@ contains
         ! density matrix quantities if necessary).
         call init_dmqmc(sys, qmc_in, dmqmc_in, qs%psip_list%nspaces, qs, dmqmc_estimates, &
                         weighted_sampling, real_population, mu, energy_shift, &
-                        nreport, prop_switch_report, piecewise_propagation, calc_ref_proj_energy)
+                        nreport, prop_switch_report, beta_cycle_start, ireport_start, &
+                        piecewise_propagation, calc_ref_proj_energy, restarting)
 
         if (parent) then
             call json_object_init(js, tag=.true.)
@@ -191,10 +192,6 @@ contains
 
         init_tot_nparticles = nint(qmc_in%D0_population, int_64)
 
-        ! Should we dump a restart file just before the shift is turned on?
-        write_restart_shift = restart_in%write_restart_shift
-        call init_restart_info_t(ri, write_id=restart_in%write_id)
-
         ! If averaging over spin then spin polarisation will change in general.
         ! Copy sys to sys_copy so that sys can be set back to its input value
         ! at the end of this routine.
@@ -202,29 +199,19 @@ contains
 
         rdm_error = .false.
 
-        outer_loop: do beta_cycle = 1, dmqmc_in%beta_loops
+        outer_loop: do beta_cycle = beta_cycle_start, dmqmc_in%beta_loops
 
             call init_dmqmc_beta_loop(sys, reference_in, rng, qmc_in, dmqmc_in, dmqmc_estimates, qs, beta_cycle, &
                                       qs%psip_list%nstates, qs%psip_list%nparticles, qs%spawn_store%spawn, &
                                       weighted_sampling%probs, annihilation_flags, piecewise_propagation, &
-                                      state_hist%current_seed)
+                                      state_hist%current_seed, ireport_start, restarting)
 
             ! Distribute psips uniformly along the diagonal of the density matrix.
             call create_initial_density_matrix(rng, sys, qmc_in, dmqmc_in, qs, annihilation_flags, &
                                                init_tot_nparticles, qs%psip_list, qs%spawn_store%spawn, &
-                                               mu, energy_shift, nspawn_events)
+                                               mu, energy_shift, nspawn_events, restarting)
 
-            ! Allow the shift to vary from the very start of the beta loop, if
-            ! shift_harmonic_forcing is not equal to zero. 
-            if (abs(qmc_in_loc%shift_harmonic_forcing) .gt. 0.00_p) then
-                qs%vary_shift = .true.
-            else
-            ! Allow the shift to vary from the very start of the beta loop, if
-            ! this condition is met.
-                qs%vary_shift = qs%psip_list%tot_nparticles >= qs%target_particles 
-            end if
-
-            do ireport = 1, nreport
+            do ireport = ireport_start, nreport
 
                 call init_dmqmc_report_loop(calc_ref_proj_energy, dmqmc_in%calc_excit_dist, dmqmc_in%calc_mom_dist, &
                                             dmqmc_in%calc_struc_fac, bloom_stats, dmqmc_estimates, qs%spawn_store%rspawn, &
@@ -236,7 +223,7 @@ contains
                     ! the number of diagonal elements that were occupied.
                     ! Use nspawn_events because tot_nspawn_events will be zeroed.
                     call dmqmc_estimate_comms(dmqmc_in, error, nspawn_events, sys%max_number_excitations, qmc_in%ncycles, &
-                                              qs%psip_list, qs, weighted_sampling%probs_old, dmqmc_estimates)
+                                              qs%psip_list, qs, weighted_sampling%probs_old, dmqmc_estimates, 0.0)
                     if (parent) write (iunit,'(1X,"# Initial diagonal density matrix element(s):",1X,I0)') qs%estimators%tot_nstates
                     call cpu_time(t2)
                     elapsed_time = t2 - t1
@@ -313,8 +300,9 @@ contains
                         ! average over beta loops and each iteration is a
                         ! unique temperature.
                         ! This results in an additional report of cycles
-                        ! for spawning and cloning/death which are unnecessary
-                        ! and to prevent this we cycle here.
+                        ! (see init_dmqmc for more information) for spawning
+                        ! and cloning/death which are unnecessary and to
+                        ! prevent this we cycle here.
                         if (ireport == nreport) cycle
 
                         ! Only attempt spawning if a valid connection exists.
@@ -380,16 +368,10 @@ contains
 
                 end do
 
-                ! Store these quantities as they were when the report values are stored.
-                dmqmc_estimates%old%shift = qs%shift
-                dmqmc_estimates%old%tot_nstates = qs%estimators%tot_nstates
-                dmqmc_estimates%old%tot_nspawn_events = qs%estimators%tot_nspawn_events
-                dmqmc_estimates%old%elapsed_time = elapsed_time
-
                 ! Sum all quantities being considered across all MPI processes.
                 error = qs%spawn_store%spawn%error .or. qs%psip_list%error .or. rdm_error
                 call dmqmc_estimate_comms(dmqmc_in, error, tot_nspawn_events, sys%max_number_excitations, qmc_in%ncycles, &
-                                          &qs%psip_list, qs, weighted_sampling%probs_old, dmqmc_estimates)
+                                          &qs%psip_list, qs, weighted_sampling%probs_old, dmqmc_estimates, elapsed_time)
                 if (error) exit outer_loop
 
                 call update_shift_dmqmc(qmc_in, qs, qs%psip_list%tot_nparticles, &
@@ -418,6 +400,9 @@ contains
                                             dmqmc_estimates, sys%read_in%comp)
                 end if
 
+                call dmqmc_dump_restart_wrapper(sys, qs, rng, qmc_in, dmqmc_in, &
+                                                restart_in, beta_cycle, icycle, iunit)
+
                 if (soft_exit) exit outer_loop
 
             end do
@@ -436,12 +421,6 @@ contains
         call load_balancing_report(qs%psip_list%nparticles, qs%psip_list%nstates, qmc_in%use_mpi_barriers, &
                                    qs%spawn_store%spawn%mpi_time)
         call write_memcheck_report(qs%spawn_store%spawn)
-
-        if (restart_in%write_restart) then
-            call dump_restart_hdf5(qs, qs%mc_cycles_done, qs%psip_list%tot_nparticles, sys%basis%nbasis, .false., &
-                                    sys%basis%info_string_len)
-            if (parent) write (iunit,'()')
-        end if
 
         if (dmqmc_in%find_weights) then
             allocate(sampling_probs(size(weighted_sampling%sampling_probs)), stat=ierr)
@@ -601,7 +580,7 @@ contains
 
     subroutine init_dmqmc_beta_loop(sys, reference_in, rng, qmc_in, dmqmc_in, dmqmc_estimates, qs, beta_cycle, &
                                     nstates_active, nparticles, spawn, accumulated_probs, annihilation_flags, &
-                                    piecewise_propagation, state_hist_current_seed)
+                                    piecewise_propagation, state_hist_current_seed, ireport_start, restarting)
 
         ! Initialise/reset DMQMC data for a new run over the temperature range.
 
@@ -613,6 +592,9 @@ contains
         !    state_hist_current_seed: The current seed that the state histogram
         !        is using for the name of the histogram file. Updated to the
         !        new seed of the beta loop.
+        !    ireport_start: The number for the report cycle we are starting at.
+        !        One unless we are starting from a restarted calculation.
+        !        Set back to one if restarting so the next loop is unaffected.
         ! In:
         !    qmc_in: input options relating to QMC calculations.
         !    beta_cycle: The index of the beta loop about to be started.
@@ -622,6 +604,7 @@ contains
         !       desired spin/symmetry.
         !    piecewise_propagation: A boolean indiciating if peicewise propagation
         !       is being used. In this case we may need to reset some parameters/pointers.
+        !    restarting: True if we are initializing from a restart calculation.
         ! Out:
         !    nparticles: number of particles in each space/of each type on
         !       processor.  Set to 0.
@@ -631,7 +614,8 @@ contains
         !        on each excitation level (from 0 to max_number_excitations) are
         !        reduced, relative to DMQMC without any importance sampling.
 
-        use dSFMT_interface, only: dSFMT_t, dSFMT_init
+        use dSFMT_interface, only: dSFMT_t, dSFMT_init, &
+                                   dSFMT_state_t_to_dSFMT_t, free_dSFMT_state_t
         use parallel
         use system
         use qmc_data, only: qmc_in_t, qmc_state_t, annihilation_flags_t
@@ -642,6 +626,7 @@ contains
         use dmqmc_procedures, only: propagator_restore
         use reference_determinant, only: reference_t, reference_t_json
         use qmc, only: init_proc_pointers
+        use errors, only: stop_all
 
         type(sys_t), intent(inout) :: sys
         type(dSFMT_t), intent(inout) :: rng
@@ -650,52 +635,72 @@ contains
         type(dmqmc_estimates_t), intent(inout) :: dmqmc_estimates
         type(qmc_in_t), intent(in) :: qmc_in
         type(reference_t), intent(in) :: reference_in
-        integer, intent(in) :: beta_cycle
         type(qmc_state_t), intent(inout) :: qs
-        integer, intent(inout) :: state_hist_current_seed
+
+        integer, intent(in) :: beta_cycle
+        integer, intent(inout) :: state_hist_current_seed, ireport_start
         integer, intent(out) :: nstates_active
         real(dp), intent(out) :: nparticles(:)
         real(p), intent(out) :: accumulated_probs(:)
-        integer :: new_seed, iunit
+        logical, intent(in) :: piecewise_propagation, restarting
+
         type(annihilation_flags_t) :: annihilation_flags
-        logical, intent(in) :: piecewise_propagation
+
+        character(:), allocatable :: err_msg
+        integer :: new_seed, iunit
 
         iunit = 6
+
+        new_seed = qmc_in%seed+iproc+(beta_cycle-1)*nprocs
+
+        if (beta_cycle /= 1 .and. parent .and. (.not. restarting)) then
+            write (iunit,'(a32,'//int_fmt(beta_cycle,1)//')') " # Resetting beta... Beta loop =", beta_cycle
+            write (iunit,'(a52,'//int_fmt(new_seed,1)//',a1)') " # Resetting random number generator with a seed of:", new_seed, "."
+        end if
+
+        ! Reset the random number generator with new_seed = old_seed +
+        ! nprocs (each beta loop)
+        call dSFMT_init(new_seed, 50000, rng)
+
+        if (restarting) then
+            if (allocated(qs%rng_state%dsfmt_state)) then
+                call dSFMT_state_t_to_dSFMT_t(rng, qs%rng_state, err_msg=err_msg)
+                if (allocated(err_msg)) call stop_all('init_dmqmc_beta_loop', 'Failed to reset RNG state: '//err_msg)
+                call free_dSFMT_state_t(qs%rng_state)
+            else if (parent) then
+                write (iunit,'(a52,'//int_fmt(new_seed,1)//',a1)') &
+                    " # Resetting random number generator with a seed of:", new_seed, "."
+            end if
+        else if (ireport_start > 1) then
+            ireport_start = 1
+        end if
 
         ! Reset the current position in the spawning array to be the slot
         ! preceding the first slot.
         spawn%head = spawn%head_start
 
         ! Set all quantities back to their starting values.
-        nstates_active = 0
-        qs%shift = qmc_in%initial_shift
-        qs%mc_cycles_done = 0
-        nparticles = 0.0_dp
+        if (.not. restarting) then
+            nstates_active = 0
+            qs%shift = qmc_in%initial_shift
+            qs%mc_cycles_done = 0
+            nparticles = 0.0_dp
+
+            ! if we are running piecewise ip-dmqmc restore the relevant values
+            ! and pointers back to ip-dmqmc.
+            if (beta_cycle /= 1 .and. piecewise_propagation) then
+                call propagator_restore(qs, dmqmc_in, annihilation_flags, iunit)
+                call init_proc_pointers(sys, qmc_in, reference_in, iunit, dmqmc_in)
+            end if
+        end if
+
         if (allocated(dmqmc_estimates%ground_rdm%rdm)) dmqmc_estimates%ground_rdm%rdm = 0.0_p
         if (dmqmc_in%vary_weights) accumulated_probs = 1.0_p
         if (dmqmc_in%find_weights) dmqmc_estimates%excit_dist = 0.0_p
 
-        new_seed = qmc_in%seed+iproc+(beta_cycle-1)*nprocs
-
-        if (beta_cycle /= 1 .and. parent) then
-            write (iunit,'(a32,'//int_fmt(beta_cycle,1)//')') " # Resetting beta... Beta loop =", beta_cycle
-            write (iunit,'(a52,'//int_fmt(new_seed,1)//',a1)') " # Resetting random number generator with a seed of:", new_seed, "."
-        end if
-
-        ! if we are running piecewise ip-dmqmc restore the relevant values 
-        ! and pointers back to ip-dmqmc.
-        if (beta_cycle /= 1 .and. piecewise_propagation) then
-            call propagator_restore(qs, dmqmc_in, annihilation_flags, iunit)
-            call init_proc_pointers(sys, qmc_in, reference_in, iunit, dmqmc_in)
-        end if
-
         if (beta_cycle /= 1) then
             state_hist_current_seed = new_seed
         end if
-
-        ! Reset the random number generator with new_seed = old_seed +
-        ! nprocs (each beta loop)
-        call dSFMT_init(new_seed, 50000, rng)
 
         ! DMQMC quasi-newton not functional, so we artificially set this value
         ! to 0 which should not affect non-QN calcs.
@@ -750,5 +755,65 @@ contains
         if (calc_ref_proj_energy) dmqmc_estimates%ref_D0j_particles = 0.0_p
 
     end subroutine init_dmqmc_report_loop
+
+    subroutine dmqmc_dump_restart_wrapper(sys, qs, rng, qmc_in, dmqmc_in, restart_in, beta_cycle, icycle, iunit)
+
+        ! Check if we are generating a restart file, if so set the
+        ! necessary variables and call the appropriate routines.
+
+        ! In/Out:
+        !    qs: qmc_state_t derived type with information on
+        !        current calculation.
+        ! In:
+        !    sys: system being studied.
+        !    rng: random number generator.
+        !    qmc_in: input options relating to QMC methods.
+        !    dmqmc_in: input options relating to DMQMC.
+        !    restart_in: input options for HDF5 restart files.
+        !    beta_cycle: The beta loop number for the current simulation.
+        !    icycle: The number for the current mc cycle in a report.
+        !    iunit: The location we are writing data to.
+
+        use system, only: sys_t
+        use parallel, only: parent
+        use qmc_data, only: qmc_state_t, qmc_in_t, restart_in_t
+        use dmqmc_data, only: dmqmc_in_t
+        use restart_hdf5, only: dump_restart_hdf5
+        use dSFMT_interface, only: dSFMT_t, dSFMT_init, &
+                                   dSFMT_t_to_dSFMT_state_t, free_dSFMT_state_t
+
+        type(sys_t), intent(in) :: sys
+        type(qmc_state_t), intent(inout) :: qs
+        type(dSFMT_t), intent(in) :: rng
+        type(qmc_in_t), intent(in) :: qmc_in
+        type(dmqmc_in_t), intent(in) :: dmqmc_in
+        type(restart_in_t), intent(in) :: restart_in
+
+        integer, intent(in) :: beta_cycle, icycle, iunit
+
+        logical :: dump, endofloop
+
+        ! The user did not turn on restart dumping so no need to proceed.
+        if (.not. restart_in%write_restart) return
+
+        endofloop = qs%mc_cycles_done == int(ceiling(dmqmc_in%final_beta/qmc_in%tau))
+
+        ! Prevents a double write at the end of the beta loop.
+        if ((icycle == 1) .and. endofloop) return
+
+        dump = endofloop .or. (mod(qs%mc_cycles_done/qmc_in%ncycles, restart_in%write_freq) == 0)
+
+        if (.not. dump) return
+
+        qs%last_beta = real(qs%mc_cycles_done, p)*qmc_in%tau
+        qs%final_beta = dmqmc_in%final_beta
+        qs%beta_cycle = beta_cycle
+
+        call dSFMT_t_to_dSFMT_state_t(rng, qs%rng_state)
+        call dump_restart_hdf5(qs, qs%mc_cycles_done, qs%psip_list%tot_nparticles, &
+                               sys%basis%nbasis, .false., sys%basis%info_string_len)
+        call free_dSFMT_state_t(qs%rng_state)
+
+    end subroutine dmqmc_dump_restart_wrapper
 
 end module dmqmc
