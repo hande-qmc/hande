@@ -779,7 +779,6 @@ contains
         !    iunit: The location we are writing data to.
 
         use system, only: sys_t
-        use parallel, only: parent
         use qmc_data, only: qmc_state_t, qmc_in_t, restart_in_t
         use dmqmc_data, only: dmqmc_in_t
         use restart_hdf5, only: dump_restart_hdf5
