@@ -1271,6 +1271,11 @@ module restart_hdf5
                     call h5dwrite_f(dset_id, H5T_NATIVE_INTEGER, i0_length, [0_HSIZE_T,0_HSIZE_T], ierr)
                     call h5dclose_f(dset_id, ierr)
                 end if
+                ! --- dmqmc group ---
+                call h5lexists_f(orig_id, gdmqmc, exists, ierr)
+                if (exists) then
+                    call h5ocopy_f(orig_id, gdmqmc, new_id, gdmqmc, ierr)
+                end if
                 ! ...and non-psip-specific groups in the /qmc group.
                 call h5gcreate_f(new_id, gqmc, group_id, ierr)
                     ! /qmc/state

@@ -1,0 +1,81 @@
+
+   HANDE
+
+ ================================================================
+Version information
+-------------------
+Version       | v1.5-696-g2230eac-dirty
+Commit hash   | 2230eac268165b03110483c05537bfa0ef93736d
+Commit author | William Van Benschoten
+Commit date   | Wed Dec 13 17:00:07 2023 -0600
+Branch        | he/dmqmc_restart
+
+Configuration and build information
+-----------------------------------
+Who compiled             | vanbenschoten
+Compilation hostname     | CHEM-M235
+Operating system         | Darwin-22.6.0
+CMake version            | 3.26.4
+CMake generator          | Unix Makefiles
+Build type               | relapplesilicon
+Configuration time       | 2023-12-14 22:24:56 [UTC]
+Python version           | 3.10.9
+Fortran compiler         | /usr/local/bin/mpifort
+C compiler               | /usr/local/bin/mpicc
+DET_SIZE set to          | 64
+POP_SIZE set to          | 64
+dSFMT Mersenne exponent  | 19937
+MPI parallelization      | ON
+MPI launcher             | /usr/local/bin/mpiexec
+OpenMP parallelization   | ON
+Lua version              | 5.4.6
+HDF5 library version     | 1.14.1-2
+
+Further components
+------------------
+DISABLE_HDF5 not defined.  HDF5 enabled.
+DISABLE_UUID defined.  UUID disabled.
+PARALLEL defined.  MPI parallelization enabled.
+DISABLE_MPI3 not defined.  MPI-3 functionality enabled.
+PARALLEL defined. DISABLE_MPI3 and ENABLE_SHMEM_POSIX not defined. MPI-3 in use.
+DISABLE_SCALAPACK not defined.  ScaLAPACK enabled.
+SINGLE_PRECISION not defined.  Double precision used throughout.
+USE_POPCNT not defined. Internal POPCNT procedure used.
+
+Runtime information
+-------------------
+Hostname:
+    CHEM-M235
+Current working dir:
+    /Users/vanbenschoten/Chemistry/codes/hande-dev-he-dmqmc_restart/test_suite/dmqmc_real_64/np4/h6_sto3g_redistributed_restart
+Started running on 15/12/2023 at 16:01:52
+ Calculation UUID: UNKNOWN: UUID GENERATION DISABLED.  .
+ ================================================================
+
+ Input options
+ -------------
+
+redistribute {
+    nprocs = 4,
+    read = 0,
+    write = 1,
+}
+
+ -------------
+
+ Reading restart file from HANDE.RS.0.p0.H5.
+ # Writing restart file to HANDE.RS.1.p0.H5.
+
+ Timing breakdown
+ ----------------
+
+ Wall time for each calculation section (seconds):
+
+ Restart file redistribution: .06
+
+ ================================================================
+ Finished running on 15/12/2023 at 16:01:52
+ Wall time (seconds):                               0.09
+ CPU time (per processor, seconds):                 0.06
+ ================================================================
+
