@@ -204,7 +204,7 @@ contains
             call init_dmqmc_beta_loop(sys, reference_in, rng, qmc_in, dmqmc_in, dmqmc_estimates, qs, beta_cycle, &
                                       qs%psip_list%nstates, qs%psip_list%nparticles, qs%spawn_store%spawn, &
                                       weighted_sampling%probs, annihilation_flags, piecewise_propagation, &
-                                      state_hist%current_seed, ireport_start, restarting)
+                                      state_hist%current_seed, ireport_start, prop_switch_report, restarting)
 
             ! Distribute psips uniformly along the diagonal of the density matrix.
             call create_initial_density_matrix(rng, sys, qmc_in, dmqmc_in, qs, annihilation_flags, &
@@ -233,7 +233,7 @@ contains
                 ! If we are propagating past IP-DMQMC target beta.
                 ! Change over the appropriate parameters and pointers to continue on with sampling.
                 if (piecewise_propagation .and. prop_switch_report == ireport) then
-                    call propagator_change(sys, qs, dmqmc_in, annihilation_flags, iunit)
+                    call propagator_change(sys, qs, dmqmc_in, annihilation_flags, iunit, ireport_start)
                     call init_proc_pointers(sys, qmc_in, reference_in, iunit, dmqmc_in)
                 end if
 
@@ -580,7 +580,8 @@ contains
 
     subroutine init_dmqmc_beta_loop(sys, reference_in, rng, qmc_in, dmqmc_in, dmqmc_estimates, qs, beta_cycle, &
                                     nstates_active, nparticles, spawn, accumulated_probs, annihilation_flags, &
-                                    piecewise_propagation, state_hist_current_seed, ireport_start, restarting)
+                                    piecewise_propagation, state_hist_current_seed, ireport_start, &
+                                    prop_switch_report, restarting)
 
         ! Initialise/reset DMQMC data for a new run over the temperature range.
 
@@ -595,6 +596,8 @@ contains
         !    ireport_start: The number for the report cycle we are starting at.
         !        One unless we are starting from a restarted calculation.
         !        Set back to one if restarting so the next loop is unaffected.
+        !    prop_switch_report: The iteration where our propagator should
+        !        change over (only used when running PIP-DMQMC).
         ! In:
         !    qmc_in: input options relating to QMC calculations.
         !    beta_cycle: The index of the beta loop about to be started.
@@ -638,7 +641,7 @@ contains
         type(qmc_state_t), intent(inout) :: qs
 
         integer, intent(in) :: beta_cycle
-        integer, intent(inout) :: state_hist_current_seed, ireport_start
+        integer, intent(inout) :: state_hist_current_seed, ireport_start, prop_switch_report
         integer, intent(out) :: nstates_active
         real(dp), intent(out) :: nparticles(:)
         real(p), intent(out) :: accumulated_probs(:)
@@ -673,6 +676,7 @@ contains
             end if
         else if (ireport_start > 1) then
             ireport_start = 1
+            prop_switch_report = 1 + int(ceiling(dmqmc_in%target_beta/(qmc_in%ncycles*qmc_in%tau)))
         end if
 
         ! Reset the current position in the spawning array to be the slot

@@ -1,0 +1,538 @@
+
+   HANDE
+
+ ================================================================
+Version information
+-------------------
+Version       | v1.5-696-g2230eac-dirty
+Commit hash   | 2230eac268165b03110483c05537bfa0ef93736d
+Commit author | William Van Benschoten
+Commit date   | Wed Dec 13 17:00:07 2023 -0600
+Branch        | he/dmqmc_restart
+
+Configuration and build information
+-----------------------------------
+Who compiled             | vanbenschoten
+Compilation hostname     | CHEM-M235
+Operating system         | Darwin-22.6.0
+CMake version            | 3.26.4
+CMake generator          | Unix Makefiles
+Build type               | relapplesilicon
+Configuration time       | 2023-12-14 22:24:56 [UTC]
+Python version           | 3.10.9
+Fortran compiler         | /usr/local/bin/mpifort
+C compiler               | /usr/local/bin/mpicc
+DET_SIZE set to          | 64
+POP_SIZE set to          | 64
+dSFMT Mersenne exponent  | 19937
+MPI parallelization      | ON
+MPI launcher             | /usr/local/bin/mpiexec
+OpenMP parallelization   | ON
+Lua version              | 5.4.6
+HDF5 library version     | 1.14.1-2
+
+Further components
+------------------
+DISABLE_HDF5 not defined.  HDF5 enabled.
+DISABLE_UUID defined.  UUID disabled.
+PARALLEL defined.  MPI parallelization enabled.
+DISABLE_MPI3 not defined.  MPI-3 functionality enabled.
+PARALLEL defined. DISABLE_MPI3 and ENABLE_SHMEM_POSIX not defined. MPI-3 in use.
+DISABLE_SCALAPACK not defined.  ScaLAPACK enabled.
+SINGLE_PRECISION not defined.  Double precision used throughout.
+USE_POPCNT not defined. Internal POPCNT procedure used.
+
+Runtime information
+-------------------
+Hostname:
+    CHEM-M235
+Current working dir:
+    /Users/vanbenschoten/Chemistry/codes/hande-dev-he-dmqmc_restart/test_suite/dmqmc_real_64/np2/n2_sto3g_restart
+Started running on 15/12/2023 at 13:30:49
+ Calculation UUID: UNKNOWN: UUID GENERATION DISABLED.  .
+ ================================================================
+
+ Number of MPI processes running on: 2
+ Running with 1 thread per MPI process.
+
+ Input options
+ -------------
+
+dmqmc {
+    sys = read_in {
+        int_file = 'FCIDUMP',
+        nel = 10,
+        ms = 0,
+        sym = 0,
+    },
+    reference = {
+        det = {1, 3, 5, 7, 11, 2, 4, 6, 8, 12},
+    },
+    qmc = {
+        tau = 0.001,
+        init_pop = 1E4,
+        mc_cycles = 10,
+        nreports = 1000,
+        target_population = 1E4,
+        state_size = -100,
+        spawned_state_size = -150,
+        real_amplitudes = true,
+        rng_seed = 1972011788,
+    },
+    dmqmc = {
+        beta_loops = 3,
+        final_beta = 1.0,
+        symmetric_bloch = false,
+    },
+    ipdmqmc = {
+        target_beta = 0.5,
+        grand_canonical_initialisation = true,
+        symmetric_interaction_picture = false,
+    },
+    operators = {
+        energy = true,
+    },
+    restart = {
+        write = 0,
+        write_frequency = 10,
+    },
+}
+
+ -------------
+
+ Memory required for all two body integrals (MB) on each processor: 0
+ It is left to the user to ensure that this does not exceed available resources.
+
+ Basis functions
+ ---------------
+
+ Spin given in units of 1/2.
+
+ index  spatial symmetry sym_index lz     ms       <i|f|i>
+     1      1       0       1       0       1       -1.35063394E+00
+     2      1       0       2       0      -1       -1.35063394E+00
+     3      2       5       1       0       1       -6.40703426E-01
+     4      2       5       2       0      -1       -6.40703426E-01
+     5      3       7       1       0       1       -6.10520465E-01
+     6      3       7       2       0      -1       -6.10520465E-01
+     7      4       6       1       0       1       -5.34434409E-01
+     8      4       6       2       0      -1       -5.34434409E-01
+     9      5       2       1       0       1       -1.66265915E-01
+    10      5       2       2       0      -1       -1.66265915E-01
+    11      6       0       3       0       1       -7.38008351E-02
+    12      6       0       4       0      -1       -7.38008351E-02
+    13      7       3       1       0       1        3.14234386E-01
+    14      7       3       2       0      -1        3.14234386E-01
+    15      8       5       3       0       1        1.22617275E+00
+    16      8       5       4       0      -1        1.22617275E+00
+
+ E_core =  -76.323433604815
+ Number of electrons: 10
+ Number of basis functions: 16
+
+ Bit-length of integers used to store determinant bit-strings: 64
+ Number of integers used to store determinant bit-strings: 1
+
+ Symmetry information
+ --------------------
+
+ Number of point group symmetries: 8
+ Not using Lz symmetry.
+ Totally symmetric symmetry: 0
+ The matrix below gives the direct products of the irreducible representations.
+
+  0  1  2  3  4  5  6  7
+  1  0  3  2  5  4  7  6
+  2  3  0  1  6  7  4  5
+  3  2  1  0  7  6  5  4
+  4  5  6  7  0  1  2  3
+  5  4  7  6  1  0  3  2
+  6  7  4  5  2  3  0  1
+  7  6  5  4  3  2  1  0
+
+ The table below gives the number of basis functions spanning each irreducible representation.
+
+ irrep  Lz   sym  nbasis  nbasis_up  nbasis_down
+   0     0    0      4       2          2
+   1     0    1      0       0          0
+   2     0    2      2       1          1
+   3     0    3      2       1          1
+   4     0    4      0       0          0
+   5     0    5      4       2          2
+   6     0    6      2       1          1
+   7     0    7      2       1          1
+
+ DMQMC
+ -----
+
+ Memory allocated per core for main walker list (MB):    100.00
+ Number of elements per core in main walker list: 2777777
+ Memory allocated per core for spawned walker lists (MB):    150.00
+ Number of elements per core in spawned walker list: 3125000
+
+ # Starting the excitation generator initialisation.
+ # Finishing the excitation generator initialisation, time taken:  8.0019235611E-06
+ -- Start JSON block --
+ {
+     "system": {
+         "nbasis": 16,   
+         "nel": 10,   
+         "nvirt": 6,   
+         "Ms": 0,   
+         "nalpha": 5,   
+         "nbeta": 5,   
+         "nvirt_alpha": 3,   
+         "nvirt_beta": 3,   
+         "nsym": 7,   
+         "sym0": 0,   
+         "sym_max": 7,   
+         "nsym_tot": 8,   
+         "sym0_tot": 0,   
+         "sym_max_tot": 7,   
+         "symmetry": 0,   
+         "tot_sym": false,   
+         "aufbau_sym": false,   
+         "max_number_excitations": 6,   
+         "read_in": {
+             "int_file":  "FCIDUMP",   
+             "uhf": false,   
+             "Ecore": -76.32343360,   
+             "CAS": [ -1, -1],
+             "useLz": false,   
+             "complex": false    
+         }
+     },
+     "qmc": {
+         "rng_seed": 1972011788,   
+         "real_amplitudes": true,   
+         "real_amplitude_force_32": false,   
+         "spawn_cutoff": 0.01000000,   
+         "excit_gen":  "renorm",   
+         "pattempt_update": false,   
+         "pattempt_zero_accum_data": false,   
+         "pattempt_single": 0.03773585,   
+         "pattempt_double": 0.96226415,   
+         "pattempt_parallel": 6.01347002E-154,   
+         "tau": 0.00100000,   
+         "tau_search": false,   
+         "vary_shift_from": 0.00000000E+000,   
+         "vary_shift_from_proje": false,   
+         "initial_shift": 0.00000000E+000,   
+         "shift_damping": 0.05000000,   
+         "shift_harmonic_forcing_two_stage": false,   
+         "shift_harmonic_forcing": 0.00000000E+000,   
+         "shift_harmonic_crit_damp": false,   
+         "walker_length": -100,   
+         "spawned_walker_length": -150,   
+         "D0_population": 10000.00000000,   
+         "target_particles": 10000.00000000,   
+         "target_reference": false,   
+         "initiator_approx": false,   
+         "initiator_pop": 3.00000000,   
+         "ncycles": 10,   
+         "nreport": 1000,   
+         "power_pitzer_min_weight": 0.01000000,   
+         "chebyshev": false,   
+         "quasi_newton": false,   
+         "quasi_newton_threshold": 0.00000000E+000,   
+         "quasi_newton_value": 0.00000000E+000,   
+         "quasi_newton_pop_control": 1.00000000,   
+         "read_in_dist": false,   
+         "use_mpi_barriers": false    
+     },
+     "dmqmc": {
+         "beta_loops": 3,   
+         "replica_tricks": false,   
+         "start_av_rdm": 0,   
+         "weighted_sampling": false,   
+         "vary_weights": false,   
+         "find_weights": false,   
+         "find_weights_start": 0,   
+         "calc_excit_dist": false,   
+         "all_sym_sectors": false,   
+         "all_spin_sectors": false,   
+         "initiator_level": -1,   
+         "symmetric_bloch": false,   
+         "sampling_probs":  "[]",   
+         "finish_varying_weights": 0,   
+         "fermi_temperature": false,   
+         "target_beta": 0.50000000,   
+         "final_beta": 1.00000000,   
+         "piecewise_shift": 0.00000000E+000,   
+         "walker_scale_factor": 0.00000000E+000,   
+         "mom_dist_kmax": 0.00000000E+000,   
+         "struc_fac_qmax": 0.00000000E+000    
+     },
+     "ipdmqmc": {
+         "ipdmqmc": true,   
+         "initial_matrix":  "hartree_fock",   
+         "grand_canonical_initialisation": true,   
+         "count_diagonal_occupations": false,   
+         "skip_gci_reference_check": false,   
+         "symmetric_interaction_picture": false,   
+         "chem_pot": [0.81989509,0.81989509],
+         "metropolis_attempts": 0    
+     },
+     "rdm": {
+         "nrdms": 0,   
+         "spawned_length": 0,   
+         "doing_rdm": false,   
+         "calc_ground_rdm": false,   
+         "calc_inst_rdm": false,   
+         "doing_concurrence": false,   
+         "doing_vn_entropy": false,   
+         "output_rdm": false    
+     },
+     "operators": {
+         "energy": true,   
+         "energy_squared": false,   
+         "kinetic_energy": false,   
+         "potential_energy": false,   
+         "H0_energy": false,   
+         "HI_energy": false,   
+         "ref_projected_energy": false,   
+         "correlation_fn": false,   
+         "staggered_mad_ind": false,   
+         "rdm_r2": false,   
+         "full_r2": false,   
+         "mom_dist": false    
+     },
+     "restart": {
+         "read_restart": false,   
+         "read_id": 2147483647,   
+         "write_restart": true,   
+         "write_id": 0,   
+         "write_freq": 10,   
+         "write_restart_shift": false,   
+         "write_shift_id": 2147483647,   
+         "restart_rng": true    
+     },
+     "load balancing": {
+         "nslots": 1,   
+         "pop": 1000,   
+         "percent": 0.05000000,   
+         "max_attempts": 2,   
+         "write_info": false    
+     },
+     "reference": {
+         "det": [ 1, 2, 3, 4, 5, 6, 7, 8, 11, 12],
+         "det_ms": 0,   
+         "det_symmetry": 0,   
+         "H00": -107.48886885,   
+         "F0": -6.42018615,   
+         "hilbert_space_det": [ 1, 2, 3, 4, 5, 6, 7, 8, 11, 12],
+         "hilbert_space_det_ms": 0,   
+         "hilbert_space_det_symmetry": 0,   
+         "ex_level": 10    
+     }
+ }
+ -- End JSON block --
+
+ Information printed out every QMC report loop (quantities are for the reported iteration unless stated otherwise):
+
+ Shift: The energy offset used since the last report.
+ Trace: The sum of the diagonal elements for the density matrix.
+ \sum\rho_{ij}H_{ji}: The numerator of the estimator for the expectation value of the energy.
+ # particles: The total population of density matrix particles.
+ # states: The number of density matrix states occupied.
+ # spawn_events: The number of successful spawning events across all processors (since the last report).
+ R_spawn: The average rate of spawning (per report) on the root processors (since the last report).
+ time: The average time per Monte Carlo cycle or the report time (since the last report).
+
+ #     iterations   Instant shift         Trace                 \sum\rho_{ij}H_{ji}   # particles                      # states        # spawn_events   R_spawn    time    
+ # Initial diagonal density matrix element(s): 393
+                0   0.0000000000E+00      1.0002542682E+04     -1.0498187800E+06      1.0000000000E+04                      393                  7164    0.0000    0.0280  
+               10  -1.3623205736E-01      1.0002671517E+04     -1.0498585838E+06      1.0276209892E+04                      662                 24427    0.0060    0.0016  
+               20  -2.4701010858E-01      9.9893808315E+03     -1.0484854620E+06      1.0506426470E+04                      894                 25135    0.0061    0.0016  
+               30  -3.6001845828E-01      9.9652759770E+03     -1.0459796546E+06      1.0746593113E+04                     1142                 25425    0.0060    0.0017  
+               40  -4.6826164042E-01      9.9302663845E+03     -1.0423281006E+06      1.0981778739E+04                     1391                 26482    0.0061    0.0018  
+               50  -5.7641543888E-01      9.8852040458E+03     -1.0376232214E+06      1.1221910712E+04                     1649                 27073    0.0061    0.0019  
+               60  -6.7132988377E-01      9.8296439351E+03     -1.0318122076E+06      1.1436969760E+04                     1890                 27659    0.0061    0.0019  
+               70  -7.6900909460E-01      9.7652699478E+03     -1.0250784717E+06      1.1662597333E+04                     2147                 28178    0.0061    0.0019  
+               80  -8.6639593025E-01      9.6922613135E+03     -1.0174394522E+06      1.1891980663E+04                     2415                 28936    0.0062    0.0020  
+               90  -9.5216543987E-01      9.6104242832E+03     -1.0088704408E+06      1.2097734225E+04                     2666                 29151    0.0061    0.0021  
+ # Writing restart file to HANDE.RS.0.p0.H5 family.
+              100  -1.0302493547E+00      9.5213147952E+03     -9.9953757355E+05      1.2288144846E+04                     2909                 29630    0.0061    0.0022  
+              110  -1.1047011945E+00      9.4259055602E+03     -9.8954276280E+05      1.2472488914E+04                     3153                 30506    0.0062    0.0023  
+              120  -1.1695254884E+00      9.3250655823E+03     -9.7897809291E+05      1.2635245751E+04                     3380                 31102    0.0062    0.0022  
+              130  -1.2420557996E+00      9.2192556934E+03     -9.6789157722E+05      1.2819869255E+04                     3635                 31445    0.0062    0.0023  
+              140  -1.3010921750E+00      9.1078921734E+03     -9.5622056854E+05      1.2972134125E+04                     3863                 31963    0.0062    0.0023  
+              150  -1.3585820098E+00      8.9929790000E+03     -9.4417514252E+05      1.3122148070E+04                     4093                 32358    0.0062    0.0024  
+              160  -1.4036580102E+00      8.8747879493E+03     -9.3178490277E+05      1.3240981710E+04                     4298                 32797    0.0063    0.0024  
+              170  -1.4592774749E+00      8.7545105980E+03     -9.1917606803E+05      1.3389095245E+04                     4536                 32982    0.0062    0.0025  
+              180  -1.4961937697E+00      8.6310757999E+03     -9.0623244943E+05      1.3488316239E+04                     4729                 33626    0.0063    0.0025  
+              190  -1.5287073337E+00      8.5064407814E+03     -8.9316355606E+05      1.3576312683E+04                     4914                 33923    0.0063    0.0026  
+ # Writing restart file to HANDE.RS.0.p0.H5 family.
+              200  -1.5752889109E+00      8.3810021414E+03     -8.8001107421E+05      1.3703384898E+04                     5140                 34144    0.0063    0.0026  
+              210  -1.6136101905E+00      8.2537802805E+03     -8.6666923133E+05      1.3808814651E+04                     5347                 34450    0.0063    0.0028  
+              220  -1.6495643957E+00      8.1253367518E+03     -8.5320260819E+05      1.3908469514E+04                     5552                 34766    0.0063    0.0027  
+              230  -1.6722010338E+00      7.9966574287E+03     -8.3970505596E+05      1.3971580466E+04                     5724                 35072    0.0063    0.0027  
+              240  -1.7111877638E+00      7.8681443619E+03     -8.2622596909E+05      1.4080947546E+04                     5943                 35341    0.0063    0.0027  
+              250  -1.7362723322E+00      7.7389946083E+03     -8.1267900487E+05      1.4151767946E+04                     6127                 35406    0.0063    0.0028  
+              260  -1.7607786662E+00      7.6101095645E+03     -7.9915979991E+05      1.4221299794E+04                     6309                 35717    0.0063    0.0028  
+              270  -1.7903748813E+00      7.4817157812E+03     -7.8569197064E+05      1.4305728754E+04                     6508                 36091    0.0064    0.0029  
+              280  -1.8199306447E+00      7.3532731703E+03     -7.7221724454E+05      1.4390542528E+04                     6708                 36434    0.0064    0.0029  
+              290  -1.8327049879E+00      7.2249320998E+03     -7.5875234497E+05      1.4427355480E+04                     6862                 36802    0.0064    0.0029  
+ # Writing restart file to HANDE.RS.0.p0.H5 family.
+              300  -1.8557984414E+00      7.0984637361E+03     -7.4548417568E+05      1.4494145094E+04                     7044                 36715    0.0064    0.0029  
+              310  -1.8794469109E+00      6.9722221935E+03     -7.3224059878E+05      1.4562860337E+04                     7229                 37144    0.0064    0.0031  
+              320  -1.8991911093E+00      6.8471863872E+03     -7.1912373579E+05      1.4620480429E+04                     7404                 37422    0.0065    0.0030  
+              330  -1.9142344327E+00      6.7229848494E+03     -7.0609267375E+05      1.4664534791E+04                     7568                 37411    0.0064    0.0031  
+              340  -1.9316699918E+00      6.6000210546E+03     -6.9318831891E+05      1.4715760928E+04                     7736                 37513    0.0064    0.0031  
+              350  -1.9338977450E+00      6.4787908021E+03     -6.8046563842E+05      1.4722319005E+04                     7860                 38037    0.0065    0.0032  
+              360  -1.9573218412E+00      6.3595901283E+03     -6.6795798927E+05      1.4791452220E+04                     8044                 37614    0.0064    0.0031  
+              370  -1.9680795046E+00      6.2414104894E+03     -6.5555657516E+05      1.4823310773E+04                     8194                 37450    0.0064    0.0031  
+              380  -1.9876857115E+00      6.1245279238E+03     -6.4329308454E+05      1.4881550664E+04                     8367                 38356    0.0065    0.0032  
+              390  -1.9953790160E+00      6.0090801128E+03     -6.3117583600E+05      1.4904465949E+04                     8504                 38465    0.0065    0.0032  
+ # Writing restart file to HANDE.RS.0.p0.H5 family.
+              400  -2.0017614251E+00      5.8946209302E+03     -6.1916409929E+05      1.4923503377E+04                     8638                 38260    0.0065    0.0032  
+              410  -2.0114682470E+00      5.7831918243E+03     -6.0747025987E+05      1.4952503476E+04                     8779                 38491    0.0065    0.0033  
+              420  -2.0215512242E+00      5.6729804615E+03     -5.9590177417E+05      1.4982687050E+04                     8921                 38572    0.0065    0.0032  
+              430  -2.0254554081E+00      5.5641703309E+03     -5.8448187888E+05      1.4994390652E+04                     9044                 38837    0.0065    0.0033  
+              440  -2.0481993224E+00      5.4573857855E+03     -5.7327476301E+05      1.5062752242E+04                     9221                 38595    0.0065    0.0032  
+              450  -2.0505151377E+00      5.3514757466E+03     -5.6215941497E+05      1.5069730369E+04                     9336                 38743    0.0065    0.0033  
+              460  -2.0536737347E+00      5.2475601713E+03     -5.5125127730E+05      1.5079253217E+04                     9452                 38885    0.0065    0.0033  
+              470  -2.0621835621E+00      5.1455516816E+03     -5.4054375034E+05      1.5104939438E+04                     9583                 38704    0.0065    0.0033  
+              480  -2.0733003291E+00      5.0451622250E+03     -5.3000549533E+05      1.5138560418E+04                     9719                 39108    0.0065    0.0034  
+              490  -2.0907621077E+00      4.9467392770E+03     -5.1967397689E+05      1.5191522083E+04                     9874                 39235    0.0065    0.0033  
+ # Writing restart file to HANDE.RS.0.p0.H5 family.
+ # Changing the propagator from interaction picture to asymmetric Bloch.
+              500   0.0000000000E+00      4.8494519484E+03     -5.0946197792E+05      1.5256639159E+04                    10040                 39528    0.0065    0.0033  
+              510   1.1193263595E-02      4.7334071161E+03     -4.9733726124E+05      1.5222523044E+04                    10155                 39490    0.0065    0.0039  
+              520   3.4925007676E-02      4.6208337204E+03     -4.8557310724E+05      1.5150442834E+04                    10223                 39369    0.0065    0.0034  
+              530   5.8025059538E-02      4.5129026011E+03     -4.7429427025E+05      1.5080609071E+04                    10285                 39232    0.0066    0.0040  
+              540   6.2938165990E-02      4.4092641399E+03     -4.6346356185E+05      1.5065797822E+04                    10393                 39204    0.0066    0.0035  
+              550   8.5625543848E-02      4.3085325450E+03     -4.5293338729E+05      1.4997591990E+04                    10444                 38980    0.0065    0.0034  
+              560   1.0373017164E-01      4.2113837357E+03     -4.4277814389E+05      1.4943385025E+04                    10503                 38896    0.0066    0.0034  
+              570   1.2166513720E-01      4.1178790207E+03     -4.3300269082E+05      1.4889879226E+04                    10557                 38699    0.0066    0.0034  
+              580   1.4135068728E-01      4.0284766168E+03     -4.2365716296E+05      1.4831371385E+04                    10601                 38825    0.0066    0.0034  
+              590   1.6660641818E-01      3.9417181600E+03     -4.1458760337E+05      1.4756644846E+04                    10625                 38352    0.0065    0.0033  
+ # Writing restart file to HANDE.RS.0.p0.H5 family.
+              600   1.7087977081E-01      3.8584845646E+03     -4.0588506769E+05      1.4744038165E+04                    10705                 38450    0.0066    0.0033  
+              610   1.7548198870E-01      3.7759941953E+03     -3.9726206470E+05      1.4730473353E+04                    10782                 38347    0.0066    0.0035  
+              620   1.9868760479E-01      3.6975971224E+03     -3.8905964032E+05      1.4662265813E+04                    10801                 38415    0.0066    0.0033  
+              630   2.0987891424E-01      3.6218998763E+03     -3.8114124008E+05      1.4629484523E+04                    10853                 37873    0.0065    0.0033  
+              640   2.0890847717E-01      3.5488699540E+03     -3.7350373235E+05      1.4632324197E+04                    10936                 38088    0.0066    0.0033  
+              650   2.1521805330E-01      3.4768530941E+03     -3.6597062835E+05      1.4613871090E+04                    10995                 38326    0.0066    0.0033  
+              660   2.1749314310E-01      3.4071547876E+03     -3.5868023495E+05      1.4607223029E+04                    11065                 38042    0.0066    0.0033  
+              670   2.3000624166E-01      3.3401272362E+03     -3.5166728881E+05      1.4570712410E+04                    11101                 38159    0.0066    0.0035  
+              680   2.2316452673E-01      3.2757859024E+03     -3.4493315289E+05      1.4590663789E+04                    11190                 38314    0.0066    0.0034  
+              690   2.3474423104E-01      3.2123856092E+03     -3.3829702437E+05      1.4556911773E+04                    11225                 38262    0.0066    0.0034  
+ # Writing restart file to HANDE.RS.0.p0.H5 family.
+              700   2.3712399092E-01      3.1503516476E+03     -3.3180468681E+05      1.4549985031E+04                    11285                 38044    0.0066    0.0034  
+              710   2.5485313433E-01      3.0905049907E+03     -3.2553670888E+05      1.4498484637E+04                    11298                 38015    0.0066    0.0035  
+              720   2.4717364136E-01      3.0314162450E+03     -3.1935632228E+05      1.4520769948E+04                    11382                 37630    0.0065    0.0033  
+              730   2.4133669008E-01      2.9744907897E+03     -3.1339906705E+05      1.4537731252E+04                    11457                 38119    0.0066    0.0034  
+              740   2.4806838764E-01      2.9195634268E+03     -3.0764783273E+05      1.4518171700E+04                    11497                 37759    0.0066    0.0034  
+              750   2.5928280546E-01      2.8665925169E+03     -3.0209764672E+05      1.4485645621E+04                    11522                 37811    0.0066    0.0034  
+              760   2.6396696397E-01      2.8138478081E+03     -2.9657353684E+05      1.4472081364E+04                    11563                 38312    0.0067    0.0034  
+              770   2.5193398826E-01      2.7633737486E+03     -2.9128736296E+05      1.4506951747E+04                    11651                 37986    0.0066    0.0034  
+              780   2.6289823073E-01      2.7132335404E+03     -2.8603483902E+05      1.4475175053E+04                    11672                 38120    0.0066    0.0033  
+              790   2.6417945055E-01      2.6656861415E+03     -2.8105268375E+05      1.4471466352E+04                    11720                 37823    0.0066    0.0034  
+ # Writing restart file to HANDE.RS.0.p0.H5 family.
+              800   2.6369353812E-01      2.6184540835E+03     -2.7610468967E+05      1.4472872793E+04                    11771                 38258    0.0067    0.0034  
+              810   2.6392989895E-01      2.5726481398E+03     -2.7130351830E+05      1.4472188646E+04                    11818                 37904    0.0066    0.0035  
+              820   2.6777278064E-01      2.5248058321E+03     -2.6629748132E+05      1.4461069937E+04                    11852                 37906    0.0066    0.0034  
+              830   2.7481542783E-01      2.4826123771E+03     -2.6187395952E+05      1.4440715433E+04                    11876                 37959    0.0066    0.0034  
+              840   2.7524185796E-01      2.4410000621E+03     -2.5751032872E+05      1.4439483894E+04                    11918                 38264    0.0067    0.0034  
+              850   2.6516826453E-01      2.3994655508E+03     -2.5315586896E+05      1.4468604717E+04                    11990                 38218    0.0067    0.0034  
+              860   2.5751244081E-01      2.3599761840E+03     -2.4901633165E+05      1.4490775504E+04                    12053                 38076    0.0066    0.0034  
+              870   2.5837690952E-01      2.3202588016E+03     -2.4485195610E+05      1.4488270356E+04                    12092                 38251    0.0067    0.0034  
+              880   2.5046148385E-01      2.2812086689E+03     -2.4075798307E+05      1.4511224686E+04                    12154                 38376    0.0067    0.0034  
+              890   2.5257775199E-01      2.2441677202E+03     -2.3686894717E+05      1.4505084057E+04                    12188                 37977    0.0066    0.0035  
+ # Writing restart file to HANDE.RS.0.p0.H5 family.
+              900   2.6028022041E-01      2.2069098413E+03     -2.3296149259E+05      1.4482756269E+04                    12204                 37973    0.0066    0.0034  
+              910   2.4679236230E-01      2.1708475806E+03     -2.2918264711E+05      1.4521877284E+04                    12278                 38187    0.0066    0.0035  
+              920   2.4772812644E-01      2.1368260310E+03     -2.2561124391E+05      1.4519159728E+04                    12312                 38665    0.0067    0.0035  
+              930   2.4613810772E-01      2.1036534083E+03     -2.2212965773E+05      1.4523777609E+04                    12353                 38364    0.0067    0.0035  
+              940   2.4206323932E-01      2.0665243126E+03     -2.1823960748E+05      1.4535618930E+04                    12398                 38292    0.0066    0.0034  
+              950   2.4068220046E-01      2.0345321116E+03     -2.1487949902E+05      1.4539634335E+04                    12437                 38295    0.0066    0.0035  
+              960   2.3785834860E-01      2.0018705221E+03     -2.1145232930E+05      1.4547848209E+04                    12476                 38471    0.0067    0.0035  
+              970   2.2281821538E-01      1.9706459342E+03     -2.0817415916E+05      1.4591674406E+04                    12553                 38500    0.0067    0.0035  
+              980   2.3676237489E-01      1.9404253933E+03     -2.0499689883E+05      1.4551037371E+04                    12545                 38557    0.0067    0.0034  
+              990   2.3104668702E-01      1.9108760452E+03     -2.0189345036E+05      1.4567680719E+04                    12591                 38381    0.0067    0.0036  
+ # Writing restart file to HANDE.RS.0.p0.H5 family.
+             1000   2.3102629011E-01      1.8795117297E+03     -1.9860364026E+05      1.4567740146E+04                    12620                 38772    0.0067    0.0036  
+ # Resetting beta... Beta loop = 2
+ # Resetting random number generator with a seed of: 1972011790.
+ # Restoring the propagator to asymmetric interaction picture...
+ # Initial diagonal density matrix element(s): 394
+                0   0.0000000000E+00      1.0002082985E+04     -1.0494862861E+06      1.0000000000E+04                      394                  7126    0.0000    0.0280  
+               10  -1.3233858802E-01      1.0002176906E+04     -1.0495218519E+06      1.0268210985E+04                      656                 24079    0.0059    0.0015  
+               20  -2.6379116791E-01      9.9892996268E+03     -1.0481951822E+06      1.0541747503E+04                      931                 24992    0.0060    0.0016  
+               30  -3.8362987354E-01      9.9636812564E+03     -1.0455313442E+06      1.0797461581E+04                     1195                 25546    0.0060    0.0017  
+               40  -4.9084074790E-01      9.9263886065E+03     -1.0416420201E+06      1.1031482634E+04                     1443                 26229    0.0060    0.0017  
+               50  -5.8479221686E-01      9.8788992308E+03     -1.0366807091E+06      1.1240727160E+04                     1673                 26769    0.0060    0.0018  
+               60  -6.6962171638E-01      9.8226948049E+03     -1.0308038983E+06      1.1433063176E+04                     1892                 27375    0.0061    0.0019  
+               70  -7.6044662264E-01      9.7587515970E+03     -1.0241180511E+06      1.1642642291E+04                     2133                 27811    0.0061    0.0019  
+               80  -8.5299819337E-01      9.6861640398E+03     -1.0165219143E+06      1.1860158191E+04                     2390                 28647    0.0061    0.0020  
+               90  -9.3610116333E-01      9.6057753322E+03     -1.0081099840E+06      1.2058928328E+04                     2634                 29114    0.0061    0.0021  
+ # Writing restart file to HANDE.RS.0.p0.H5 family.
+              100  -1.0212756941E+00      9.5183850105E+03     -9.9896175606E+05      1.2266110696E+04                     2893                 29796    0.0062    0.0021  
+              110  -1.0988953037E+00      9.4238579513E+03     -9.8906084117E+05      1.2458014537E+04                     3144                 30360    0.0062    0.0023  
+              120  -1.1724630827E+00      9.3231439915E+03     -9.7851294570E+05      1.2642671377E+04                     3393                 31283    0.0063    0.0022  
+              130  -1.2331210390E+00      9.2169608009E+03     -9.6738926628E+05      1.2796981218E+04                     3620                 31283    0.0062    0.0023  
+              140  -1.2937577346E+00      9.1068007607E+03     -9.5584674628E+05      1.2953119406E+04                     3852                 31718    0.0062    0.0023  
+              150  -1.3477119391E+00      8.9926909461E+03     -9.4388901915E+05      1.3093651322E+04                     4074                 32295    0.0062    0.0024  
+              160  -1.3931062511E+00      8.8755606356E+03     -9.3161141107E+05      1.3213068044E+04                     4281                 32517    0.0062    0.0024  
+              170  -1.4393447443E+00      8.7560749045E+03     -9.1908819260E+05      1.3335825252E+04                     4494                 32636    0.0062    0.0025  
+              180  -1.4852759163E+00      8.6345401803E+03     -9.0634977331E+05      1.3458895680E+04                     4710                 33416    0.0063    0.0025  
+              190  -1.5335573332E+00      8.5105407406E+03     -8.9335316082E+05      1.3589488094E+04                     4937                 33659    0.0063    0.0026  
+ # Writing restart file to HANDE.RS.0.p0.H5 family.
+              200  -1.5850989903E+00      8.3848258860E+03     -8.8017659965E+05      1.3730297550E+04                     5180                 33911    0.0062    0.0026  
+              210  -1.6271161188E+00      8.2565471284E+03     -8.6672908055E+05      1.3846165246E+04                     5401                 34819    0.0064    0.0028  
+              220  -1.6679048549E+00      8.1271105358E+03     -8.5315701711E+05      1.3959580741E+04                     5624                 34855    0.0063    0.0027  
+              230  -1.7084215846E+00      7.9969659938E+03     -8.3951157801E+05      1.4073159615E+04                     5848                 35003    0.0063    0.0027  
+              240  -1.7356446900E+00      7.8652911391E+03     -8.2570406974E+05      1.4149991608E+04                     6039                 35288    0.0063    0.0028  
+              250  -1.7656077531E+00      7.7340661067E+03     -8.1194412662E+05      1.4235041607E+04                     6240                 35507    0.0063    0.0028  
+              260  -1.7971980854E+00      7.6030087167E+03     -7.9820053185E+05      1.4325264262E+04                     6446                 35988    0.0063    0.0028  
+              270  -1.8235494715E+00      7.4724214293E+03     -7.8450561103E+05      1.4400961674E+04                     6639                 36463    0.0064    0.0029  
+              280  -1.8493390073E+00      7.3422016820E+03     -7.7084948563E+05      1.4475432389E+04                     6832                 36365    0.0063    0.0029  
+              290  -1.8712196195E+00      7.2126152884E+03     -7.5725916239E+05      1.4538917462E+04                     7015                 36707    0.0064    0.0029  
+ # Writing restart file to HANDE.RS.0.p0.H5 family.
+              300  -1.8836260051E+00      7.0834253938E+03     -7.4370934305E+05      1.4575037338E+04                     7170                 36863    0.0064    0.0029  
+              310  -1.9172467561E+00      6.9556425619E+03     -7.3030793679E+05      1.4673372317E+04                     7387                 37148    0.0064    0.0031  
+              320  -1.9343769566E+00      6.8279424559E+03     -7.1691341599E+05      1.4723730094E+04                     7558                 37297    0.0064    0.0030  
+              330  -1.9456103544E+00      6.7024367721E+03     -7.0374888390E+05      1.4756846785E+04                     7710                 37323    0.0064    0.0030  
+ # --------------------------------------------------------------
+ #  HANDE.COMM detected.
+ #
+ #  Contents of HANDE.COMM:
+ #
+ # softexit = true
+ #
+ # From now on we use the information provided in HANDE.COMM.
+ # --------------------------------------------------------------
+              340  -1.9736682402E+00      6.5781512617E+03     -6.9071061948E+05      1.4839888749E+04                     7913                 37615    0.0064    0.0032  
+
+ Load balancing
+ ^^^^^^^^^^^^^^
+
+ The final distribution of walkers and determinants across the processors was:
+
+ Min # of particles on a processor:       7.438580E+03
+ Max # of particles on a processor:       7.448578E+03
+ Mean # of particles on a processor:      7.443579E+03
+
+ Min # of determinants on a processor:   4012
+ Max # of determinants on a processor:   4070
+ Mean # of determinants on a processor:   4.041000E+03
+
+ Min time taken by walker communication:         0.06s
+ Max time taken by walker communication:         0.07s
+ Mean time taken by walker communication:        0.06s
+
+ Timing breakdown
+ ----------------
+
+ Wall time for each calculation section (seconds):
+
+ Generic system initialisation: .01
+ DMQMC calculation            : 4.00
+
+ ================================================================
+ Finished running on 15/12/2023 at 13:30:53
+ Wall time (seconds):                               4.04
+ CPU time (per processor, seconds):                 4.01
+ ================================================================
+

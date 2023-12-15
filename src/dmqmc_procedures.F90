@@ -92,6 +92,10 @@ contains
                 ireport_start = 1
                 beta_cycle_start = beta_cycle_start + 1
                 restarting = .false.
+            else if (ireport_start > prop_switch_report) then
+                ! Handle the case where we are past the propagator switch.
+                ! Reset back to normal in init_dmqmc_beta_loop
+                prop_switch_report = ireport_start
             end if
         else
             ireport_start = 1
@@ -990,7 +994,7 @@ contains
 
     end subroutine allocate_kspace_correlation_functions
 
-    subroutine propagator_change(sys, qs, dmqmc_in, annihilation_flags, iunit)
+    subroutine propagator_change(sys, qs, dmqmc_in, annihilation_flags, iunit, ireport_start)
 
         ! For piecewise IP-DMQMC, the stored diagonal Hamiltonian elements
         ! change from IP-DQMMC -> DMQMC. This is furthur altered by the
@@ -1006,6 +1010,9 @@ contains
         !       state on output.
         !   iunit: The location we are writing data to, to communicate
         !       information on the propagator switch.
+        !   ireport_start: The report number the beta loop started at,
+        !       when this is greater than 1 we know we started from a
+        !       restart file and should not change the shift.
         ! In/Out:
         !   qs: Stores the Hamiltonian elements for stochastic death,
         !       which upon return should be modified to store the correct
@@ -1030,7 +1037,7 @@ contains
         type(dmqmc_in_t), intent(inout) :: dmqmc_in
         type(annihilation_flags_t), intent(inout) :: annihilation_flags
 
-        integer, intent(in) :: iunit
+        integer, intent(in) :: iunit, ireport_start
 
         integer :: ireplica, idet
         integer(i0) :: detf1(sys%basis%tot_string_len)
@@ -1040,7 +1047,7 @@ contains
         dmqmc_in%ipdmqmc = .false.
         annihilation_flags%ipdmqmc = .false.
         do ireplica = 1, size(qs%psip_list%tot_nparticles)
-            qs%shift(ireplica) = dmqmc_in%piecewise_shift
+            if (ireport_start == 1) qs%shift(ireplica) = dmqmc_in%piecewise_shift
         end do
 
         ! If using the free electron density matrix in IP-DMQMC
