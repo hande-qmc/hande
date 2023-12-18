@@ -263,8 +263,8 @@ contains
         write (iunit,'(1X,"# states: The number of density matrix states occupied.")')
         write (iunit,'(1X,"# spawn_events: The number of successful spawning &
                           events across all processors (since the last report).")')
-        write (iunit,'(1X,"R_spawn: The average rate of spawning (per report) on &
-                          the root processors (since the last report).")')
+        write (iunit,'(1X,"R_spawn: The average rate of particle creation (per report) &
+                          across the processor(s) (since the last report).")')
         write (iunit,'(1X,"time: The average time per Monte Carlo cycle or the &
                           report time (since the last report).",/)')
 
@@ -750,7 +750,7 @@ contains
 
         call write_qmc_var(iunit, dmqmc_estimates%old%tot_nstates(1))
         call write_qmc_var(iunit, dmqmc_estimates%old%tot_nspawn_events(1))
-        call write_qmc_var(iunit, dmqmc_estimates%old%rspawn/qmc_in%ncycles, low_prec=.true.)
+        call write_qmc_var(iunit, dmqmc_estimates%old%rspawn, low_prec=.true.)
         call write_qmc_var(iunit, dmqmc_estimates%old%elapsed_time, low_prec=.true.)
 
         write (iunit,'()')

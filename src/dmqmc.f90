@@ -241,7 +241,8 @@ contains
 
                 do icycle = 1, qmc_in%ncycles
 
-                    call init_mc_cycle(qs%psip_list, qs%spawn_store%spawn, nattempts, ndeath, complx=sys%read_in%comp)
+                    call init_mc_cycle(qs%psip_list, qs%spawn_store%spawn, nattempts, ndeath, &
+                                       complx=sys%read_in%comp, dmqmc_factor=qs%dmqmc_factor)
 
                     iteration = (ireport-1)*qmc_in%ncycles + icycle
 
