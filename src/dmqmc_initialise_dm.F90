@@ -192,7 +192,10 @@ contains
             psip_list%tot_nparticles = nparticles_temp
 #endif
         else
-            psip_list%tot_nparticles(1) = target_nparticles_tot
+            do ireplica = 1, psip_list%nspaces
+                if (sys%read_in%comp .and. mod(ireplica, 2) == 0) cycle
+                psip_list%tot_nparticles(ireplica) = target_nparticles_tot
+            end do
         end if
 
         call direct_annihilation(sys, rng, qmc_state%ref, annihilation_flags, psip_list, spawn)
