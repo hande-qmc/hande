@@ -88,7 +88,8 @@ module restart_hdf5
     !      distribution                # (Version 3) Type of pre-computed random numbers
     !      random_store                # (Version 3) Set of pre-computed (but unused) random numbers.
     !
-    !  dmqmc/ # (All version 4), will be empty in non-DMQMC calculations
+    !  dmqmc/ # (All version 4), will be empty in non-DMQMC calculations.
+    !         # Note, the Fermi temperature scaling is never used in the stored beta values below.
     !        last_beta # The beta the checkpoint was generated at
     !        target_beta # The intended target beta (for IP-DMQMC only)
     !        final_beta # The final beta for the simulation

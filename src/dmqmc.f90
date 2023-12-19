@@ -795,6 +795,7 @@ contains
 
         integer, intent(in) :: beta_cycle, icycle, iunit
 
+        real(p) :: stored_target_beta
         logical :: dump, endofloop
 
         ! The user did not turn on restart dumping so no need to proceed.
@@ -809,6 +810,14 @@ contains
 
         if (.not. dump) return
 
+        ! Do not include the Fermi temperature so consistency checks can
+        ! be done with more clarity when restarting. But store the
+        ! (potentially scaled) temperature so we can return the value
+        ! to what is expected after saving the restart.
+        stored_target_beta = qs%target_beta
+
+        ! Set variables for storing in the restart file.
+        qs%target_beta = dmqmc_in%target_beta
         qs%last_beta = real(qs%mc_cycles_done, p)*qmc_in%tau
         qs%final_beta = dmqmc_in%final_beta
         qs%beta_cycle = beta_cycle
@@ -817,6 +826,9 @@ contains
         call dump_restart_hdf5(qs, qs%mc_cycles_done, qs%psip_list%tot_nparticles, &
                                sys%basis%nbasis, .false., sys%basis%info_string_len)
         call free_dSFMT_state_t(qs%rng_state)
+
+        ! Reset the qs target beta to its original value.
+        qs%target_beta = stored_target_beta
 
     end subroutine dmqmc_dump_restart_wrapper
 
