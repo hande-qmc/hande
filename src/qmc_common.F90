@@ -1019,6 +1019,9 @@ contains
             nattempts = int(psip_list%nparticles(1), int_64)
             if (complx_loc) nattempts = nattempts + abs(nint(psip_list%nparticles(2), int_64))
         else if (doing_calc(dmqmc_calc)) then
+            ! TODO: WZV
+            ! Note: To be updated in the report update after merging restart branch
+            ! Action: Comment back in, and removing proceeding line.
             ! Using the symmetric propagator (Bloch or interaction picture)
             ! each particle will attempt to spawn along rows and columns.
             ! In this case dmqmc_factor is 2.0, when the propagator
@@ -1027,7 +1030,8 @@ contains
             ! An additional factor of 1.0 is for cloning/death, which
             ! contribute to the total number of particles created as a
             ! separate event.
-            nattempts = nint((1.0_p + dmqmc_factor)*sum(psip_list%nparticles), int_64)
+            !nattempts = nint((1.0_p + dmqmc_factor)*sum(psip_list%nparticles), int_64)
+            nattempts = nint(4*psip_list%nparticles(1)*psip_list%nspaces, int_64)
         else
             ! Each particle gets to attempt to spawn onto a connected
             ! determinant and a chance to die/clone.

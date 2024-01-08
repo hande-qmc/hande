@@ -194,22 +194,43 @@ contains
         complx_est_set = .false.
         if (present(complx_est)) complx_est_set = complx_est
 
-        write (iunit,'(1X,"Information printed out every QMC report loop &
-                          (quantities are for the reported iteration unless stated otherwise):",/)')
-        write (iunit,'(1X,"Shift: The energy offset used since the last report.")')
+        ! TODO: WZV
+        ! Note: To be updated in the report update after merging restart branch
+        ! Action: Comment back in, and remove proceeding line.
+        !write (iunit,'(1X,"Information printed out every QMC report loop &
+        !                  (quantities are for the reported iteration unless stated otherwise):",/)')
+        !write (iunit,'(1X,"Shift: The energy offset used since the last report.")')
+        !if (doing_dmqmc_calc(dmqmc_full_r2)) then
+        !    write (iunit, '(1X, "Trace 1: The sum of the diagonal elements for the &
+        !                         &first replica of the density matrix.")')
+        !    write (iunit, '(1X, "Trace 2: The sum of the diagonal elements for the &
+        !                         &second replica of the density matrix.")')
+        !else
+        !    write (iunit, '(1X, "Trace: The sum of the diagonal elements for the &
+        !                         &density matrix.")')
+        !end if
+        write (iunit,'(1X,"Information printed out every QMC report loop:",/)')
+        write (iunit,'(1X,"Shift: the energy offset calculated at the end of the report loop.")')
         if (doing_dmqmc_calc(dmqmc_full_r2)) then
-            write (iunit, '(1X, "Trace 1: The sum of the diagonal elements for the &
+            write (iunit, '(1X, "Trace: The current total population on the diagonal elements of the &
                                  &first replica of the density matrix.")')
-            write (iunit, '(1X, "Trace 2: The sum of the diagonal elements for the &
+            write (iunit, '(1X, "Trace 2: The current total population on the diagonal elements of the &
                                  &second replica of the density matrix.")')
         else
-            write (iunit, '(1X, "Trace: The sum of the diagonal elements for the &
+            write (iunit, '(1X, "Trace: The current total population on the diagonal elements of the &
                                  &density matrix.")')
         end if
         if (doing_dmqmc_calc(dmqmc_full_r2)) then
             write (iunit, '(1X, "Full S2: The numerator of the estimator for the Renyi entropy of the &
                                   &full system.")')
         end if
+        ! TODO: WZV
+        ! Note: To be updated in the report update after merging restart branch
+        ! Action: Comment back in, and remove proceeding line.
+        !if (doing_dmqmc_calc(dmqmc_energy)) then
+        !    write (iunit, '(1X, "\sum\rho_{ij}H_{ji}: The numerator of the estimator for the expectation &
+        !                         &value of the energy.")')
+        !end if
         if (doing_dmqmc_calc(dmqmc_energy)) then
             write (iunit, '(1X, "\sum\rho_{ij}H_{ji}: The numerator of the estimator for the expectation &
                                  &value of the energy.")')
@@ -259,14 +280,23 @@ contains
                              &at momentum transfer q")')
         end if
 
-        write (iunit,'(1X,"# particles: The total population of density matrix particles.")')
-        write (iunit,'(1X,"# states: The number of density matrix states occupied.")')
-        write (iunit,'(1X,"# spawn_events: The number of successful spawning &
-                          events across all processors (since the last report).")')
-        write (iunit,'(1X,"R_spawn: The average rate of particle creation (per report) &
-                          across the processor(s) (since the last report).")')
-        write (iunit,'(1X,"time: The average time per Monte Carlo cycle or the &
-                          report time (since the last report).",/)')
+        ! TODO: WZV
+        ! Note: To be updated in the report update after merging restart branch
+        ! Action: Comment back in, and remove proceeding line.
+        !write (iunit,'(1X,"# particles: The total population of density matrix particles.")')
+        !write (iunit,'(1X,"# states: The number of density matrix states occupied.")')
+        !write (iunit,'(1X,"# spawn_events: The number of successful spawning &
+        !                  events across all processors (since the last report).")')
+        !write (iunit,'(1X,"R_spawn: The average rate of particle creation (per report) &
+        !                  across the processor(s) (since the last report).")')
+        !write (iunit,'(1X,"time: The average time per Monte Carlo cycle or the &
+        !                  report time (since the last report).",/)')
+        write (iunit,'(1X,"# particles: current total population of Hamiltonian particles.")')
+        write (iunit,'(1X,"# states: number of many-particle states occupied.")')
+        write (iunit,'(1X,"# spawn_events: number of successful spawning events across all processors.")')
+        write (iunit,'(1X,"R_spawn: average rate of spawning across all processors.")')
+        write (iunit,'(1X,"time: average time per Monte Carlo cycle.",/)')
+        write (iunit,'(1X,"Note that all particle populations are averaged over the report loop.",/)')
 
         ! Header of data table.
         write (iunit,'(1X,"#",1X)', advance='no')

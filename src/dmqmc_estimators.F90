@@ -73,11 +73,13 @@ contains
         integer :: nelems(final_ind-1), min_ind(final_ind-1), max_ind(final_ind-1)
         integer :: tot_nelems, i, ierr
 
-        ! Store these quantities as they were when the report values are stored.
-        dmqmc_estimates%old%shift = qs%shift
-        dmqmc_estimates%old%tot_nstates = qs%estimators%tot_nstates
-        dmqmc_estimates%old%tot_nspawn_events = qs%estimators%tot_nspawn_events
-        dmqmc_estimates%old%elapsed_time = elapsed_time
+        ! TODO: WZV
+        ! Note: To be updated in the report update after merging restart branch
+        ! Action: Comment back in.
+        !dmqmc_estimates%old%shift = qs%shift
+        !dmqmc_estimates%old%tot_nstates = qs%estimators%tot_nstates
+        !dmqmc_estimates%old%tot_nspawn_events = qs%estimators%tot_nspawn_events
+        !dmqmc_estimates%old%elapsed_time = elapsed_time
 
         ! If calculating instantaneous RDM estimates then call this routine to
         ! perform annihilation for RDM particles, and calculate RDM estimates

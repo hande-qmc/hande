@@ -295,6 +295,9 @@ contains
                                                          qs%ref%f0)
                         end if
 
+                        ! TODO: WZV
+                        ! Note: To be updated in the report update after merging restart branch
+                        ! Action: Comment back in.
                         ! In DMQMC we gather statistics only at the first
                         ! cycle of a report, this is mainly because 1) we
                         ! want to report the initial distribution and 2) we
@@ -304,7 +307,7 @@ contains
                         ! (see init_dmqmc for more information) for spawning
                         ! and cloning/death which are unnecessary and to
                         ! prevent this we cycle here.
-                        if (ireport == nreport) cycle
+                        !if (ireport == nreport) cycle
 
                         ! Only attempt spawning if a valid connection exists.
                         attempt_spawning = connection_exists(sys)
@@ -344,15 +347,22 @@ contains
                         end do
                     end do
 
+                    ! TODO: WZV
+                    ! Note: To be updated in the report update after merging restart branch
+                    ! Action: Comment back in.
                     ! See above for why this is done.
-                    if (ireport == nreport) exit
+                    !if (ireport == nreport) exit
 
                     ! Perform the annihilation step where the spawned walker
                     ! list is merged with the main walker list, and walkers of
                     ! opposite sign on the same sites are annihilated.
                     call direct_annihilation(sys, rng, qs%ref, annihilation_flags, qs%psip_list, &
                                              qs%spawn_store%spawn, nspawn_events)
-                    tot_nspawn_events = tot_nspawn_events + nspawn_events
+                    ! TODO: WZV
+                    ! Note: To be updated in the report update after merging restart branch
+                    ! Action: Comment back in, and remove proceeding line.
+                    !tot_nspawn_events = tot_nspawn_events + nspawn_events
+                    tot_nspawn_events = nspawn_events
 
                     call end_mc_cycle(nspawn_events, ndeath, qs%psip_list%pop_real_factor, nattempts, qs%spawn_store%rspawn)
 
@@ -389,6 +399,15 @@ contains
                 call cpu_time(t2)
                 elapsed_time = (t2 - t1)/qmc_in%ncycles
                 t1 = t2
+
+                ! TODO: WZV
+                ! Note: To be updated in the report update after merging restart branch
+                ! Action: Remove these lines.
+                dmqmc_estimates%old%rspawn = qs%spawn_store%rspawn
+                dmqmc_estimates%old%shift = qs%shift
+                dmqmc_estimates%old%tot_nstates = qs%estimators%tot_nstates
+                dmqmc_estimates%old%tot_nspawn_events = qs%estimators%tot_nspawn_events
+                dmqmc_estimates%old%elapsed_time = elapsed_time
 
                 if (state_hist_in%state_histograms) then
                     call comm_and_report_state_histogram(state_hist, ireport, iunit, &
@@ -747,7 +766,10 @@ contains
 
         call bloom_stats_init_report_loop(bloom_stats)
 
-        dmqmc_estimates%old%rspawn = rspawn
+        ! TODO: WZV
+        ! Note: To be updated in the report update after merging restart branch
+        ! Action: Comment back in.
+        !dmqmc_estimates%old%rspawn = rspawn
 
         rspawn = 0.0_p
         tot_nspawn_events = 0
