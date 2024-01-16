@@ -255,6 +255,8 @@ type dmqmc_in_t
     ! The file we will write the dump to.
     character(255) :: dmdump_filename = ''
 
+    ! For dumping the initial distribution
+    logical :: init_restart_only = .false.
 end type dmqmc_in_t
 
 ! Spawned lists for rdms.
@@ -439,6 +441,7 @@ contains
             call json_write_key(js, 'dmdump_filename', dmqmc%dmdump_filename)
             call json_write_key(js, 'dmdump_frequency', dmqmc%dmdump_frequency)
         end if
+        call json_write_key(js, 'init_restart_only', dmqmc%init_restart_only)
         call json_write_key(js, 'finish_varying_weights', dmqmc%finish_varying_weights)
         call json_write_key(js, 'fermi_temperature', dmqmc%fermi_temperature)
         call json_write_key(js, 'target_beta', dmqmc%target_beta)

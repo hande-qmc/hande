@@ -2232,12 +2232,12 @@ contains
         logical :: op, bloch_symmetry_unset
         character(len=13) :: str
 
-        character(30), parameter :: dmqmc_keys(17) = [character(30) :: 'replica_tricks', 'fermi_temperature', 'all_sym_sectors',  &
+        character(30), parameter :: dmqmc_keys(18) = [character(30) :: 'replica_tricks', 'fermi_temperature', 'all_sym_sectors',  &
                                                                        'all_spin_sectors', 'beta_loops', 'sampling_weights',      &
                                                                        'find_weights', 'find_weights_start', 'symmetrize',        &
                                                                        'vary_weights', 'initiator_level', 'symmetric_bloch',      &
                                                                        'walker_scale_factor', 'final_beta', 'piecewise_shift',    &
-                                                                       'dmdump_filename', 'dmdump_frequency']
+                                                                       'dmdump_filename', 'dmdump_frequency', 'init_restart_only']
         character(30), parameter :: ip_keys(9)     = [character(30) :: 'target_beta', 'initial_beta', 'initial_matrix',           &
                                                                        'grand_canonical_initialisation', 'metropolis_attempts',   &
                                                                        'symmetric_interaction_picture', 'piecewise_beta',         &
@@ -2287,6 +2287,7 @@ contains
                 call aot_get_val(dmqmc_in%dmdump_filename, err, lua_state, table, 'dmdump_filename')
                 call aot_get_val(dmqmc_in%dmdump_frequency, err, lua_state, table, 'dmdump_frequency')
             end if
+            call aot_get_val(dmqmc_in%init_restart_only, err, lua_state, table, 'init_restart_only')
             dmqmc_in%vary_weights = aot_exists(lua_state, table, 'vary_weights')
             call aot_get_val(dmqmc_in%finish_varying_weights, err, lua_state, table, 'vary_weights')
             call warn_unused_args(lua_state, dmqmc_keys, table)

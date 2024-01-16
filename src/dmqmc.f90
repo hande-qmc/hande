@@ -228,6 +228,11 @@ contains
                     call cpu_time(t2)
                     elapsed_time = t2 - t1
                     t1 = t2
+                    ! We dump the initial distribution and stop the calculation.
+                    if (dmqmc_in%init_restart_only) then
+                        call dmqmc_dump_restart_wrapper(sys, qs, rng, qmc_in, dmqmc_in, &
+                                                        restart_in, beta_cycle, 0, iunit)
+                    end if
                 end if
 
                 ! If we are propagating past IP-DMQMC target beta.
@@ -423,7 +428,7 @@ contains
                 call dmqmc_dump_restart_wrapper(sys, qs, rng, qmc_in, dmqmc_in, &
                                                 restart_in, beta_cycle, icycle, iunit)
 
-                if (soft_exit) exit outer_loop
+                if (soft_exit .or. dmqmc_in%init_restart_only) exit outer_loop
 
             end do
 
@@ -822,6 +827,9 @@ contains
 
         ! The user did not turn on restart dumping so no need to proceed.
         if (.not. restart_in%write_restart) return
+
+        ! If dumping the initial distribution only
+        if ((icycle > 0) .and. dmqmc_in%init_restart_only) return
 
         endofloop = qs%mc_cycles_done == int(ceiling(dmqmc_in%final_beta/qmc_in%tau))
 
