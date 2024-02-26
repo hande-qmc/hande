@@ -1,4 +1,4 @@
-'''pyblock is a python module for analysis of correlated data.
+"""pyblock is a python module for analysis of correlated data.
 
 .. toctree::
    :maxdepth: 1
@@ -24,17 +24,28 @@ References
 .. [3] "Strategies for improving the efficiency of quantum Monte Carlo
        calculations", R. M. Lee, G. J. Conduit, N. Nemec, P. Lopez Rios, and N.
        D.  Drummond, Phys. Rev. E. 83, 066706 (2011).
-'''
+"""
 
 # copyright: (c) 2014 James Spencer
 # license: modified BSD license; see LICENSE for further details.
 
+__author__ = """James S. Spencer"""
+__version__ = "0.6"
+__copyright__ = "Copyright 2021, James S. Spencer"
+__license__ = "BSD-3-Clause"
+__status__ = "Production"
+
 import warnings
+
 # For convenience, import all submodules so the user need only import pyblock.
 import pyblock.error
 import pyblock.blocking
-import pyblock.pd_utils
+
+try:
+    import pyblock.pd_utils
+except ImportError:
+    warnings.warn("Pandas wrappers disabled: pandas not available.")
 try:
     import pyblock.plot
 except ImportError:
-    warnings.warn('Plotting disabled: matplotlib not available.')
+    warnings.warn("Plotting disabled: matplotlib not available.")

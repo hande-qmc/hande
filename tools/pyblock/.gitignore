@@ -1,7 +1,9 @@
 __pycache__
 *pyc
 .ipynb_checkpoints
+.coverage
 _build
 build/
 dist/
+pyblock.egg-info/
 MANIFEST
