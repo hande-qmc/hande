@@ -17,7 +17,8 @@ implicit none
 contains
 
     subroutine create_initial_density_matrix(rng, sys, qmc_in, dmqmc_in, qmc_state, annihilation_flags, &
-                                             target_nparticles_tot, psip_list, spawn, chem_pot, energy_shift)
+                                             target_nparticles_tot, psip_list, spawn, chem_pot, energy_shift, &
+                                             nspawn_events, restarting)
 
         ! Create a starting density matrix by sampling the elements of the
         ! (unnormalised) identity matrix. This is a sampling of the
@@ -33,6 +34,7 @@ contains
         !       matrix on output.
         !    spawn: spawn_t object.  Reset on input and output.  Used to
         !       communicate the generated particles.
+        !    restarting: True if we are initializing from a restart calculation.
         ! In:
         !    qmc_in: input options relating to QMC methods.
         !    dmqmc_in: input options relating to DMQMC.
@@ -41,6 +43,7 @@ contains
         !    target_nparticles_tot: The total number of psips to attempt to
         !        generate across all processes.
         !    chem_pot: chemical potential for electronic Hamiltonians.
+        !    nspawn_events: The total number of spawn events on the processor.
 
         use annihilation, only: direct_annihilation
         use dSFMT_interface, only:  dSFMT_t, get_rand_close_open
@@ -60,9 +63,11 @@ contains
         type(qmc_state_t), intent(inout) :: qmc_state
         type(annihilation_flags_t), intent(in) :: annihilation_flags
         integer(int_64), intent(in) :: target_nparticles_tot
+        integer, intent(out) :: nspawn_events
         real(p), intent(in) :: energy_shift, chem_pot(1:2)
         type(particle_t), intent(inout) :: psip_list
         type(spawn_t), intent(inout) :: spawn
+        logical, intent(inout) :: restarting
 
         real(dp) :: nparticles_temp(psip_list%nspaces)
         integer :: nel, ireplica, ialpha, ms
@@ -73,6 +78,11 @@ contains
 #ifdef PARALLEL
         integer :: ierr
 #endif
+
+        if (restarting) then
+            restarting = .false.
+            return
+        end if
 
         npsips_this_proc = target_nparticles_tot/nprocs
         ! If the initial number of psips does not split evenly between all
@@ -198,7 +208,7 @@ contains
             end do
         end if
 
-        call direct_annihilation(sys, rng, qmc_state%ref, annihilation_flags, psip_list, spawn)
+        call direct_annihilation(sys, rng, qmc_state%ref, annihilation_flags, psip_list, spawn, nspawn_events)
 
         if (dmqmc_in%metropolis_attempts > 0) then
             ! Reset the position of the first spawned particle in the spawning array
@@ -211,7 +221,7 @@ contains
                                         psip_list%nparticles, spawn)
             if (spawn%error) call stop_all('create_initial_density_matrix', 'Ran out of space in the spawning array while&
                                       & generating the initial density matrix.')
-            call direct_annihilation(sys, rng, qmc_state%ref, annihilation_flags, psip_list, spawn)
+            call direct_annihilation(sys, rng, qmc_state%ref, annihilation_flags, psip_list, spawn, nspawn_events)
         end if
 
         if (dmqmc_in%walker_scale_factor > 2.0_p) then
@@ -229,6 +239,17 @@ contains
                 qmc_state%psip_list%pops(ireplica,:qmc_state%psip_list%nstates) = &
                     int(dmqmc_in%walker_scale_factor, p)*qmc_state%psip_list%pops(ireplica,:qmc_state%psip_list%nstates)
             end do
+        end if
+
+        ! Determine if the shift should vary from the start.
+        if (abs(qmc_in%shift_harmonic_forcing) .gt. 0.00_p) then
+            ! Allow the shift to vary from the very start of the beta loop, if
+            ! shift_harmonic_forcing is not equal to zero.
+            qmc_state%vary_shift = .true.
+        else
+            ! Allow the shift to vary from the very start of the beta loop, if
+            ! this condition is met.
+            qmc_state%vary_shift = qmc_state%psip_list%tot_nparticles >= qmc_state%target_particles
         end if
 
     end subroutine create_initial_density_matrix

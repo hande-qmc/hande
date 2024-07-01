@@ -960,7 +960,7 @@ contains
 
     end subroutine init_report_loop
 
-    subroutine init_mc_cycle(psip_list, spawn, nattempts, ndeath, min_attempts, complx)
+    subroutine init_mc_cycle(psip_list, spawn, nattempts, ndeath, min_attempts, complx, dmqmc_factor)
 
         ! Initialise a Monte Carlo cycle (basically zero/reset cycle-level
         ! quantities).
@@ -978,10 +978,13 @@ contains
         ! In (optional):
         !    min_attempts: if present, set nattempts to be at least this value.
         !    complx: true if using real and imaginary psips.
+        !    dmqmc_factor: The scale factor to account for the symmetry
+        !        of the dmqmc propagator.
 
         use calc, only: doing_calc, ct_fciqmc_calc, ccmc_calc, dmqmc_calc, uccmc_calc, trot_uccmc_calc
         use const, only: int_64, int_p
         use qmc_data, only: particle_t
+        use parallel, only: iproc
         use spawn_data, only: spawn_t
 
         type(particle_t), intent(inout) :: psip_list
@@ -990,6 +993,7 @@ contains
         logical, intent(in), optional :: complx
         integer(int_64), intent(out) :: nattempts
         integer(int_p), intent(out) :: ndeath
+        real(p), intent(in), optional :: dmqmc_factor
 
         logical :: complx_loc
 
@@ -1015,8 +1019,18 @@ contains
             nattempts = int(psip_list%nparticles(1), int_64)
             if (complx_loc) nattempts = nattempts + abs(nint(psip_list%nparticles(2), int_64))
         else if (doing_calc(dmqmc_calc)) then
-            ! Each particle and each end gets to attempt to spawn onto a
-            ! connected determinant and a chance to die/clone.
+            ! TODO: WZV
+            ! Note: To be updated in the report update after merging restart branch
+            ! Action: Comment back in, and removing proceeding line.
+            ! Using the symmetric propagator (Bloch or interaction picture)
+            ! each particle will attempt to spawn along rows and columns.
+            ! In this case dmqmc_factor is 2.0, when the propagator
+            ! is asymmetric the dmqmc_factor is 1.0 because spawning
+            ! happens only along the column or row (not both!).
+            ! An additional factor of 1.0 is for cloning/death, which
+            ! contribute to the total number of particles created as a
+            ! separate event.
+            !nattempts = nint((1.0_p + dmqmc_factor)*sum(psip_list%nparticles), int_64)
             nattempts = nint(4*psip_list%nparticles(1)*psip_list%nspaces, int_64)
         else
             ! Each particle gets to attempt to spawn onto a connected

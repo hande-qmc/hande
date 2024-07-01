@@ -194,6 +194,21 @@ contains
         complx_est_set = .false.
         if (present(complx_est)) complx_est_set = complx_est
 
+        ! TODO: WZV
+        ! Note: To be updated in the report update after merging restart branch
+        ! Action: Comment back in, and remove proceeding line.
+        !write (iunit,'(1X,"Information printed out every QMC report loop &
+        !                  (quantities are for the reported iteration unless stated otherwise):",/)')
+        !write (iunit,'(1X,"Shift: The energy offset used since the last report.")')
+        !if (doing_dmqmc_calc(dmqmc_full_r2)) then
+        !    write (iunit, '(1X, "Trace 1: The sum of the diagonal elements for the &
+        !                         &first replica of the density matrix.")')
+        !    write (iunit, '(1X, "Trace 2: The sum of the diagonal elements for the &
+        !                         &second replica of the density matrix.")')
+        !else
+        !    write (iunit, '(1X, "Trace: The sum of the diagonal elements for the &
+        !                         &density matrix.")')
+        !end if
         write (iunit,'(1X,"Information printed out every QMC report loop:",/)')
         write (iunit,'(1X,"Shift: the energy offset calculated at the end of the report loop.")')
         if (doing_dmqmc_calc(dmqmc_full_r2)) then
@@ -209,6 +224,13 @@ contains
             write (iunit, '(1X, "Full S2: The numerator of the estimator for the Renyi entropy of the &
                                   &full system.")')
         end if
+        ! TODO: WZV
+        ! Note: To be updated in the report update after merging restart branch
+        ! Action: Comment back in, and remove proceeding line.
+        !if (doing_dmqmc_calc(dmqmc_energy)) then
+        !    write (iunit, '(1X, "\sum\rho_{ij}H_{ji}: The numerator of the estimator for the expectation &
+        !                         &value of the energy.")')
+        !end if
         if (doing_dmqmc_calc(dmqmc_energy)) then
             write (iunit, '(1X, "\sum\rho_{ij}H_{ji}: The numerator of the estimator for the expectation &
                                  &value of the energy.")')
@@ -258,6 +280,17 @@ contains
                              &at momentum transfer q")')
         end if
 
+        ! TODO: WZV
+        ! Note: To be updated in the report update after merging restart branch
+        ! Action: Comment back in, and remove proceeding line.
+        !write (iunit,'(1X,"# particles: The total population of density matrix particles.")')
+        !write (iunit,'(1X,"# states: The number of density matrix states occupied.")')
+        !write (iunit,'(1X,"# spawn_events: The number of successful spawning &
+        !                  events across all processors (since the last report).")')
+        !write (iunit,'(1X,"R_spawn: The average rate of particle creation (per report) &
+        !                  across the processor(s) (since the last report).")')
+        !write (iunit,'(1X,"time: The average time per Monte Carlo cycle or the &
+        !                  report time (since the last report).",/)')
         write (iunit,'(1X,"# particles: current total population of Hamiltonian particles.")')
         write (iunit,'(1X,"# states: number of many-particle states occupied.")')
         write (iunit,'(1X,"# spawn_events: number of successful spawning events across all processors.")')
@@ -557,8 +590,8 @@ contains
 
     end subroutine write_qmc_report
 
-    subroutine write_dmqmc_report(sys, qmc_in, qs, ireport, ntot_particles, elapsed_time, comment, &
-                                  dmqmc_in, dmqmc_estimates, complx_est)
+    subroutine write_dmqmc_report(sys, qmc_in, qs, ireport, comment, dmqmc_in, &
+                                  dmqmc_estimates, complx_est)
 
         ! Write the report line at the end of a report loop.
 
@@ -566,8 +599,6 @@ contains
         !    qmc_in: input options relating to QMC methods.
         !    qs: QMC state (containing shift and various estimators).
         !    ireport: index of the report loop.
-        !    ntot_particles: total number of particles in main walker list.
-        !    elapsed_time: time taken for the report loop.
         !    comment: if true, then prefix the line with a #.
         !    dmqmc_in: input options relating to DMQMC.
         !    dmqmc_estimates: type containing all DMQMC estimates to be printed.
@@ -585,8 +616,6 @@ contains
         type(qmc_in_t), intent(in) :: qmc_in
         type(qmc_state_t), intent(in) :: qs
         integer, intent(in) :: ireport
-        real(dp), intent(in) :: ntot_particles(:)
-        real, intent(in) :: elapsed_time
         logical, intent(in) :: comment
         type(dmqmc_in_t), intent(in) :: dmqmc_in
         logical, intent(in), optional :: complx_est
@@ -600,7 +629,7 @@ contains
 
         iunit = 6
 
-        ntypes = size(ntot_particles)
+        ntypes = size(dmqmc_estimates%old%tot_nparticles)
 
         mc_cycles = ireport*qmc_in%ncycles
 
@@ -610,8 +639,8 @@ contains
             write (iunit,'(3X)', advance='no')
         end if
 
-        call write_qmc_var(iunit, qs%mc_cycles_done+mc_cycles-qmc_in%ncycles)
-        call write_qmc_var(iunit, qs%shift(1))
+        call write_qmc_var(iunit, mc_cycles-qmc_in%ncycles)
+        call write_qmc_var(iunit, dmqmc_estimates%old%shift(1))
         
         ! Trace, should be real.
         call write_qmc_var(iunit, dmqmc_estimates%trace(1))
@@ -717,7 +746,7 @@ contains
         ! density matrix.
         if (dmqmc_in%calc_excit_dist) then
             do i = 0, ubound(dmqmc_estimates%excit_dist,1)
-                call write_qmc_var(iunit, dmqmc_estimates%excit_dist(i)/ntot_particles(1))
+                call write_qmc_var(iunit, dmqmc_estimates%excit_dist(i)/dmqmc_estimates%old%tot_nparticles(1))
             end do
         end if
 
@@ -740,17 +769,18 @@ contains
         end if
 
         if (complx_est_set) then
-            call write_qmc_var(iunit, ntot_particles(1))
-            call write_qmc_var(iunit, ntot_particles(2))
-            call write_qmc_var(iunit, ntot_particles(1) + ntot_particles(2))
+            call write_qmc_var(iunit, dmqmc_estimates%old%tot_nparticles(1))
+            call write_qmc_var(iunit, dmqmc_estimates%old%tot_nparticles(2))
+            call write_qmc_var(iunit, dmqmc_estimates%old%tot_nparticles(1) &
+                                      + dmqmc_estimates%old%tot_nparticles(2))
         else
-            call write_qmc_var(iunit, ntot_particles(1))
+            call write_qmc_var(iunit, dmqmc_estimates%old%tot_nparticles(1))
         end if
 
-        call write_qmc_var(iunit, qs%estimators(1)%tot_nstates)
-        call write_qmc_var(iunit, qs%estimators(1)%tot_nspawn_events)
-        call write_qmc_var(iunit, qs%spawn_store%rspawn, low_prec=.true.)
-        call write_qmc_var(iunit, elapsed_time/qmc_in%ncycles, low_prec=.true.)
+        call write_qmc_var(iunit, dmqmc_estimates%old%tot_nstates(1))
+        call write_qmc_var(iunit, dmqmc_estimates%old%tot_nspawn_events(1))
+        call write_qmc_var(iunit, dmqmc_estimates%old%rspawn, low_prec=.true.)
+        call write_qmc_var(iunit, dmqmc_estimates%old%elapsed_time, low_prec=.true.)
 
         write (iunit,'()')
 

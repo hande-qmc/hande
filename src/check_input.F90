@@ -426,12 +426,14 @@ contains
 
         if (dmqmc_in%target_beta < depsilon .and. dmqmc_in%grand_canonical_initialisation) then
             call stop_all(this, 'target_beta must be greater than zero if grand_canonical_initialisation is to be used.')
-        else if (dmqmc_in%target_beta < 0) then
-            call stop_all(this, 'target_beta must be non-negative.')
         end if
 
-        if (dmqmc_in%final_beta > 0.0_p .and. dmqmc_in%final_beta < dmqmc_in%target_beta) then
-            call stop_all(this, 'If using final_beta and taget_beta, final_beta must be greater than target_beta!')
+        if (dmqmc_in%final_beta > 0.0_p .and. (dmqmc_in%final_beta < dmqmc_in%target_beta) .and. dmqmc_in%ipdmqmc) then
+            call stop_all(this, 'If using final_beta and target_beta, final_beta must be greater than target_beta!')
+        end if
+
+        if (dmqmc_in%ipdmqmc .and. (dmqmc_in%target_beta < 0.0_p)) then
+            call stop_all(this, 'The target_beta must be specified to use the interaction picture!')
         end if
 
         if (dmqmc_in%metropolis_attempts < 0) then

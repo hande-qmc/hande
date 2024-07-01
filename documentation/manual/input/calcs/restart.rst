@@ -39,6 +39,12 @@ HANDE currently uses one restart file per MPI rank with a filename of the form
     ``target_population`` is reached) if ``true`` or an integer.  If ``true``, then the
     highest value of ``X`` is used for which a set of restart files doesn't exist,
     otherwise specifies the value of ``X`` to use.
+
+    .. note::
+
+        This option is ignored in :ref:`dmqmc` calculations due to the nature
+        of DMQMC calculations. That is, the population is generally intended
+        to be fixed throughout the simulation.
 ``write_frequency``
     type: integer.
 

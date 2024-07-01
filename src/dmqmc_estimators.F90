@@ -28,7 +28,8 @@ end enum
 contains
 
     subroutine dmqmc_estimate_comms(dmqmc_in, error, nspawn_events, max_num_excits, ncycles, &
-                                    psip_list, qs, accumulated_probs_old, dmqmc_estimates)
+                                    psip_list, qs, accumulated_probs_old, dmqmc_estimates, &
+                                    elapsed_time)
 
         ! Sum together the contributions to the various DMQMC estimators (and
         ! some other non-physical quantities such as the rate of spawning and
@@ -43,6 +44,7 @@ contains
         !        studied.
         !    ncycles: the number of monte carlo cycles.
         !    accumulated_probs_old: the value of accumulated_probs on the last report cycle.
+        !    elapsed_time: the total time since our last report
         ! In/Out:
         !    error: true if an error has occured on this processor. On output, true if an
         !        error has occured on any processor.
@@ -64,11 +66,20 @@ contains
         type(particle_t), intent(inout) :: psip_list
         type(qmc_state_t), intent(inout) :: qs
         type(dmqmc_estimates_t), intent(inout) :: dmqmc_estimates
+        real, intent(in) :: elapsed_time
 
         real(dp), allocatable :: rep_loop_loc(:)
         real(dp), allocatable :: rep_loop_sum(:)
         integer :: nelems(final_ind-1), min_ind(final_ind-1), max_ind(final_ind-1)
         integer :: tot_nelems, i, ierr
+
+        ! TODO: WZV
+        ! Note: To be updated in the report update after merging restart branch
+        ! Action: Comment back in.
+        !dmqmc_estimates%old%shift = qs%shift
+        !dmqmc_estimates%old%tot_nstates = qs%estimators%tot_nstates
+        !dmqmc_estimates%old%tot_nspawn_events = qs%estimators%tot_nspawn_events
+        !dmqmc_estimates%old%elapsed_time = elapsed_time
 
         ! If calculating instantaneous RDM estimates then call this routine to
         ! perform annihilation for RDM particles, and calculate RDM estimates

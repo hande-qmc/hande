@@ -320,6 +320,13 @@ dmqmc options
     Set the frequency to report the density matrix to the **dmdump_filename**
     file. This is in report cycles, and the default is to dump the density
     matrix every report cycle.
+``init_restart_only``
+    type: boolean.
+
+    Optional.  Default: false.
+
+    Forces the calculation to dump a restart file for the initial distribution
+    and soft exit. This requires the restart table is defined.
 
 .. _ipdmqmc_table:
 

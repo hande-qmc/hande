@@ -5,7 +5,10 @@ implicit none
 
 contains
 
-    subroutine init_dmqmc(sys, qmc_in, dmqmc_in, nreplicas, qs, dmqmc_estimates, weighted_sampling)
+    subroutine init_dmqmc(sys, qmc_in, dmqmc_in, nreplicas, qs, dmqmc_estimates, weighted_sampling, &
+                          real_population, mu, energy_shift, nreport, prop_switch_report, &
+                          beta_cycle_start, ireport_start, piecewise_propagation, &
+                          calc_ref_proj_energy, restarting)
 
         ! In:
         !    nreplicas: number of replicas being used (if complex, 2 * [replica_trick replicas]).
@@ -13,18 +16,37 @@ contains
         !       state on output.
         !    qmc_in: Input options relating to QMC methods.
         !    dmqmc_in: Input options relating to DMQMC.
+        !    restarting: True if we are initializing from a restart calculation.
         ! In/Out:
         !    qs: estimators not specific to DMQMC.
         !    dmqmc_estimates: type containing estimates for observables.
         !    weighted_sampling: type containing information for weighted
         !        sampling.
+        !    real_population: Allocate and return, used to store the walker
+        !        population on a given element.
+        !    mu: The chemical potential, calculate and return for IP-DMQMC
+        !        initialization.
+        !    energy_shift: For IP-DMQMC, set if needed.
+        !    nreport: Set to the number of reports to perform in a given beta loop.
+        !    prop_switch_report: Set to the report when the propagator should
+        !        change. Only used when running piecewise IP-DMQMC.
+        !    beta_cycle_start: The number for the beta loop we are starting at.
+        !        One unless we are starting from a restarted calculation.
+        !    ireport_start: The number for the report cycle we are starting at.
+        !        One unless we are starting from a restarted calculation.
+        !    piecewise_propagation: Set to true if running piecewise IP-DMQMC.
+        !    calc_ref_proj_energy: Set to true if reporting the projected energy
+        !        for the reference determinant row/column.
 
         use calc, only: doing_dmqmc_calc, dmqmc_correlation, dmqmc_ref_proj_energy
         use system, only: sys_t
         use checking, only: check_allocate
 
         use qmc_data, only: qmc_in_t, qmc_state_t
-        use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t, dmqmc_weighted_sampling_t
+        use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t, dmqmc_weighted_sampling_t, hartree_fock_dm
+        use chem_pot, only: find_chem_pot
+        use proc_pointers, only: energy_diff_ptr
+        use errors, only: stop_all
 
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: nreplicas
@@ -33,8 +55,86 @@ contains
         type(qmc_state_t), intent(inout) :: qs
         type(dmqmc_estimates_t), intent(inout) :: dmqmc_estimates
         type(dmqmc_weighted_sampling_t), intent(inout) :: weighted_sampling
+        real(p), intent(inout), allocatable :: real_population(:)
+        real(p), intent(inout) :: energy_shift, mu(1:2)
+        integer, intent(inout) :: nreport, prop_switch_report, beta_cycle_start, ireport_start
+        logical, intent(inout) :: piecewise_propagation, calc_ref_proj_energy
+        logical, intent(inout) :: restarting
 
         integer :: ierr, i, bit_position, bit_element
+
+        ! Set information about our propagation.
+        ! A factor of one is included because we accumulate statistics only at
+        ! the start of a report cycle (to ensure we report the initial distribution)
+        ! and so we must add another for the final distribution.
+        nreport = 1 + int(ceiling(dmqmc_in%final_beta/(qmc_in%ncycles*qmc_in%tau)))
+        prop_switch_report = 1 + int(ceiling(dmqmc_in%target_beta/(qmc_in%ncycles*qmc_in%tau)))
+        piecewise_propagation = (dmqmc_in%final_beta > dmqmc_in%target_beta) .and. dmqmc_in%ipdmqmc
+
+        if (restarting) then
+            ! This should take care of changes in ncycles and tau between
+            ! the dumped calculated and the restarting one.
+            ireport_start = 1 + int(ceiling(qs%last_beta/(qmc_in%ncycles*qmc_in%tau)))
+            beta_cycle_start = qs%beta_cycle
+
+            ! Some consistency checks
+            if (qs%target_beta /= dmqmc_in%target_beta) then
+                ! Since the read in density matrix will be inappropriate for the new target_beta
+                call stop_all('init_dmqmc', 'The target_beta can not change when restarting a calculation!')
+            end if
+            if (dmqmc_in%vary_weights) then
+                ! Since the weights require the history of previous iterations, which we no longer have.
+                call stop_all('init_dmqmc', 'Simultaneous use of vary_weights and HDF5 restarting is not supported!')
+            end if
+
+            ! Take care of some edge case logic for restarting a beta loop
+            if (ireport_start == nreport) then
+                ! We actually finished our last beta loop
+                ireport_start = 1
+                beta_cycle_start = beta_cycle_start + 1
+                restarting = .false.
+            else if (piecewise_propagation) then
+                ! Some piecewise propagation specific edge cases
+                if (ireport_start > prop_switch_report) then
+                    ! Handle the case where we are past the propagator switch
+                    ! but the check in do_dmqmc won't recognize this so the
+                    ! default propagator will remain, this will ensure the change
+                    ! in the propagator happens.
+                    ! Reset back to normal in init_dmqmc_beta_loop.
+                    prop_switch_report = ireport_start
+                else if ((qs%last_beta == qs%final_beta) .and. (qs%target_beta == qs%final_beta)) then
+                    ! We are restarting an IP-DMQMC only calculation to add more beta
+                    ! using a change in the propagator. The restart logic doesn't
+                    ! handle this case well so we manually need to set the shift here.
+                    do i = 1, size(qs%psip_list%tot_nparticles)
+                        qs%shift(i) = dmqmc_in%piecewise_shift
+                    end do
+                end if
+            end if
+        else
+            ireport_start = 1
+            beta_cycle_start = 1
+        end if
+
+        allocate(real_population(qs%psip_list%nspaces), stat=ierr)
+        call check_allocate('real_population', qs%psip_list%nspaces, ierr)
+        real_population = 0.0_p
+
+        allocate(dmqmc_estimates%old%shift(nreplicas), stat=ierr)
+        call check_allocate('dmqmc_estimates%old%shift', nreplicas, ierr)
+        dmqmc_estimates%old%shift = 0.0_p
+
+        allocate(dmqmc_estimates%old%tot_nstates(nreplicas), stat=ierr)
+        call check_allocate('dmqmc_estimates%old%tot_nstates', nreplicas, ierr)
+        dmqmc_estimates%old%tot_nstates = 0_int_64
+
+        allocate(dmqmc_estimates%old%tot_nspawn_events(nreplicas), stat=ierr)
+        call check_allocate('dmqmc_estimates%old%tot_nspawn_events', nreplicas, ierr)
+        dmqmc_estimates%old%tot_nspawn_events = 0_int_64
+
+        allocate(dmqmc_estimates%old%tot_nparticles(nreplicas), stat=ierr)
+        call check_allocate('dmqmc_estimates%old%tot_nparticles', nreplicas, ierr)
+        dmqmc_estimates%old%tot_nparticles = 0.0_dp
 
         allocate(dmqmc_estimates%trace(nreplicas), stat=ierr)
         call check_allocate('dmqmc_estimates%trace', nreplicas, ierr)
@@ -45,7 +145,9 @@ contains
         call check_allocate('dmqmc_estimates%inst_rdm%traces', nreplicas*dmqmc_in%rdm%nrdms, ierr)
         dmqmc_estimates%inst_rdm%traces = 0.0_p
 
+        calc_ref_proj_energy = .false.
         if (doing_dmqmc_calc(dmqmc_ref_proj_energy)) then
+            calc_ref_proj_energy = .true.
             allocate(dmqmc_estimates%ref_trace(nreplicas), stat=ierr)
             call check_allocate('dmqmc_estimates%ref_trace', nreplicas, ierr)
             dmqmc_estimates%ref_trace = 0.0_p
@@ -53,6 +155,7 @@ contains
             call check_allocate('dmqmc_estimates%ref_D0j_particles', nreplicas, ierr)
             dmqmc_estimates%ref_D0j_particles = 0.0_p
         end if
+
         ! If calculating a correlation function then set up the necessary bit
         ! mask. This has a bit set for each of the two sites/orbitals being
         ! considered in the correlation function.
@@ -98,6 +201,19 @@ contains
             qs%target_beta = dmqmc_in%target_beta / sys%ueg%ef
         else
             qs%target_beta = dmqmc_in%target_beta
+        end if
+
+        ! Determine the chemical potential if doing the ip-dmqmc algorithm with
+        ! grand canonical initialisation enabled.
+        if (dmqmc_in%ipdmqmc .and. dmqmc_in%grand_canonical_initialisation) then
+            mu = find_chem_pot(sys, qs%target_beta)
+            if (dmqmc_in%initial_matrix == hartree_fock_dm) then
+                energy_shift = energy_diff_ptr(sys, qs%ref%occ_list0)
+            else
+                energy_shift = 0.0_p
+            end if
+        else
+            mu = 0.0_p
         end if
 
         if (dmqmc_in%weighted_sampling) then
@@ -892,7 +1008,7 @@ contains
 
     end subroutine allocate_kspace_correlation_functions
 
-    subroutine propagator_change(sys, qs, dmqmc_in, annihilation_flags, iunit)
+    subroutine propagator_change(sys, qs, dmqmc_in, annihilation_flags, iunit, ireport_start)
 
         ! For piecewise IP-DMQMC, the stored diagonal Hamiltonian elements
         ! change from IP-DQMMC -> DMQMC. This is furthur altered by the
@@ -908,6 +1024,9 @@ contains
         !       state on output.
         !   iunit: The location we are writing data to, to communicate
         !       information on the propagator switch.
+        !   ireport_start: The report number the beta loop started at,
+        !       when this is greater than 1 we know we started from a
+        !       restart file and should not change the shift.
         ! In/Out:
         !   qs: Stores the Hamiltonian elements for stochastic death,
         !       which upon return should be modified to store the correct
@@ -932,7 +1051,7 @@ contains
         type(dmqmc_in_t), intent(inout) :: dmqmc_in
         type(annihilation_flags_t), intent(inout) :: annihilation_flags
 
-        integer, intent(in) :: iunit
+        integer, intent(in) :: iunit, ireport_start
 
         integer :: ireplica, idet
         integer(i0) :: detf1(sys%basis%tot_string_len)
@@ -942,7 +1061,7 @@ contains
         dmqmc_in%ipdmqmc = .false.
         annihilation_flags%ipdmqmc = .false.
         do ireplica = 1, size(qs%psip_list%tot_nparticles)
-            qs%shift(ireplica) = dmqmc_in%piecewise_shift
+            if (ireport_start == 1) qs%shift(ireplica) = dmqmc_in%piecewise_shift
         end do
 
         ! If using the free electron density matrix in IP-DMQMC

@@ -1,6 +1,6 @@
 module dmqmc_data
 
-use const, only: p, dp, i0
+use const, only: p, dp, i0, int_64
 use hash_table, only: hash_table_t
 use spawn_data, only: spawn_t
 
@@ -205,8 +205,9 @@ type dmqmc_in_t
     logical :: grand_canonical_initialisation = .false.
     ! Interpret input target_beta as the inverse reduced temperature, i.e., Beta = 1\Theta = T_F/T.
     logical :: fermi_temperature = .false.
-    ! Value of beta which we propagate the density matrix to.
-    real(p) :: target_beta = 1.0_p
+    ! Value of beta which we propagate the density matrix to
+    ! when using the interaction picture.
+    real(p) :: target_beta = -1.0_p
     ! Number of metropolis attempts (per psip) we use when generating
     ! the trial density matrix.
     integer :: metropolis_attempts = 0
@@ -254,6 +255,8 @@ type dmqmc_in_t
     ! The file we will write the dump to.
     character(255) :: dmdump_filename = ''
 
+    ! For dumping the initial distribution
+    logical :: init_restart_only = .false.
 end type dmqmc_in_t
 
 ! Spawned lists for rdms.
@@ -302,6 +305,22 @@ type momentum_corr_t
     ! Magnitude of kpoints used in correlation function calculation, useful for compression purposes.
     real(p), allocatable :: kpoints(:)
 end type momentum_corr_t
+
+!--- Type to store old estimates for reporting to stdout ---
+type dmqmc_estimates_old_t
+    ! The energy shift used for the diagonal of the Hamiltonian at the report.
+    real(p), allocatable :: shift(:) ! (nspaces)
+    ! Stores the number of occupied matrix elements at the report.
+    integer(int_64), allocatable :: tot_nstates(:) ! (nspaces)
+    ! Stores the number of spawns for the cycle to generate the reported quantities.
+    integer(int_64), allocatable :: tot_nspawn_events(:) ! (nspaces)
+    ! Stores the total walker population on the density matrix for the report.
+    real(dp), allocatable :: tot_nparticles(:) ! (nspaces)
+    ! Stores the accumulated rate of spawning across iterations in a report.
+    real(p) :: rspawn
+    ! Stores the average time per cycle required to produce the report.
+    real :: elapsed_time
+end type dmqmc_estimates_old_t
 
 type dmqmc_estimates_t
     ! numerators stores the numerators for the estimators in DMQMC. These
@@ -357,6 +376,10 @@ type dmqmc_estimates_t
 
     ! Info about instantaneous temperature-dependent) RDM estimates.
     type(dmqmc_inst_rdms_t) :: inst_rdm
+
+    ! Used to store quantities from the previous report cycle to ensure
+    ! the appropriate iterations quantities are printed in the stdout.
+    type(dmqmc_estimates_old_t) :: old
 end type dmqmc_estimates_t
 
 !--- Type for weighted sampling parameters ---
@@ -418,6 +441,7 @@ contains
             call json_write_key(js, 'dmdump_filename', dmqmc%dmdump_filename)
             call json_write_key(js, 'dmdump_frequency', dmqmc%dmdump_frequency)
         end if
+        call json_write_key(js, 'init_restart_only', dmqmc%init_restart_only)
         call json_write_key(js, 'finish_varying_weights', dmqmc%finish_varying_weights)
         call json_write_key(js, 'fermi_temperature', dmqmc%fermi_temperature)
         call json_write_key(js, 'target_beta', dmqmc%target_beta)

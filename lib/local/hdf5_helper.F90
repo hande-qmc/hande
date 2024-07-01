@@ -53,6 +53,8 @@ module hdf5_helper
     interface hdf5_write
         module procedure write_string
         module procedure write_integer
+        module procedure write_real_sp
+        module procedure write_real_dp
         module procedure write_boolean
         module procedure write_array_1d_int_32
         module procedure write_array_1d_int_64
@@ -71,6 +73,8 @@ module hdf5_helper
         module procedure read_string
         module procedure read_vlen_string
         module procedure read_integer
+        module procedure read_real_sp
+        module procedure read_real_dp
         module procedure read_boolean
         module procedure read_array_1d_int_32
         module procedure read_array_1d_int_64
@@ -425,6 +429,64 @@ module hdf5_helper
             call h5sclose_f(dspace_id, ierr)
 
         end subroutine write_integer
+
+        subroutine write_real_sp(id, dset, val)
+
+            ! Write a single precision float to an open HDF5 file/group.
+
+            ! In:
+            !    id: file or group HD5 identifier.
+            !    dset: dataset name.
+            !    val: single precision float to write out.
+
+            use hdf5
+            use const, only: sp
+
+            integer(hid_t), intent(in) :: id
+            character(*), intent(in) :: dset
+            real(sp), intent(in) :: val
+
+            integer(hid_t) :: dspace_id, dset_id
+            integer :: ierr
+
+            call h5screate_f(H5S_SCALAR_F, dspace_id, ierr)
+            call h5dcreate_f(id, dset, H5T_NATIVE_REAL, dspace_id, dset_id, ierr)
+
+            call h5dwrite_f(dset_id, H5T_NATIVE_REAL, val, [0_HSIZE_T,0_HSIZE_T], ierr)
+
+            call h5dclose_f(dset_id, ierr)
+            call h5sclose_f(dspace_id, ierr)
+
+        end subroutine write_real_sp
+
+        subroutine write_real_dp(id, dset, val)
+
+            ! Write a double precision float to an open HDF5 file/group.
+
+            ! In:
+            !    id: file or group HD5 identifier.
+            !    dset: dataset name.
+            !    val: double precision float to write out.
+
+            use hdf5
+            use const, only: dp
+
+            integer(hid_t), intent(in) :: id
+            character(*), intent(in) :: dset
+            real(dp), intent(in) :: val
+
+            integer(hid_t) :: dspace_id, dset_id
+            integer :: ierr
+
+            call h5screate_f(H5S_SCALAR_F, dspace_id, ierr)
+            call h5dcreate_f(id, dset, H5T_NATIVE_DOUBLE, dspace_id, dset_id, ierr)
+
+            call h5dwrite_f(dset_id, H5T_NATIVE_DOUBLE, val, [0_HSIZE_T,0_HSIZE_T], ierr)
+
+            call h5dclose_f(dset_id, ierr)
+            call h5sclose_f(dspace_id, ierr)
+
+        end subroutine write_real_dp
 
         subroutine write_boolean(id, dset, val)
 
@@ -1095,6 +1157,58 @@ module hdf5_helper
             call h5dclose_f(dset_id, ierr)
 
         end subroutine read_integer
+
+        subroutine read_real_sp(id, dset, val)
+
+            ! Read a single precision float from an open HDF5 file/group.
+
+            ! In:
+            !    id: file or group HD5 identifier.
+            !    dset: dataset name.
+            ! Out:
+            !    val: single precision float read from HDF5 file.
+
+            use hdf5
+            use const, only: sp
+
+            integer(hid_t), intent(in) :: id
+            character(*), intent(in) :: dset
+            real(sp), intent(out) :: val
+
+            integer(hid_t) :: dset_id
+            integer :: ierr
+
+            call h5dopen_f(id, dset, dset_id, ierr)
+            call h5dread_f(dset_id, H5T_NATIVE_REAL, val, [0_HSIZE_T,0_HSIZE_T], ierr)
+            call h5dclose_f(dset_id, ierr)
+
+        end subroutine read_real_sp
+
+        subroutine read_real_dp(id, dset, val)
+
+            ! Read a double precision float from an open HDF5 file/group.
+
+            ! In:
+            !    id: file or group HD5 identifier.
+            !    dset: dataset name.
+            ! Out:
+            !    val: double precision float read from HDF5 file.
+
+            use hdf5
+            use const, only: dp
+
+            integer(hid_t), intent(in) :: id
+            character(*), intent(in) :: dset
+            real(dp), intent(out) :: val
+
+            integer(hid_t) :: dset_id
+            integer :: ierr
+
+            call h5dopen_f(id, dset, dset_id, ierr)
+            call h5dread_f(dset_id, H5T_NATIVE_DOUBLE, val, [0_HSIZE_T,0_HSIZE_T], ierr)
+            call h5dclose_f(dset_id, ierr)
+
+        end subroutine read_real_dp
 
         subroutine read_boolean(id, dset, val)
 
