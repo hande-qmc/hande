@@ -200,6 +200,7 @@ class TestExe(unittest.TestCase):
             None, end_its=[1300])
         analyser.exe([self._df_mock], self._observables)
 
+        print("analyser",analyser)
         # start_its
         self.assertEqual(len(analyser.start_its), 1)
         self.assertEqual(analyser.start_its[0], 546)

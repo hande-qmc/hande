@@ -209,11 +209,11 @@ class HybridAna(AbsErrorAnalyser):
                 ratio_values[i*self._batch_size:(i+1)*self._batch_size]))
         mean = np.mean(means_batch)
         var = np.var(means_batch)
-        acf = tsastats.acf(x=means_batch, unbiased=True,
+        acf = tsastats.acf(x=means_batch, adjusted=True,
                            nlags=n_data-1, fft=True)
 
         # ar model
-        ar = ar_model.AR(means_batch)
+        ar = ar_model.AutoReg(means_batch,None)
         model_ar = ar.fit(ic='aic', trend='c', method='cmle')
         params = model_ar.params
         denom = nom = 1

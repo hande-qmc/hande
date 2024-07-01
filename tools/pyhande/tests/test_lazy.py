@@ -379,7 +379,7 @@ class TestStdAnalysis(unittest.TestCase):
         # effects are tiny.
         pd.testing.assert_series_equal(
             infos[0].opt_block.loc['Weighted Proj. E.'], opt_block_proje,
-            check_less_precise=7)
+            atol=1e-7)
 
     def test_calc_inefficiency(self):
         """Test calc_inefficiency parameter.

@@ -145,11 +145,14 @@ info : :func:`collections.namedtuple`
 
     mean = numpy.mean(list_means)
     var  = numpy.var(list_means)
-    acf = tsastats.acf(x=list_means, unbiased=True, nlags=n_data-1, fft=True)
-        
+    acf = tsastats.acf(x=list_means, adjusted=True, nlags=n_data-1, fft=True)
+    
+    #This is the default from statsmodels v0.12.2
+    maxlag=round(12*(len(list_means)/100.)**(1/4.))
+    modl=ar_model.ar_select_order(list_means,maxlag,ic='aic')
     # ar model
-    ar = ar_model.AR(list_means)
-    model_ar = ar.fit(ic='aic', trend='c', method='cmle')
+    ar = ar_model.AutoReg(list_means, modl.ar_lags)
+    model_ar = ar.fit()#ic='aic', trend='c', method='cmle')
     params = model_ar.params
     denom = nom = 1
     for j in range( len(params)-1 ):
@@ -165,7 +168,6 @@ info : :func:`collections.namedtuple`
             break
         tau += 2.0*acf[i]
     error_ac = numpy.sqrt(var/n_data*tau)    
-
     # return value
     error = max(error_ar, error_ac)
     opt_block = pd.DataFrame(
@@ -490,7 +492,7 @@ info : :func:`collections.namedtuple`
                                               sum_key=kH0jNj, ref_key=kN0,
                                               total_key=kHpsips)
         if ineff['mean']['Inefficiency'] is not None:
-            opt_block = opt_block.append(ineff)
+            opt_block = pd.concat([opt_block,ineff])
 
     estimates = []
     for (name, row) in opt_block.iterrows():
