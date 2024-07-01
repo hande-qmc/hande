@@ -2238,7 +2238,7 @@ contains
                                                                        'vary_weights', 'initiator_level', 'symmetric_bloch',      &
                                                                        'walker_scale_factor', 'final_beta', 'piecewise_shift',    &
                                                                        'dmdump_filename', 'dmdump_frequency', 'init_restart_only']
-        character(30), parameter :: ip_keys(9)     = [character(30) :: 'target_beta', 'initial_beta', 'initial_matrix',           &
+        character(30), parameter :: ip_keys(8)     = [character(30) :: 'target_beta', 'initial_matrix',                           &
                                                                        'grand_canonical_initialisation', 'metropolis_attempts',   &
                                                                        'symmetric_interaction_picture', 'piecewise_beta',         &
                                                                        'skip_gci_reference_check', 'count_diagonal_occupations']

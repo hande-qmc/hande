@@ -599,7 +599,6 @@ contains
         !    qmc_in: input options relating to QMC methods.
         !    qs: QMC state (containing shift and various estimators).
         !    ireport: index of the report loop.
-        !    ntot_particles: total number of particles in main walker list.
         !    comment: if true, then prefix the line with a #.
         !    dmqmc_in: input options relating to DMQMC.
         !    dmqmc_estimates: type containing all DMQMC estimates to be printed.
