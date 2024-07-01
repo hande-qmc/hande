@@ -214,7 +214,7 @@ class HybridAna(AbsErrorAnalyser):
 
         # ar model
         ar = ar_model.AutoReg(means_batch,None)
-        model_ar = ar.fit(ic='aic', trend='c', method='cmle')
+        model_ar = ar.fit()#ic='aic', trend='c', method='cmle')
         params = model_ar.params
         denom = nom = 1
         for j in range(len(params)-1):
