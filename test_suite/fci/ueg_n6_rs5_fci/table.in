@@ -1,14 +1,11 @@
-nel = 8
-ms = nel
-
 fci {
     sys = ueg {
-        nel = nel,
-        ms = ms,
-        sym = isym,
+        nel = 6,
+        ms = 6,
+        sym = 1,
         dim = 3,
         cutoff = 1.01,
-        rs = 1.0,
+        rs = 5.0,
         use_mom_vec = true,
     },
     fci = {

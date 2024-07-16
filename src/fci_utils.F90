@@ -232,7 +232,7 @@ contains
         call json_write_key(js, 'davidson_maxsize', fci_in%davidson_maxsize)
         call json_write_key(js, 'davidson_tol', fci_in%davidson_tol)
         call json_write_key(js, 'hamiltonian_diagonal_only', fci_in%hamiltonian_diagonal_only)
-        call json_write_key(js, 'determinant_table_only', fci_in%determinant_table_only)
+        call json_write_key(js, 'determinant_table_only', fci_in%determinant_table_only, terminal=.true.)
 
         call json_object_end(js)
         call reference_t_json(js, ref, sys, terminal=.true.)
