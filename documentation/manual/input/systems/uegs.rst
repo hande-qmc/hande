@@ -108,7 +108,7 @@ Options
     vector rather than mapping the determinants to the orbital basis. This must
     be true when supplying a ``sym`` outside the basis spatial indicies.
     To determine valid values for ``sym``, use the ``determinant_table_only``
-    keyword in the :ref:`fci` table. See the folder 'ueg_n8_rs5_fci' folder in
+    keyword in the :ref:`fci` table. See the folder 'ueg_n6_rs5_fci' folder in
     the fci test_suite for an example.
 
 Ringium
