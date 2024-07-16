@@ -451,6 +451,8 @@ contains
                         mom_sym_vect(imom,3), &
                         sym_space_size(imom)
                 end do
+                write (iunit,'()')
+                write (iunit,'(1x, a, i12)') '# Total symmetries:', ki
             else
                 write (iunit,'(/,1X,a14,6X,a6)') 'Symmetry index','# dets'
                 do i = lbound(sym_space_size,dim=1), ubound(sym_space_size, dim=1)
