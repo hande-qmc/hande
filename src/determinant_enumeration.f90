@@ -152,7 +152,7 @@ contains
                 !  0  0  2
                 ! which can repeat for each quantum number.
                 ki = 0
-                Nk = (sys%ueg%basis%kmax*(2*sys%nel+1))**3
+                Nk = (sys%ueg%basis%kmax*2*sys%nel+1)**3
                 allocate(mom_sym_vect(Nk,3), stat=ierr)
                 call check_allocate('mom_sym_vect', Nk*3, ierr)
                 mom_sym_vect = 0
