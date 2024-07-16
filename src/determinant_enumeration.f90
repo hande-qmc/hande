@@ -16,7 +16,7 @@ contains
 !--- Hilbert space enumeration ---
 
     subroutine enumerate_determinants(sys, init, spin_flip, ex_level, sym_space_size, ndets, dets_list, ref_sym, occ_list0, &
-                                      verbose_in, cas_in)
+                                      verbose_in, cas_in, momentum_sym)
 
         ! Find the Slater determinants of a given system that can be formed from
         ! the basis functions.
@@ -46,6 +46,8 @@ contains
         !    verbose_in(optional): print out info about number of determinants in each symmetry
         !        block.  Default: same value as init.
         !    cas_in(optional): if provided, all determinants in the (e,o) CAS will be enumerated.
+        !    momentum_sym(optional): stores the momentum vector for the target symmetry
+        !        when doing FCI on the UEG only.
         ! In/Out:
         !    sym_space_size: number of determinants of each symmetry.  Output if init
         !        is true, input if init is false.
@@ -64,6 +66,9 @@ contains
         use system
         use symmetry, only: cross_product, symmetry_orb_list
         use ueg_system, only: ueg_basis_index
+        ! Currently for UEG momentum symmetry labeling
+        use calc, only: doing_calc, exact_diag
+        use sort, only: argsort_stable
 
         type(sys_t), intent(in) :: sys
         logical, intent(in) :: init, spin_flip
@@ -75,6 +80,7 @@ contains
         integer(i0), intent(out), allocatable :: dets_list(:,:) ! (tot_string_len,ndets)
         logical, intent(in), optional :: verbose_in
         integer, intent(in), optional :: cas_in(2)
+        integer, intent(inout), optional :: momentum_sym(3)
 
         integer :: i, j, iel, idet, ierr, ex_level_loc, nbasis_loc, nalpha_loc, nbeta_loc, nel_loc, nfrozen
         integer :: nbeta_combinations
@@ -89,6 +95,12 @@ contains
         logical :: cas_set
         integer :: cas(2)
 
+        ! Currently for UEG momentum symmetry labeling
+        logical :: usemomsym, hit
+        integer :: Nk, ki, imom
+        integer, allocatable :: isort(:)
+        integer, allocatable :: mom_sym_vect(:,:)
+
         iunit = 6
 
         ! Provided for compatibility with CAS enumeration
@@ -99,6 +111,9 @@ contains
         ! Extra care needed for this one, since for some places we need sys%nel for both cases
         nel_loc = sys%nel
         nfrozen = 0
+
+        ! Currently for UEG momentum symmetry labeling
+        usemomsym = (sys%system == ueg .and. doing_calc(exact_diag))
 
         truncate_space = ex_level_loc /= sys%nel
         verbose = init
@@ -126,7 +141,25 @@ contains
                 deallocate(sym_space_size, stat=ierr)
                 call check_deallocate('sym_space_size',ierr)
             end if
-            allocate(sym_space_size(sys%sym0_tot:sys%sym_max_tot), stat=ierr)
+            if (usemomsym) then
+                ! Worst, but unlikely case, is you get +/-kmax*N, and
+                ! repeat that three times for the total symmetries, e.g.
+                ! for N=2, we could find in the last column:
+                !  0  0 -2
+                !  0  0 -1
+                !  0  0  0
+                !  0  0  1
+                !  0  0  2
+                ! which can repeat for each quantum number.
+                ki = 0
+                Nk = (sys%ueg%basis%kmax*(2*sys%nel+1))**3
+                allocate(mom_sym_vect(Nk,3), stat=ierr)
+                call check_allocate('mom_sym_vect', Nk*3, ierr)
+                mom_sym_vect = 0
+                allocate(sym_space_size(Nk), stat=ierr)
+            else
+                allocate(sym_space_size(sys%sym0_tot:sys%sym_max_tot), stat=ierr)
+            end if
             call check_allocate('sym_space_size',sys%nsym,ierr)
             sym_space_size = 0
         else
@@ -339,15 +372,37 @@ contains
                         if (in_space) then
                             if (init) then
                                 ! Count determinant.
-                                if (sym >= lbound(sym_space_size,dim=1) .and. sym <= ubound(sym_space_size,dim=1)) then
+                                if (usemomsym) then
+                                    hit = .false.
+                                    do imom = 1, ki
+                                        if (all(k == mom_sym_vect(imom,:))) then
+                                            hit = .true.
+                                            sym_space_size(imom) = sym_space_size(imom) + 1
+                                        end if
+                                    end do
+                                    if (.not. hit) then
+                                        ki = ki + 1
+                                        sym_space_size(ki) = 1
+                                        mom_sym_vect(ki,:) = k
+                                    end if
+                                else if (sym >= lbound(sym_space_size,dim=1) .and. sym <= ubound(sym_space_size,dim=1)) then
                                     ! Ignore symmetries outside the basis set (only affects
                                     ! UEG currently).
                                     sym_space_size(sym) = sym_space_size(sym) + 1
                                 end if
-                            else if (sym == ref_sym) then
+                            else
                                 ! Store determinant.
-                                idet = idet + 1
-                                call encode_det(sys%basis, occ, dets_list(:,idet))
+                                if (usemomsym) then
+                                    ! TODO: Probably a better way for in_space code
+                                    ! but this works for now.
+                                    if (all(k == momentum_sym)) then
+                                        idet = idet + 1
+                                        call encode_det(sys%basis, occ, dets_list(:,idet))
+                                    end if
+                                else if (sym == ref_sym) then
+                                    idet = idet + 1
+                                    call encode_det(sys%basis, occ, dets_list(:,idet))
+                                end if
                             end if
                         end if
 
@@ -375,10 +430,33 @@ contains
             if (cas_set) then
                 write (iunit,'(1X,A)') 'Only determinants in the specified CAS are included.'
             end if
-            write (iunit,'(/,1X,a14,6X,a6)') 'Symmetry index','# dets'
-            do i = lbound(sym_space_size,dim=1), ubound(sym_space_size, dim=1)
-                write (iunit,'(6X,i4,4X,i13)') i, sym_space_size(i)
-            end do
+            if (usemomsym) then
+                ! Sort momentum symmetry by determinant count (smallest to
+                ! largest) up to the elements ki.
+                allocate(isort(ki), stat=ierr)
+                call check_allocate('isort', ki, ierr)
+                call argsort_stable(sym_space_size, isort, ki)
+                ! Sort momentum vectors to match sym_space_size again.
+                mom_sym_vect(:ki,:) = mom_sym_vect(isort,:)
+                ! Reverse both arrays so we have largest to smallest.
+                sym_space_size(:ki) = sym_space_size(ki:1:-1)
+                mom_sym_vect(:ki,:) = mom_sym_vect(ki:1:-1,:)
+                write(iunit, '(/, 1x, a14, 4x, a16, 2x, a12)') &
+                    'Symmetry index', 'Momentum vector', '# dets'
+                do imom = 1, ki
+                    write(iunit, '(1x, i14, 4x, "(", i4, ",", i4, ",", i4, ")", 2x, i12)') &
+                        imom, &
+                        mom_sym_vect(imom,1), &
+                        mom_sym_vect(imom,2), &
+                        mom_sym_vect(imom,3), &
+                        sym_space_size(imom)
+                end do
+            else
+                write (iunit,'(/,1X,a14,6X,a6)') 'Symmetry index','# dets'
+                do i = lbound(sym_space_size,dim=1), ubound(sym_space_size, dim=1)
+                    write (iunit,'(6X,i4,4X,i13)') i, sym_space_size(i)
+                end do
+            end if
             write (iunit,'()')
         end if
 
@@ -389,6 +467,29 @@ contains
         deallocate(comb, stat=ierr)
         call check_deallocate('comb', ierr)
         call dealloc_det_info_t(d0)
+
+        if (usemomsym .and. init) then
+            ! Reshape sym_space_size to the correct size
+            isort = sym_space_size(:ki)
+            deallocate(sym_space_size, stat=ierr)
+            call check_deallocate('sym_space_size', ierr)
+            allocate(sym_space_size(ki), stat=ierr)
+            call check_allocate('sym_space_size', ki, ierr)
+            sym_space_size = isort
+            ! Store the momentum vector we are interested in
+            if ((ref_sym < 1) .or. (ref_sym > ki)) then
+                call stop_all('enumerate_determinants', &
+                    'The provided symmetry is outside the indicies of the symmetry table!')
+            else
+                momentum_sym = mom_sym_vect(ref_sym,:)
+            end if
+
+            ! Now clear memory for initialization arrays
+            deallocate(mom_sym_vect, stat=ierr)
+            call check_deallocate('mom_sym_vect', ierr)
+            deallocate(isort, stat=ierr)
+            call check_deallocate('isort', ierr)
+        end if
 
     end subroutine enumerate_determinants
 

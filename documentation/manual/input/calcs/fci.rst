@@ -79,6 +79,14 @@ The ``fci`` table can take the following options:
     data for the grand canonical initialization in IP-DMQMC by performing a
     sum over thermal weights (See "propagate_fci.py" within the hande tools folder)
     [Malone15]_.
+``determinant_table_only``
+    type: boolean.
+
+    Optional. Default: false.
+
+    When true, generate the table of symmetries and number of corresponding
+    determinants which span the Hilbert space for the system, and exit with
+    performing exact diagonalization.
 ``write_determinants``
     type: boolean.
 

@@ -55,6 +55,9 @@ contains
 
         call init_fci(sys, fci_in, ref, ndets, dets)
 
+        ! Just want to report the table and exit.
+        if (fci_in%determinant_table_only) return
+
         allocate(eigv(ndets), stat=ierr)
         call check_allocate('eigv',ndets,ierr)
 

@@ -5,7 +5,7 @@ use const, only: int_32, int_64, p, i0
 implicit none
 
 private
-public :: qsort, insert_sort, argsort
+public :: qsort, insert_sort, argsort, argsort_stable
 
 ! Quicksort...
 interface qsort
@@ -26,6 +26,10 @@ interface argsort
     module procedure argsort_int_64_list
     module procedure argsort_int_32_list
 end interface argsort
+
+interface argsort_stable
+    module procedure argsort_stable_integer
+end interface argsort_stable
 
 contains
 
@@ -989,4 +993,47 @@ contains
         call check_deallocate('list_arg', ierr)
 
     end subroutine argsort_int_32_list
+
+!--- Argsort stable, based on insert sort so relative order is preserved. ---
+
+    subroutine argsort_stable_integer(list, args, head)
+
+        ! Returns in args the list of indices that would sort the list.
+        ! E.g. [-3, 2, 2, 1, 0, 3, 1, -7] -> [7, 0, 4, 3, 6, 1, 2, 5]
+
+        ! In:
+        !    list: 1D array of integers.
+        !    head: sort list up to and including list(:head) and
+        !        leave the rest of the array untouched. Default: sort the
+        !        entire array.
+        ! Out:
+        !    args: 1D array of indices that would sort the list.
+
+        use checking, only: check_allocate, check_deallocate
+
+        integer, intent(inout) :: list(:)
+        integer, intent(out) :: args(:)
+        integer, intent(in) :: head
+
+        integer :: i, j, ltmp, atmp
+
+        forall (i=1:head) args(i) = i
+
+        ! Insertion sort code taken from insert_sort_int_32 routine above.
+        do i = 2, head
+            j = i - 1
+            ltmp = list(i)
+            atmp = args(i)
+            do while (j >= 1)
+                if (list(j) <= ltmp) exit
+                list(j+1) = list(j)
+                args(j+1) = args(j)
+                j = j - 1
+            end do
+            list(j+1) = ltmp
+            args(j+1) = atmp
+        end do
+
+    end subroutine argsort_stable_integer
+
 end module sort

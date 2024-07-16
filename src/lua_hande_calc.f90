@@ -1021,10 +1021,10 @@ contains
         integer :: fci_table, err, fci_nrdms
         integer, allocatable :: err_arr(:)
 
-        character(25), parameter :: fci_keys(10) = [character(25) :: 'write_hamiltonian', 'hamiltonian_file', &
+        character(25), parameter :: fci_keys(11) = [character(25) :: 'write_hamiltonian', 'hamiltonian_file', &
                                                                     'write_determinants', 'determinant_file', 'write_nwfns', &
                                                                     'wfn_file', 'nanalyse', 'blacs_block_size', 'rdm', &
-                                                                    'hamiltonian_diagonal_only']
+                                                                    'hamiltonian_diagonal_only', 'determinant_table_only']
         character(18), parameter :: davidson_keys(6) = [character(18) :: 'using_davidson', 'ndavidson_eigv', 'ndavidson_trialvec', &
                                                                          'davidson_maxsize', 'davidson_tol', 'davidson_maxiter']
 
@@ -1041,6 +1041,7 @@ contains
             call aot_get_val(fci_in%analyse_fci_wfn, err, lua_state, fci_table, 'nanalyse')
             call aot_get_val(fci_in%block_size, err, lua_state, fci_table, 'blacs_block_size')
             call aot_get_val(fci_in%hamiltonian_diagonal_only, err, lua_state, fci_table, 'hamiltonian_diagonal_only')
+            call aot_get_val(fci_in%determinant_table_only, err, lua_state, fci_table, 'determinant_table_only')
 
             ! Optional arguments requiring special care.
             if (aot_exists(lua_state, fci_table, 'rdm')) then
