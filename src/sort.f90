@@ -1004,8 +1004,7 @@ contains
         ! In:
         !    list: 1D array of integers.
         !    head: sort list up to and including list(:head) and
-        !        leave the rest of the array untouched. Default: sort the
-        !        entire array.
+        !        leave the rest of the array untouched.
         ! Out:
         !    args: 1D array of indices that would sort the list.
 

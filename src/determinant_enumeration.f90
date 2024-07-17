@@ -378,6 +378,7 @@ contains
                                         if (all(k == mom_sym_vect(imom,:))) then
                                             hit = .true.
                                             sym_space_size(imom) = sym_space_size(imom) + 1
+                                            exit
                                         end if
                                     end do
                                     if (.not. hit) then
