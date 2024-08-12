@@ -213,7 +213,7 @@ class HybridAna(AbsErrorAnalyser):
                            nlags=n_data-1, fft=True)
 
         # ar model
-        ar = ar_model.AutoReg(means_batch,None)
+        ar = ar_model.AutoReg(means_batch,0)
         model_ar = ar.fit()#ic='aic', trend='c', method='cmle')
         params = model_ar.params
         denom = nom = 1
