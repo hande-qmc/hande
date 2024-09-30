@@ -80,7 +80,7 @@ test-gcc-mpi:
     before_script:
         - module load anaconda
         - module load mpi/openmpi/64/gnu
-        - module load mkl
+        - module load mkl/64/2022
         - module load cmake
     script:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack --lua=./local/ --hdf5=./local/hdf5-gnu
@@ -105,7 +105,7 @@ test-gcc-mpi-64:
     before_script:
         - module load anaconda
         - module load mpi/openmpi/64/gnu
-        - module load mkl
+        - module load mkl/64/2022
         - module load cmake
     script:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack --lua=./local/ --hdf5=./local/hdf5-gnu --det-size=64 --pop-size=64
@@ -153,7 +153,7 @@ test-gcc-mpi-dbg:
     before_script:
         - module load anaconda
         - module load mpi/openmpi/64/gnu
-        - module load mkl
+        - module load mkl/64/2022
         - module load cmake
     script:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-gnu --type=debug
@@ -178,7 +178,7 @@ test-gcc-mpi-64-dbg:
     before_script:
         - module load anaconda
         - module load mpi/openmpi/64/gnu
-        - module load mkl
+        - module load mkl/64/2022
         - module load cmake
     script:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-gnu --det-size=64 --pop-size=64 --type=debug
@@ -202,7 +202,7 @@ test-intel:
         - hande-testing
     before_script:
         - module load anaconda
-        - module load icc
+        - module load icc/64/2022
         - module load cmake
     script:
         - ./cmakeconfig.py --fc=ifort --cc=icc --lua=./local/ --hdf5=./local/hdf5-intel --pop-size=64 --det-size=64 
@@ -226,7 +226,7 @@ test-intel-dbg:
         - hande-testing
     before_script:
         - module load anaconda
-        - module load icc
+        - module load icc/64/2022
         - module load cmake
     script:
         - ./cmakeconfig.py --fc=ifort --cc=icc --lua=./local/ --hdf5=./local/hdf5-intel --pop-size=64 --det-size=64  --type=debug
@@ -250,8 +250,8 @@ test-intel-mpi-pop64:
         - hande-testing
     before_script:
         - module load anaconda
-        - module load icc
-        - module load mkl
+        - module load icc/64/2022
+        - module load mkl/64/2022
         - module load cmake
         - module load mpi/openmpi/64/intel
     script:
@@ -276,8 +276,8 @@ test-intel-mpi-pop64-dbg:
         - hande-testing
     before_script:
         - module load anaconda
-        - module load icc
-        - module load mkl
+        - module load icc/64/2022
+        - module load mkl/64/2022
         - module load cmake
         - module load mpi/openmpi/64/intel
     script:
@@ -302,8 +302,8 @@ test-intel-mpi:
         - hande-testing
     before_script:
         - module load anaconda
-        - module load icc
-        - module load mkl
+        - module load icc/64/2022
+        - module load mkl/64/2022
         - module load cmake
         - module load mpi/openmpi/64/intel
     script:
@@ -328,8 +328,8 @@ test-intel-mpi-dbg:
         - hande-testing
     before_script:
         - module load anaconda
-        - module load icc
-        - module load mkl
+        - module load icc/64/2022
+        - module load mkl/64/2022
         - module load cmake
         - module load mpi/openmpi/64/intel
     script:
@@ -354,8 +354,8 @@ test-intel-quick:
         - hande-testing
     before_script:
         - module load anaconda
-        - module load icc
-        - module load mkl
+        - module load icc/64/2022
+        - module load mkl/64/2022
         - module load cmake
         - module load mpi/openmpi/64/intel
     script:
@@ -380,7 +380,7 @@ test-gcc-quick:
         - hande-testing
     before_script:
         - module load anaconda
-        - module load mkl
+        - module load mkl/64/2022
         - module load cmake
         - module load mpi/openmpi/64/gnu
     script:
