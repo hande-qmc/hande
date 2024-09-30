@@ -251,7 +251,7 @@ test-intel-mpi-pop64:
     before_script:
         - module load anaconda
         - module load icc/64/2022
-        - module load mkl
+        - module load mkl/2022.1.0
         - module load cmake
         - module load mpi/openmpi/64/intel
     script:
@@ -277,7 +277,7 @@ test-intel-mpi-pop64-dbg:
     before_script:
         - module load anaconda
         - module load icc/64/2022
-        - module load mkl
+        - module load mkl/2022.1.0
         - module load cmake
         - module load mpi/openmpi/64/intel
     script:
@@ -303,7 +303,7 @@ test-intel-mpi:
     before_script:
         - module load anaconda
         - module load icc/64/2022
-        - module load mkl
+        - module load mkl/2022.1.0
         - module load cmake
         - module load mpi/openmpi/64/intel
     script:
@@ -329,7 +329,7 @@ test-intel-mpi-dbg:
     before_script:
         - module load anaconda
         - module load icc/64/2022
-        - module load mkl
+        - module load mkl/2022.1.0
         - module load cmake
         - module load mpi/openmpi/64/intel
     script:
@@ -355,7 +355,7 @@ test-intel-quick:
     before_script:
         - module load anaconda
         - module load icc/64/2022
-        - module load mkl
+        - module load mkl/2022.1.0
         - module load cmake
         - module load mpi/openmpi/64/intel
     script:
