@@ -21,7 +21,7 @@ build-lua-hdf5:
     tags: 
         - hande-testing
     script:
-        - module load icc
+        - module load icc/64/2022
         - wget -q -O - http://www.lua.org/ftp/lua-5.3.5.tar.gz | tar xvzf -
         - cd lua-5.3.5
         - make linux &>/dev/null
@@ -360,7 +360,7 @@ test-intel-quick:
         - module load mpi/openmpi/64/intel
     script:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-intel  --pop-size=64 --det-size=64
-        - cd build && make -j 6 && cd ..
+        - cd build && VERBOSE=1 make -j 6 && cd ..
         - cd test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c quick --processors=4
     except:
