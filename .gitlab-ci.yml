@@ -21,7 +21,7 @@ build-lua-hdf5:
     tags: 
         - hande-testing
     script:
-        - module load icc
+        - module load icc/64/2022
         - wget -q -O - http://www.lua.org/ftp/lua-5.3.5.tar.gz | tar xvzf -
         - cd lua-5.3.5
         - make linux &>/dev/null
