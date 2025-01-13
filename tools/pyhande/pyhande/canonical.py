@@ -144,6 +144,6 @@ results : :class:`pandas.Series`
 
     # Take care of the correlation between numerator and denominator
     # in Hartree-Fock estimates.
-    results = results.append(analyse_hf_observables(means, covariances, ncycles))
+    results = pd.concat([results,analyse_hf_observables(means, covariances, ncycles)])
 
     return results

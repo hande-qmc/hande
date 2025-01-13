@@ -1,17 +1,27 @@
 pyblock
 =======
 
-`pyblock` is a python module for performing a reblocking analysis on
+``pyblock`` is a python module for performing a reblocking analysis on
 serially-correlated data.
 
-The algorithms implemented in `pyblock` are not new; please see the documentation for
+The algorithms implemented in ``pyblock`` are not new; please see the documentation for
 references.
 
-pyblock is compatible with (and tested on!) python 2.7 and python 3.3-3.4 and should work
-on any other version supported by `pandas`.
+pyblock is compatible with (and tested on!) Python 3.6-3.9 and should work on any other version supported by ``pandas``.
 
-.. image:: https://travis-ci.org/jsspencer/pyblock.svg?branch=master
-    :target: https://travis-ci.org/jsspencer/pyblock
+.. image:: https://img.shields.io/pypi/v/pyblock.svg
+        :target: https://pypi.python.org/pypi/pyblock
+
+.. image:: https://github.com/jsspencer/pyblock/workflows/Test%20pyblock/badge.svg?branch=master
+        :target: https://github.com/jsspencer/pyblock/actions?query=workflow%3A%22Test+pyblock%22+branch%3Amaster
+        :alt: CI build status
+        
+.. image:: https://codecov.io/gh/jsspencer/pyblock/branch/master/graph/badge.svg
+  :target: https://codecov.io/gh/jsspencer/pyblock
+
+.. image:: https://readthedocs.org/projects/pyblock/badge/?version=latest
+        :target: https://pyblock.readthedocs.io/en/latest/?badge=latest
+        :alt: Documentation Status
 
 Documentation
 -------------
@@ -22,27 +32,28 @@ Documentation and a simple tutorial can be found in the docs subdirectory and on
 Installation
 ------------
 
-`pyblock` can be used simply by adding to `$PYTHONPATH`.  Alternatively, it can be
+``pyblock`` can be used simply by adding to ``$PYTHONPATH``.  Alternatively, it can be
 installed using distutils by running:
 
 ::
 
     $ pip install /path/to/pyblock
 
-where `/path/to/` is the (relative or absolute) path to the directory containing
-`pyblock`.  To install an editable version (useful for development work) do:
+where ``/path/to/`` is the (relative or absolute) path to the directory containing
+``pyblock``.  To install an editable version (useful for development work) do:
 
 ::
 
-    $ pip install -e /path/to/pyblock
+    $ pip install flit
+    $ flit install --symlink
 
-`pyblock` can also be installed from PyPI:
+``pyblock`` can also be installed from PyPI:
 
 ::
 
     $ pip install pyblock
 
-`pyblock` requires numpy and (optionally) pandas and matplotlib.  Please see the
+``pyblock`` requires numpy and (optionally) pandas and matplotlib.  Please see the
 documentation for more details.
 
 License
