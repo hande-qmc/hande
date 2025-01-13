@@ -43,7 +43,7 @@ Options:
   --single                               Enable usage of single precision, where appropriate [default: False].
   --backtrace                            Enable backtrace functionality [default: False].
   --popcnt                               Enable use of intrinsic popcnt [default: False].
-  --type=<TYPE>                          Set the CMake build type (debug, release, relwithdebinfo, minsizerel) [default: release].
+  --type=<TYPE>                          Set the CMake build type (debug, release, relwithdebinfo, minsizerel, relapplesilicon) [default: release].
   --generator=<STRING>                   Set the CMake build system generator [default: Unix Makefiles].
   --show                                 Show CMake command and exit.
   --cmake-executable=<CMAKE_EXECUTABLE>  Set the CMake executable [default: cmake].
