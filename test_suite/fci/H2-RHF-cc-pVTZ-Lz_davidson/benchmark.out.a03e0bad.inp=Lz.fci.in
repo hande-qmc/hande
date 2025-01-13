@@ -4,32 +4,32 @@
  ================================================================
 Version information
 -------------------
-Version       | v1.5-509-gcf07666
-Commit hash   | cf076667d9f540506f71c35bc4a3f4eb8557039d
-Commit author | Brian Zhao
-Commit date   | Mon Jun 20 18:11:28 2022 +0100
-Branch        | main
+Version       | v1.6-33-ga03e0ba
+Commit hash   | a03e0bad8f01c5df93d2f9601870a9cb6ec4e5e4
+Commit author | William Van Benschoten
+Commit date   | Tue Aug 1 14:34:30 2023 -0500
+Branch        | he/apple_silicon
 
 Configuration and build information
 -----------------------------------
-Who compiled             | maf63
-Compilation hostname     | serenity
-Operating system         | Linux-5.4.0-110-generic
-CMake version            | 3.16.3
-CMake generator          | Unix Makefiles
+Who compiled             | ajwt3
+Compilation hostname     | liminal
+Operating system         | Linux-5.4.0-204-generic
+CMake version            | Not built using CMake
+CMake generator          | Not built using CMake
 Build type               | debug
-Configuration time       | 2022-06-20 17:24:01 [UTC]
-Python version           | 3.7.0
-Fortran compiler         | /usr/local/shared/ubuntu-20.04/x86_64/openmpi-4.1.2-gnu/bin/mpif90
-C compiler               | /usr/local/shared/ubuntu-20.04/x86_64/openmpi-4.1.2-gnu/bin/mpicc
-DET_SIZE set to          | 64
+Configuration time       | 2025-01-13 17:32:10 [UTC]
+Python version           | 3.7.12
+Fortran compiler         | mpif90
+C compiler               | mpicc
+DET_SIZE set to          | 32
 POP_SIZE set to          | 64
 dSFMT Mersenne exponent  | 19937
 MPI parallelization      | ON
-MPI launcher             | /usr/local/shared/ubuntu-20.04/x86_64/openmpi-4.1.2-gnu/bin/mpiexec
+MPI launcher             | unknown
 OpenMP parallelization   | OFF
-Lua version              | 5.3.5
-HDF5 library version     | 1.10.4
+Lua version              | unknown
+HDF5 library version     | unknown
 
 Further components
 ------------------
@@ -38,18 +38,18 @@ DISABLE_UUID not defined.  UUID enabled.
 PARALLEL defined.  MPI parallelization enabled.
 DISABLE_MPI3 not defined.  MPI-3 functionality enabled.
 PARALLEL defined. DISABLE_MPI3 and ENABLE_SHMEM_POSIX not defined. MPI-3 in use.
-DISABLE_SCALAPACK defined.  ScaLAPACK disabled.
+DISABLE_SCALAPACK not defined.  ScaLAPACK enabled.
 SINGLE_PRECISION not defined.  Double precision used throughout.
 USE_POPCNT not defined. Internal POPCNT procedure used.
 
 Runtime information
 -------------------
 Hostname:
-    serenity
+    liminal
 Current working dir:
-    /home/maf63/hande-release/test_suite/fci/H2-RHF-cc-pVTZ-Lz_davidson
-Started running on 20/06/2022 at 21:52:12
- Calculation UUID: ca59e489-7410-47bf-b316-0965b40325bb.
+    /home/ajwt3/code/HANDEgithub/test_suite/fci/H2-RHF-cc-pVTZ-Lz_davidson
+Started running on 13/01/2025 at 17:33:30
+ Calculation UUID: 2fb5c441-b524-4035-8920-b20d7a590ee6.
  ================================================================
 
  Input options
@@ -73,7 +73,7 @@ fci {
         ndavidson_eigv = 4,
         ndavidson_trialvec = 8,
         davidson_maxsize = 50,
-        davidson_tol = 1e-8,
+        davidson_tol = 1e-14,
         davidson_maxiter = 200,
     },
 }
@@ -150,8 +150,8 @@ fci {
  Number of electrons: 2
  Number of basis functions: 56
 
- Bit-length of integers used to store determinant bit-strings: 64
- Number of integers used to store determinant bit-strings: 1
+ Bit-length of integers used to store determinant bit-strings: 32
+ Number of integers used to store determinant bit-strings: 2
 
  Symmetry information
  --------------------
@@ -232,7 +232,7 @@ fci {
          "ndavidson_eigv": 4,   
          "ndavidson_trialvec": 8,   
          "davidson_maxsize": 50,   
-         "davidson_tol": 0.00000001,   
+         "davidson_tol": 0.00000000,   
          "hamiltonian_diagonal_only": false,   
      },
      "reference": {
@@ -274,41 +274,58 @@ fci {
  Performing Davidson diagonalisation...
 
  Davidson initialisation done!
- Time taken for Davidson initialisation 0.000064 s
-
+ Time taken for Davidson initialisation 0.000100 s
+ 
  Iteration   Basis size    delta rmsE      Time  
-         1            8   1.279287E+00    0.000698
-         2           16   4.035889E-01    0.006738
-         3           24   3.571042E-02    0.001096
-         4           32   1.505639E-02    0.000988
-         5           40   1.127360E-02    0.001363
-         6           48   4.154376E-03    0.001876
+         1            8   1.279287E+00    0.278100
+         2           16   4.035889E-01    0.000500
+         3           24   3.571042E-02    0.000400
+         4           32   1.505639E-02    0.000400
+         5           40   1.127360E-02    0.044200
+         6           48   4.154376E-03    0.002400
  Collapsing subspace...
-         7            8   4.681733E-15    0.000126
-         8           16   1.910264E-03    0.000386
-         9           24   4.463168E-04    0.000597
-        10           32   1.155592E-04    0.000961
-        11           40   2.825781E-05    0.001317
-        12           48   6.982884E-06    0.001693
+         7            8   3.589387E-15    0.000200
+         8           16   1.910264E-03    0.000200
+         9           24   4.463168E-04    0.000300
+        10           32   1.155592E-04    0.000400
+        11           40   2.825781E-05    0.000700
+        12           48   6.982884E-06    0.000800
  Collapsing subspace...
-        13            8   3.992174E-15    0.000117
-        14           16   1.253481E-06    0.000346
-        15           24   6.081517E-07    0.000523
-        16           32   2.122679E-07    0.000862
-        17           40   6.705586E-08    0.001234
-        18           48   2.496258E-08    0.001662
+        13            8   5.031956E-15    0.000100
+        14           16   1.253481E-06    0.000200
+        15           24   6.081517E-07    0.000300
+        16           32   2.122679E-07    0.000400
+        17           40   6.705586E-08    0.000600
+        18           48   2.496507E-08    0.000900
  Collapsing subspace...
-        19            8   2.592436E-15    0.000114
-        20           16   6.301052E-09    0.000333
- Eigenvalue tolerance of 1.0000E-08 reached, printing results...
+        19            8   4.497774E-15    0.000100
+        20           16   6.300068E-09    0.000200
+        21           24   2.063464E-09    0.000200
+        22           32   7.819654E-10    0.000400
+        23           40   2.682836E-10    0.000700
+        24           48   1.134005E-10    0.000800
+ Collapsing subspace...
+        25            8   1.986803E-15    0.000100
+        26           16   2.479705E-11    0.000200
+        27           24   8.199489E-12    0.000200
+        28           32   3.075607E-12    0.000500
+        29           40   1.496427E-12    0.000600
+        30           48   5.564908E-13    0.000800
+ Collapsing subspace...
+        31            8   3.523100E-15    0.000100
+        32           16   1.183845E-13    0.000200
+        33           24   3.765768E-14    0.000300
+        34           32   1.353482E-14    0.000400
+        35           40   6.577544E-15    0.000600
+ Eigenvalue tolerance of 1.0000E-14 reached, printing results...
  Davidson diagonalisation results
  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
   State     Energy
       1    -1.145758846665
-      2    -0.622330308093
-      3    -0.538417004192
-      4    -0.365633761257
+      2    -0.622330308365
+      3    -0.538417004463
+      4    -0.365633764501
 
  Timing breakdown
  ----------------
@@ -316,11 +333,11 @@ fci {
  Wall time for each calculation section (seconds):
 
  Generic system initialisation: .06
- FCI calculation              : .27
+ FCI calculation              : .05
 
  ================================================================
- Finished running on 20/06/2022 at 21:52:12
- Wall time (seconds):                               0.09
- CPU time (per processor, seconds):                 0.33
+ Finished running on 13/01/2025 at 17:33:30
+ Wall time (seconds):                               0.42
+ CPU time (per processor, seconds):                 0.11
  ================================================================
 
