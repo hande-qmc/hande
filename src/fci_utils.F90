@@ -55,6 +55,8 @@ type fci_in_t
     ! is generated. This will override the typical FCI where the entire
     ! Hamiltonian is generated and diagonalized.
     logical :: hamiltonian_diagonal_only = .false.
+    ! For when we want to generate the table of symmetry/determinants only.
+    logical :: determinant_table_only = .false.
 end type fci_in_t
 
 
@@ -113,6 +115,7 @@ contains
         type(hmatel_t) :: hmatel
 
         integer :: iunit_out
+        integer :: momentum_sym(3)
 
         iunit_out = 6
 
@@ -169,12 +172,15 @@ contains
 
         ! Construct space
         if (allocated(ref%occ_list0)) then
-            call enumerate_determinants(sys, .true., spin_flip, ref%ex_level, sym_space_size, ndets, dets, occ_list0=ref%occ_list0)
+            call enumerate_determinants(sys, .true., spin_flip, ref%ex_level, sym_space_size, ndets, dets, &
+                                        sys%symmetry, ref%occ_list0, momentum_sym=momentum_sym)
             call enumerate_determinants(sys, .false., spin_flip, ref%ex_level, sym_space_size, ndets, dets, &
-                                        sys%symmetry, ref%occ_list0)
+                                        sys%symmetry, ref%occ_list0, momentum_sym=momentum_sym)
         else
-            call enumerate_determinants(sys, .true., spin_flip, ref%ex_level, sym_space_size, ndets, dets)
-            call enumerate_determinants(sys, .false., spin_flip, ref%ex_level, sym_space_size, ndets, dets, sys%symmetry)
+            call enumerate_determinants(sys, .true., spin_flip, ref%ex_level, sym_space_size, ndets, dets, &
+                                        sys%symmetry, momentum_sym=momentum_sym)
+            call enumerate_determinants(sys, .false., spin_flip, ref%ex_level, sym_space_size, ndets, dets, &
+                                        sys%symmetry, momentum_sym=momentum_sym)
         end if
 
         if (fci_in%using_davidson .and. (ndets < fci_in%davidson_maxsize)) then
@@ -226,6 +232,7 @@ contains
         call json_write_key(js, 'davidson_maxsize', fci_in%davidson_maxsize)
         call json_write_key(js, 'davidson_tol', fci_in%davidson_tol)
         call json_write_key(js, 'hamiltonian_diagonal_only', fci_in%hamiltonian_diagonal_only)
+        call json_write_key(js, 'determinant_table_only', fci_in%determinant_table_only, terminal=.true.)
 
         call json_object_end(js)
         call reference_t_json(js, ref, sys, terminal=.true.)

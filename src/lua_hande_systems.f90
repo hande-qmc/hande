@@ -783,8 +783,8 @@ contains
         logical :: new_basis, new, verbose
         integer :: err
 
-        character(10), parameter :: keys(10) = [character(10) :: 'sys', 'cutoff', 'dim', 'rs', 'nel', 'electrons', &
-                                               'ms', 'sym', 'twist', 'verbose']
+        character(11), parameter :: keys(11) = [character(11) :: 'sys', 'cutoff', 'dim', 'rs', 'nel', 'electrons', &
+                                               'ms', 'sym', 'twist', 'verbose', 'use_mom_vec']
 
         call cpu_time(t1)
 
@@ -809,12 +809,12 @@ contains
         call aot_get_val(sys%ueg%ecutoff, err, lua_state, opts, 'cutoff')
         call aot_get_val(sys%ueg%r_s, err, lua_state, opts, 'rs')
         call aot_get_val(sys%lattice%ndim, err, lua_state, opts, 'dim')
+        call aot_get_val(sys%ueg%use_mom_vec, err, lua_state, opts, 'use_mom_vec')
 
         call get_ktwist(lua_state, sys, opts)
 
         if (new_basis) then
             ! [todo] - deallocate existing basis info and start afresh.
-
             call init_system(sys)
             if (parent) call check_sys(sys)
             call init_model_basis_fns(sys, verbose=verbose)
@@ -823,7 +823,7 @@ contains
             call init_ueg_proc_pointers(sys%lattice%ndim, sys%ueg)
         end if
 
-        if (parent) then
+        if (parent .and. (.not. sys%ueg%use_mom_vec)) then
             ! This check can't go with the rest of check_sys as it has to happen after the basis is initialised.
             if (sys%symmetry < huge(0) .and. (sys%symmetry > sys%sym_max .or. sys%symmetry < sys%sym0)) &
                 call stop_all('lua_ueg', 'Symmetry out of range.')

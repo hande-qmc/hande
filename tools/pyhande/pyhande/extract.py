@@ -128,6 +128,9 @@ data_pairs : list of (dict, :class:`pandas.DataFrame` or :class:`pandas.Series`)
     timing_pattern = re.compile('^ '+calc_types+
                                 ' (?:estimation|calculation) *: ([0-9.]+)$')
 
+    # For FCI determinant table calculation only
+    found_fci_data = False
+
     # input block delimiters
     input_pattern = 'Input options'
     underline_regex = re.compile('----+')
@@ -170,6 +173,7 @@ data_pairs : list of (dict, :class:`pandas.DataFrame` or :class:`pandas.Series`)
                         metadata_hist['calc_type'] = 'State histogram'
                         data_pairs.append((metadata_hist, state_histogram_data))
         elif calc_type == 'FCI' and fci_block.search(line):
+            found_fci_data = True
             data = _extract_fci_data(f, line)
             data_pairs.append((metadata, data))
         elif not calc_type:
@@ -236,6 +240,11 @@ data_pairs : list of (dict, :class:`pandas.DataFrame` or :class:`pandas.Series`)
                     data_pairs[-1][0][key] = float(bloom_val)
 
     f.close()
+
+    if calc_type == 'FCI' and not found_fci_data:
+        data = pd.Series([0])
+        data.name = 'None'
+        data_pairs.append((metadata, data))
 
     if data_pairs and 'system' not in data_pairs[0][0]:
         # Uhoh!  Have an old output with no JSON.  :-(

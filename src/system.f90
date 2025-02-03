@@ -261,6 +261,9 @@ type sys_ueg_t
     ! Symmetry information: we only store the gamma point
     integer :: gamma_sym
 
+    ! For FCI only, to indicate we are using momentum vectors for symmetry labels.
+    logical :: use_mom_vec = .false.
+
 end type sys_ueg_t
 
 type sys_read_in_t
@@ -790,7 +793,8 @@ contains
             call json_write_key(js, 'k_fermi', sys%ueg%kf)
             call json_write_key(js, 'E_fermi', sys%ueg%ef)
             call json_write_key(js, 'ktwist', sys%k_lattice%ktwist)
-            call json_write_key(js, 'L', sys%lattice%box_length, terminal=.true.)
+            call json_write_key(js, 'L', sys%lattice%box_length)
+            call json_write_key(js, 'use_mom_vec', sys%ueg%use_mom_vec, terminal=.true.)
             call json_object_end(js, terminal=.true.)
         end if
 

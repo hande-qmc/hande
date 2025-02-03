@@ -5,7 +5,7 @@ use const, only: int_32, int_64, p, i0
 implicit none
 
 private
-public :: qsort, insert_sort, argsort
+public :: qsort, insert_sort, argsort, argsort_stable
 
 ! Quicksort...
 interface qsort
@@ -26,6 +26,10 @@ interface argsort
     module procedure argsort_int_64_list
     module procedure argsort_int_32_list
 end interface argsort
+
+interface argsort_stable
+    module procedure argsort_stable_integer
+end interface argsort_stable
 
 contains
 
@@ -868,7 +872,7 @@ contains
         ! list(:,i).
 
         ! In:
-        !    list: 2D array of int_64 integers.  Sorted on output.
+        !    list: 2D array of int_64 integers.
         !    head: sort list up to and including list(:,:head) and
         !        leave the rest of the array untouched.  Default: sort the
         !        entire array.
@@ -934,7 +938,7 @@ contains
         ! list(:,i).
 
         ! In:
-        !    list: 2D array of int_32 integers.  Sorted on output.
+        !    list: 2D array of int_32 integers.
         !    head: sort list up to and including list(:,:head) and
         !        leave the rest of the array untouched.  Default: sort the
         !        entire array.
@@ -989,4 +993,48 @@ contains
         call check_deallocate('list_arg', ierr)
 
     end subroutine argsort_int_32_list
+
+!--- Argsort stable, based on insert sort so relative order is preserved. ---
+
+    subroutine argsort_stable_integer(list, args, head)
+
+        ! Return the sorted list and the indices that would sort the list
+        ! within args. The intention is to use the resulting args to sort
+        ! another list with corresponding values to list. This is stable
+        ! in the sense that the relative order for degeneracies should be
+        ! preserved.
+
+        ! In:
+        !    head: sort list up to and including list(:head) and
+        !        leave the rest of the array untouched.
+        ! In/Out:
+        !    list: 1D array of integers to be sorted in ascending order.
+        ! Out:
+        !    args: 1D array of indices that would sort the list.
+
+        integer, intent(inout) :: list(:)
+        integer, intent(out) :: args(:)
+        integer, intent(in) :: head
+
+        integer :: i, j, ltmp, atmp
+
+        forall (i=1:head) args(i) = i
+
+        ! Insertion sort code taken from insert_sort_int_32 routine above.
+        do i = 2, head
+            j = i - 1
+            ltmp = list(i)
+            atmp = args(i)
+            do while (j >= 1)
+                if (list(j) <= ltmp) exit
+                list(j+1) = list(j)
+                args(j+1) = args(j)
+                j = j - 1
+            end do
+            list(j+1) = ltmp
+            args(j+1) = atmp
+        end do
+
+    end subroutine argsort_stable_integer
+
 end module sort
