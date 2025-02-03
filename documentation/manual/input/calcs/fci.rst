@@ -85,7 +85,7 @@ The ``fci`` table can take the following options:
     Optional. Default: false.
 
     When true, generate the table of symmetries and number of corresponding
-    determinants which span the Hilbert space for the system, and exit with
+    determinants which span the Hilbert space for the system, and exit without
     performing exact diagonalization.
 ``write_determinants``
     type: boolean.
