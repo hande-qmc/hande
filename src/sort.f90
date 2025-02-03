@@ -872,7 +872,7 @@ contains
         ! list(:,i).
 
         ! In:
-        !    list: 2D array of int_64 integers.  Sorted on output.
+        !    list: 2D array of int_64 integers.
         !    head: sort list up to and including list(:,:head) and
         !        leave the rest of the array untouched.  Default: sort the
         !        entire array.
@@ -938,7 +938,7 @@ contains
         ! list(:,i).
 
         ! In:
-        !    list: 2D array of int_32 integers.  Sorted on output.
+        !    list: 2D array of int_32 integers.
         !    head: sort list up to and including list(:,:head) and
         !        leave the rest of the array untouched.  Default: sort the
         !        entire array.
@@ -998,17 +998,19 @@ contains
 
     subroutine argsort_stable_integer(list, args, head)
 
-        ! Returns in args the list of indices that would sort the list.
-        ! E.g. [-3, 2, 2, 1, 0, 3, 1, -7] -> [7, 0, 4, 3, 6, 1, 2, 5]
+        ! Return the sorted list and the indices that would sort the list
+        ! within args. The intention is to use the resulting args to sort
+        ! another list with corresponding values to list. This is stable
+        ! in the sense that the relative order for degeneracies should be
+        ! preserved.
 
         ! In:
-        !    list: 1D array of integers.
         !    head: sort list up to and including list(:head) and
         !        leave the rest of the array untouched.
+        ! In/Out:
+        !    list: 1D array of integers to be sorted in ascending order.
         ! Out:
         !    args: 1D array of indices that would sort the list.
-
-        use checking, only: check_allocate, check_deallocate
 
         integer, intent(inout) :: list(:)
         integer, intent(out) :: args(:)
