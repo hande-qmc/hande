@@ -375,6 +375,7 @@ contains
                         ! We are counting or storing this determinant.
                         if (init) then
                             ! Count the determinant.
+                            ! Note: In the jellium we also store unique momentum symmetry vectors.
                             if (usemomsym) then
                                 ! This does sym_space_size += 1 but with extra steps specific to the jellium.
                                 call increment_jellium_determinant_count(ki, k, sym_space_size, mom_sym_vect)
