@@ -369,42 +369,29 @@ contains
                             in_space = get_excitation_level(d0%f,f) <= ex_level_loc
                         end if
 
-                        if (in_space) then
-                            if (init) then
-                                ! Count determinant.
-                                if (usemomsym) then
-                                    hit = .false.
-                                    do imom = 1, ki
-                                        if (all(k == mom_sym_vect(imom,:))) then
-                                            hit = .true.
-                                            sym_space_size(imom) = sym_space_size(imom) + 1
-                                            exit
-                                        end if
-                                    end do
-                                    if (.not. hit) then
-                                        ki = ki + 1
-                                        sym_space_size(ki) = 1
-                                        mom_sym_vect(ki,:) = k
-                                    end if
-                                else if (sym >= lbound(sym_space_size,dim=1) .and. sym <= ubound(sym_space_size,dim=1)) then
-                                    ! Ignore symmetries outside the basis set (only affects
-                                    ! UEG currently).
-                                    sym_space_size(sym) = sym_space_size(sym) + 1
-                                end if
-                            else
-                                ! Store determinant.
-                                if (usemomsym) then
-                                    ! TODO: Probably a better way for in_space code
-                                    ! but this works for now.
-                                    if (all(k == momentum_sym)) then
-                                        idet = idet + 1
-                                        call encode_det(sys%basis, occ, dets_list(:,idet))
-                                    end if
-                                else if (sym == ref_sym) then
-                                    idet = idet + 1
-                                    call encode_det(sys%basis, occ, dets_list(:,idet))
-                                end if
+                        ! We are not counting or storing this determinant so go next.
+                        if (.not. in_space) cycle
+
+                        ! We are counting or storing this determinant.
+                        if (init) then
+                            ! Count the determinant.
+                            if (usemomsym) then
+                                ! This does sym_space_size += 1 but with extra steps specific to the jellium.
+                                call increment_jellium_determinant_count(ki, k, sym_space_size, mom_sym_vect)
+                            else if (sym >= lbound(sym_space_size,dim=1) .and. sym <= ubound(sym_space_size,dim=1)) then
+                                ! Ignore symmetries outside the basis set.
+                                sym_space_size(sym) = sym_space_size(sym) + 1
                             end if
+                        else
+                            ! Store the determinant if in our targeted symmetry.
+                            if (usemomsym .and. (.not. all(k == momentum_sym))) then
+                                cycle
+                            else if (.not. (sym == ref_sym)) then
+                                cycle
+                            end if
+
+                            idet = idet + 1
+                            call encode_det(sys%basis, occ, dets_list(:,idet))
                         end if
 
                     end do
@@ -495,6 +482,50 @@ contains
         end if
 
     end subroutine enumerate_determinants
+
+    subroutine increment_jellium_determinant_count(head, k, sym_space_size, mom_sym_vect)
+
+        ! Take in the momentum symmetry vector for a given determinant for the
+        ! jellium and determine if we have identified this symmetry vector or
+        ! not. If we have not previously identified this symmetry we will add
+        ! it to a list to keep a count of. Otherwise we simply increase the count
+        ! for the number of determinants with this symmetry.
+
+        ! In:
+        !    k: Array containing the momentum symmetry vector to be checked.
+        ! In/Out:
+        !    head: The current count for the number of symmetries we are tracking.
+        !    sym_space_size: Array containing the number of determinants currently
+        !        found in the momentum symmetry vector for the corresponding index
+        !        in mom_sym_vect. Incremented or expanded based on if we found a
+        !        previous or new momentum symmetry vector.
+        !    mom_sym_vect: Array containing the list of momentum symmetry vectors
+        !        we are keeping track of. A vector will be added to this array
+        !        if we are not currently tracking it.
+
+        integer, intent(in) :: k(:)
+        integer, intent(inout) :: head, sym_space_size(:), mom_sym_vect(:,:)
+
+        integer :: imom
+        logical :: hit
+
+        hit = .false.
+
+        do imom = 1, head
+            if (all(k == mom_sym_vect(imom,:))) then
+                hit = .true.
+                sym_space_size(imom) = sym_space_size(imom) + 1
+                exit
+            end if
+        end do
+
+        if (.not. hit) then
+            head = head + 1
+            sym_space_size(head) = 1
+            mom_sym_vect(head,:) = k
+        end if
+
+    end subroutine increment_jellium_determinant_count
 
     subroutine enumerate_determinants_specific_levels(sys, spin_flip, ex_level_range, ndets, ref_sym, occ_list0, dets, &
                                                       verbose_in, add_ref_in)
