@@ -385,8 +385,8 @@ contains
                             end if
                         else
                             ! Store the determinant if in our targeted symmetry.
-                            if (usemomsym .and. (.not. all(k == momentum_sym))) then
-                                cycle
+                            if (usemomsym) then
+                                if (.not. all(k == momentum_sym)) cycle
                             else if (.not. (sym == ref_sym)) then
                                 cycle
                             end if
