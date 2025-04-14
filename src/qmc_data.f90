@@ -305,6 +305,9 @@ type fciqmc_in_t
     ! Stochastically sample the two-body reduced density matrix.
     logical :: density_matrices = .false.
 
+    ! Whether to use finite size correction via calculation and interpolation of S(G)
+    logical :: calculate_sg_correction = .false.
+
     ! Filename to write density matrix to
     character(255) :: density_matrix_file = 'RDM'
 
@@ -415,6 +418,8 @@ type ccmc_in_t
     logical :: mr_read_in = .false.
     ! Whether to only include the secondary references of correct symmetry.
     logical :: mr_secref_sym_only = .false.
+    ! Whether to use finite size correction via calculation and interpolation of S(G)
+    logical :: calculate_sg_correction = .false.
     ! The threshold of amplitude/pselect (like cluster_multispawn_threshold) for a cluster, below which the cluster is discarded.
     real(p) :: discard_threshold = huge(1.0_p)
 end type ccmc_in_t
