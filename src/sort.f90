@@ -5,7 +5,7 @@ use const, only: int_32, int_64, p, i0
 implicit none
 
 private
-public :: qsort, insert_sort, argsort, argsort_stable
+public :: qsort, insert_sort, argsort, argsort_stable, insert_sort_unique_vector, lexicographically_less
 
 ! Quicksort...
 interface qsort

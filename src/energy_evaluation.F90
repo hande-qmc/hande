@@ -1150,9 +1150,6 @@ contains
             estimators%proj_energy = estimators%proj_energy + hmatel%r*pop(1)
         end if
         
-        ! Collect q vectors for finite size S(G) correction
-        q = sys%basis%basis_fns(excitation%from_orb(1))%l - sys%basis%basis_fns(excitation%to_orb(1))%l
-
     end subroutine update_proj_energy_ueg
 
     pure subroutine update_proj_energy_ringium(sys, f0, wfn_dat, cdet, pop, estimators, excitation, hmatel)

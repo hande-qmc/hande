@@ -85,6 +85,8 @@ contains
         use state_histograms
         use mrcc_utils, only: init_highest_dets_t, update_highest_dets, write_out_highest_dets
 
+        use sort, only: insert_sort_unique_vector
+
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
         type(fciqmc_in_t), intent(in) :: fciqmc_in
@@ -140,6 +142,8 @@ contains
         integer :: iunit, restart_version_restart
         integer :: date_values(8)
         character(:), allocatable :: err_msg
+
+        integer :: q(3)
 
         if (parent) then
             write (io_unit,'(1X,"FCIQMC")')
@@ -365,6 +369,15 @@ contains
                                 call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, &
                                                             weighted_population(ispace:ispace+1), &
                                                             qs%estimators(ispace), connection, hmatel)
+                            end if
+                            
+                            ! Collect q vector for finite size correction by S(G)
+                            if (fciqmc_in%sg_correction) then
+                                if (connection%nexcit == 2) then 
+                                    q = sys%basis%basis_fns(connection%from_orb(1))%l - &
+                                        sys%basis%basis_fns(connection%to_orb(1))%l
+                                    call insert_sort_unique_vector(qs%estimators(ispace)%q_vectors, q)
+                                end if
                             end if
 
                             nattempts_current_det_ispace = decide_nattempts(rng, real_population(ispace))
