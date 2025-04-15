@@ -912,6 +912,11 @@ type estimators_t
     real(p) :: proj_energy_determ = 0.0_p
     ! The stochastic part of the projected energy
     real(p) :: proj_energy_stoch = 0.0_p
+
+    ! Quantities for finite size correction via S(G)
+    integer, allocatable :: q_vectors(:, :)
+    real(p), allocatable :: sg 
+    
 end type estimators_t
 
 type propagator_t

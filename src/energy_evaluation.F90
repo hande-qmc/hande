@@ -1135,6 +1135,7 @@ contains
         type(estimators_t), intent(inout) :: estimators
         type(excit_t), intent(inout) :: excitation
         type(hmatel_t), intent(out) :: hmatel
+        integer :: q(3)
 
         hmatel%r = 0.0_p
 
@@ -1148,6 +1149,9 @@ contains
                                        & excitation%to_orb(1), excitation%to_orb(2),excitation%perm)
             estimators%proj_energy = estimators%proj_energy + hmatel%r*pop(1)
         end if
+        
+        ! Collect q vectors for finite size S(G) correction
+        q = sys%basis%basis_fns(excitation%from_orb(1))%l - sys%basis%basis_fns(excitation%to_orb(1))%l
 
     end subroutine update_proj_energy_ueg
 
