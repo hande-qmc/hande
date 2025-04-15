@@ -89,7 +89,7 @@ contains
         !   fciqmc_in: FCIQMC input options.
 
         use qmc_data, only: fciqmc_in_t, single_basis, no_guiding, neel_singlet_guiding, neel_singlet, blocking_in_t
-        use system, only: sys_t, heisenberg
+        use system, only: sys_t, heisenberg, ueg
         use errors, only: stop_all
 
         type(sys_t), intent(in) :: sys
@@ -108,6 +108,10 @@ contains
             if (fciqmc_in%guiding_function == neel_singlet_guiding .and. fciqmc_in%trial_function /= neel_singlet) &
                 call stop_all(this, &
                     'This guiding function is only available when using the Neel singlet state as an energy estimator.')
+        end if
+
+        if (fciqmc_in%sg_correction .and. sys%system /= ueg) then
+            call stop_all(this, 'Finite size correction via S(G) is currently only avaliable for UEG')
         end if
 
         if (fciqmc_in%init_spin_inv_D0 .and. sys%Ms /= 0) then
@@ -528,7 +532,7 @@ contains
 
         use qmc_data, only: ccmc_in_t, qmc_in_t
         use qmc_data, only: excit_gen_no_renorm, excit_gen_renorm
-        use system, only: sys_t, read_in
+        use system, only: sys_t, read_in, ueg
         use errors, only: stop_all
 
         type(sys_t), intent(in) :: sys
@@ -568,6 +572,10 @@ contains
         if ((ccmc_in%linked) .and. .not.((qmc_in%excit_gen == excit_gen_no_renorm) .or. &
                                          (qmc_in%excit_gen == excit_gen_renorm))) then
             call stop_all(this, 'Excitation Generators other than no_renorm and renorm not yet implemented for linked CCMC.')
+        end if
+        
+        if (ccmc_in%sg_correction .and. sys%system /= ueg) then
+            call stop_all(this, 'Finite size correction via S(G) is currently only avaliable for UEG')
         end if
 
     end subroutine check_ccmc_opts
