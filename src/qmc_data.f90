@@ -306,7 +306,7 @@ type fciqmc_in_t
     logical :: density_matrices = .false.
 
     ! Whether to use finite size correction via calculation and interpolation of S(G)
-    logical :: calculate_sg_correction = .false.
+    logical :: sg_correction = .false.
 
     ! Filename to write density matrix to
     character(255) :: density_matrix_file = 'RDM'
@@ -419,7 +419,7 @@ type ccmc_in_t
     ! Whether to only include the secondary references of correct symmetry.
     logical :: mr_secref_sym_only = .false.
     ! Whether to use finite size correction via calculation and interpolation of S(G)
-    logical :: calculate_sg_correction = .false.
+    logical :: sg_correction = .false.
     ! The threshold of amplitude/pselect (like cluster_multispawn_threshold) for a cluster, below which the cluster is discarded.
     real(p) :: discard_threshold = huge(1.0_p)
 end type ccmc_in_t
@@ -1242,6 +1242,7 @@ contains
         call json_write_key(js, 'ref_det_factor', fciqmc%ref_det_factor)
         call json_write_key(js, 'non_blocking_comm', fciqmc%non_blocking_comm)
         call json_write_key(js, 'doing_load_balancing', fciqmc%doing_load_balancing)
+        call json_write_key(js, 'sg_correction', fciqmc%sg_correction)
         select case (fciqmc%trial_function)
         case (single_basis)
             call json_write_key(js, 'trial_function', 'single_basis')
@@ -1351,6 +1352,7 @@ contains
         call json_write_key(js, 'density_matrix_file', ccmc%density_matrix_file)
         call json_write_key(js, 'even_selection', ccmc%even_selection)
         call json_write_key(js, 'multiref', ccmc%multiref)
+        call json_write_key(js, 'sg_correction', ccmc%sg_correction)
         if (ccmc%multiref) then
             call json_write_key(js, 'n_secondary_ref', ccmc%n_secondary_ref)
             call json_write_key(js, 'mr_read_in', ccmc%mr_read_in)
