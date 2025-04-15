@@ -1037,4 +1037,92 @@ contains
 
     end subroutine argsort_stable_integer
 
+    subroutine insert_sort_unique_vector(vector_list, vector)
+
+        ! Insert 3D vector into 2D array of vectors maintaining lexicographic
+        ! ordering (i.e., [0,0,0], [0,0,1], [0,1,0], [1,0,0] and so on) aswell
+        ! as unique vectors only
+
+        ! In:
+        !   vector: 3D vector to be inserted into a 2D list of 3D vectors
+        ! In/Out:
+        !   vector_list: 2D list of 3D vectors (shape: (3, n)) sorted lexicographically
+
+        integer, allocatable, intent(inout) :: vector_list(:, :)
+        integer, intent(in) :: vector(3)
+        integer :: i, n, insertion_pos
+        integer, allocatable :: tmp_vector_list(:, :)
+        
+        if (.not. allocated (vector_list)) then
+            allocate(vector_list(3, 1)) 
+            vector_list(:, 1) = vector 
+            return ! Return vector_list with first vector
+        end if
+
+        ! Get current number of vectors
+        n = size(vector_list, 2)
+
+        do i = 1, n 
+            if (all(vector_list(:, i) == vector)) return ! vector already in vector_list
+        end do 
+
+        insertion_pos = n + 1 ! If this is not modified by following loop then vector is the largest
+
+        do i = 1, n 
+            ! When vector is less than current vector in list we have found 
+            ! correct insertion position
+            if (lexicographically_less(vector, vector_list(:, i))) then
+                insertion_pos = i 
+                exit
+            end if 
+        end do
+
+        allocate(tmp_vector_list(3, n + 1))
+        if (insertion_pos > 1) then ! Otherwise we are inserting at the beginning and nothing to copy
+            ! Copy all vectors before insert position into temporary variable
+            tmp_vector_list(:, 1:insertion_pos - 1) = vector_list(:, 1:insertion_pos - 1)
+        end if
+        ! Insert new vector
+        tmp_vector_list(:, insertion_pos) = vector
+        if (insertion_pos <= n) then ! Otherwise we are inserting at the end
+            ! Copy all vectors after insert position into temporary variable
+            tmp_vector_list(:, insertion_pos + 1:) = vector_list(:, insertion_pos:)
+        end if
+
+        call move_alloc(tmp_vector_list, vector_list)
+
+    end subroutine insert_sort_unique_vector
+
+    logical function lexicographically_less(vector1, vector2)
+
+        ! Compare 2 3D vectors to determine which is lexicographically
+        ! the smaller one
+
+        ! See: https://en.wikipedia.org/wiki/Lexicographic_order
+
+        ! In:
+        !   vector1, vector2: 2 3D vectors for comparison
+        ! Out:
+        !   lexicographically_less: true/false if vector1 is less/more 
+        !   than vector2 in lexicographic ordering
+        
+        integer, intent(in) :: vector1(3), vector2(3)
+        integer :: i 
+
+        do i = 1, 3 
+            if (vector1(i) < vector2(i)) then
+                lexicographically_less = .true.
+                return 
+            else if (vector1(i) > vector2(i)) then
+                lexicographically_less = .false.
+                return
+            end if 
+        end do 
+
+        ! If not returned by this point vectors are equal
+        lexicographically_less = .false.
+    
+    end function lexicographically_less
+
+
 end module sort
