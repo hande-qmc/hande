@@ -343,6 +343,8 @@ contains
         use mrcc_utils, only: init_highest_dets_t, update_highest_dets
         use propagators, only: update_chebyshev
 
+        use sort, only: insert_sort_unique_vector
+
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
         type(ccmc_in_t), intent(in) :: ccmc_in
@@ -403,6 +405,10 @@ contains
         integer :: iunit, restart_version_restart
         integer :: date_values(8)
         character(:), allocatable :: err_msg
+
+        integer :: q(3)
+        integer :: ki 
+        integer :: ka 
 
         if (parent) then
             write (io_unit,'(1X,"CCMC")')
@@ -610,6 +616,24 @@ contains
 
         if (blocking_in%blocking_on_the_fly) &
                     call init_blocking(qmc_in, blocking_in, bl, qs%shift_damping_status)
+
+        ! Accumulate q vectors for calculation of S(G)
+        if (ccmc_in%sg_correction) then
+            do ki = 1, sys%basis%nbasis 
+                do ka = 1, sys%basis%nbasis 
+                    q = sys%basis%basis_fns(ki)%l - sys%basis%basis_fns(ka)%l 
+                    call insert_sort_unique_vector(qs%estimators(1)%q_vectors, q) ! Index one here as ccmc has no ispace (?)
+                end do 
+            end do
+        end if
+
+        ! Output q vectors for debugging
+        if (ccmc_in%sg_correction) then
+                write(*,*) 'q-vectors: '
+                do ki = 1, size(qs%estimators(1)%q_vectors, 2) ! Number of q vectors
+                    write(*,*) qs%estimators(1)%q_vectors(:, ki)
+                end do
+        end if
 
         ! Counter for the number of discarded clusters, see ccmc_in%discard_threshold
         count_discard = 0_i0

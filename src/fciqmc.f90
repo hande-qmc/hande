@@ -144,8 +144,8 @@ contains
         character(:), allocatable :: err_msg
 
         integer :: q(3)
-        integer :: i 
-        integer :: a 
+        integer :: ki 
+        integer :: ka 
 
         if (parent) then
             write (io_unit,'(1X,"FCIQMC")')
@@ -271,9 +271,9 @@ contains
         ! Accumulate q vectors for calculation of S(G)
         if (fciqmc_in%sg_correction) then
             do ispace = 1, qs%psip_list%nspaces ! In real FCIQMC this is essentially ignored
-                do i = 1, sys%basis%nbasis 
-                    do a = 1, sys%basis%nbasis 
-                        q = sys%basis%basis_fns(i)%l - sys%basis%basis_fns(a)%l 
+                do ki = 1, sys%basis%nbasis 
+                    do ka = 1, sys%basis%nbasis 
+                        q = sys%basis%basis_fns(ki)%l - sys%basis%basis_fns(ka)%l 
                         call insert_sort_unique_vector(qs%estimators(ispace)%q_vectors, q)
                     end do 
                 end do
@@ -284,8 +284,8 @@ contains
         if (fciqmc_in%sg_correction) then
             do ispace = 1, qs%psip_list%nspaces
                 write(*,*) 'q-vectors: '
-                do i = 1, size(qs%estimators(ispace)%q_vectors, 2) ! Number of q vectors
-                    write(*,*) qs%estimators(ispace)%q_vectors(:, i)
+                do ki = 1, size(qs%estimators(ispace)%q_vectors, 2) ! Number of q vectors
+                    write(*,*) qs%estimators(ispace)%q_vectors(:, ki)
                 end do
             end do
         end if
