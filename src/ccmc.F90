@@ -628,12 +628,12 @@ contains
         end if
 
         ! Output q vectors for debugging
-        if (ccmc_in%sg_correction) then
-                write(*,*) 'q-vectors: '
-                do ki = 1, size(qs%estimators(1)%q_vectors, 2) ! Number of q vectors
-                    write(*,*) qs%estimators(1)%q_vectors(:, ki)
-                end do
-        end if
+        !if (ccmc_in%sg_correction) then
+        !        write(*,*) 'q-vectors: '
+        !        do ki = 1, size(qs%estimators(1)%q_vectors, 2) ! Number of q vectors
+        !            write(*,*) qs%estimators(1)%q_vectors(:, ki)
+        !        end do
+        !end if
 
         ! Counter for the number of discarded clusters, see ccmc_in%discard_threshold
         count_discard = 0_i0
