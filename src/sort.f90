@@ -1071,7 +1071,7 @@ contains
         do i = 1, n 
             ! When vector is less than current vector in list we have found 
             ! correct insertion position
-            if (lexicographically_less(vector, vector_list(:, i))) then
+            if (magnitude_less(vector, vector_list(:, i))) then
                 insertion_pos = i 
                 exit
             end if 
@@ -1093,6 +1093,28 @@ contains
 
     end subroutine insert_sort_unique_vector
 
+    logical function magnitude_less(vector1, vector2)
+
+        ! Compare 2 3D vectors to determine which is of smaller magnitude 
+
+        ! In:
+        !   vector1, vector2, 2 3D vectors for comparison
+        ! Out:
+        !   magnitude_less: true/false if vector 1 is less/more
+        !   than vector2 by magnitude
+
+        integer, intent(in) :: vector1(3), vector2(3)
+        
+        if (sum(vector1**2) < sum(vector2**2)) then
+            magnitude_less = .true.
+        else if (sum(vector1**2) > sum(vector2**2)) then
+            magnitude_less = .false.
+        else
+            magnitude_less = lexicographically_less(vector1, vector2) ! Fallback on lexicographic ordering when equal magnitudes
+        end if 
+
+    end function magnitude_less
+
     logical function lexicographically_less(vector1, vector2)
 
         ! Compare 2 3D vectors to determine which is lexicographically
@@ -1110,10 +1132,10 @@ contains
         integer :: i 
 
         do i = 1, 3 
-            if (vector1(i) < vector2(i)) then
+            if (abs(vector1(i)) < abs(vector2(i))) then
                 lexicographically_less = .true.
                 return 
-            else if (vector1(i) > vector2(i)) then
+            else if (abs(vector1(i)) > abs(vector2(i))) then
                 lexicographically_less = .false.
                 return
             end if 
