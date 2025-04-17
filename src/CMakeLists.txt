@@ -138,6 +138,7 @@ target_sources(hande-static
     uccmc_utils.f90
     ueg.f90
     ueg_types.f90
+    sg_correction.f90
   )
 target_compile_definitions(hande-static
   PRIVATE
