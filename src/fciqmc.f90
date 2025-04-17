@@ -144,6 +144,8 @@ contains
         character(:), allocatable :: err_msg
 
         integer :: q(3)
+        integer :: i 
+        integer :: a 
 
         if (parent) then
             write (io_unit,'(1X,"FCIQMC")')
@@ -266,6 +268,28 @@ contains
             call init_highest_dets_t(qs, sys, fciqmc_in)
         end if
 
+        ! Accumulate q vectors for calculation of S(G)
+        if (fciqmc_in%sg_correction) then
+            do ispace = 1, qs%psip_list%nspaces ! In real FCIQMC this is essentially ignored
+                do i = 1, sys%basis%nbasis 
+                    do a = 1, sys%basis%nbasis 
+                        q = sys%basis%basis_fns(i)%l - sys%basis%basis_fns(a)%l 
+                        call insert_sort_unique_vector(qs%estimators(ispace)%q_vectors, q)
+                    end do 
+                end do
+            end do 
+        end if
+
+        ! Output q vectors for debugging
+        if (fciqmc_in%sg_correction) then
+            do ispace = 1, qs%psip_list%nspaces
+                write(*,*) 'q-vectors: '
+                do i = 1, size(qs%estimators(ispace)%q_vectors, 2) ! Number of q vectors
+                    write(*,*) qs%estimators(ispace)%q_vectors(:, i)
+                end do
+            end do
+        end if
+        
         ! Main fciqmc loop.
         if (parent) call write_qmc_report_header(qs%psip_list%nspaces, cmplx_est=sys%read_in%comp, &
                                                  rdm_energy=fciqmc_in%density_matrices, io_unit=io_unit, &
@@ -371,15 +395,6 @@ contains
                                                             qs%estimators(ispace), connection, hmatel)
                             end if
                             
-                            ! Collect q vector for finite size correction by S(G)
-                            if (fciqmc_in%sg_correction) then
-                                if (connection%nexcit == 2) then 
-                                    q = sys%basis%basis_fns(connection%from_orb(1))%l - &
-                                        sys%basis%basis_fns(connection%to_orb(1))%l
-                                    call insert_sort_unique_vector(qs%estimators(ispace)%q_vectors, q)
-                                end if
-                            end if
-
                             nattempts_current_det_ispace = decide_nattempts(rng, real_population(ispace))
 
                             call do_fciqmc_spawning_attempt(rng, qs%spawn_store%spawn, rdm_spawn, bloom_stats, sys, qs, &
