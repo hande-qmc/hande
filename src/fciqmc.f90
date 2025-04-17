@@ -86,6 +86,7 @@ contains
         use mrcc_utils, only: init_highest_dets_t, update_highest_dets, write_out_highest_dets
 
         use sort, only: insert_sort_unique_vector
+        use sg_correction, only: find_q_index
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -142,10 +143,15 @@ contains
         integer :: iunit, restart_version_restart
         integer :: date_values(8)
         character(:), allocatable :: err_msg
-
+        
+        integer :: sg_unit
         integer :: q(3)
-        integer :: ki 
-        integer :: ka 
+        integer :: i, idx
+        integer :: ki, ka 
+        integer :: phase
+        integer :: km(3), kn(3), kq(3), kp(3), G(3)
+        integer :: spin_m, spin_n, spin_q, spin_p
+        real(p) :: omega, n_pop
 
         if (parent) then
             write (io_unit,'(1X,"FCIQMC")')
@@ -277,18 +283,24 @@ contains
                         call insert_sort_unique_vector(qs%estimators(ispace)%q_vectors, q)
                     end do 
                 end do
+
+                ! Allocate space for S(G) by size of allowed momentum transfers
+                allocate(qs%estimators(ispace)%sg(size(qs%estimators(ispace)%q_vectors, 2)), stat=ierr)
+                call check_allocate('sg', size(qs%estimators(ispace)%q_vectors, 2), ierr)
+                qs%estimators(ispace)%sg(:) = 0.0_p
+
             end do 
         end if
 
         ! Output q vectors for debugging
-        if (fciqmc_in%sg_correction) then
-            do ispace = 1, qs%psip_list%nspaces
-                write(*,*) 'q-vectors: '
-                do ki = 1, size(qs%estimators(ispace)%q_vectors, 2) ! Number of q vectors
-                    write(*,*) qs%estimators(ispace)%q_vectors(:, ki)
-                end do
-            end do
-        end if
+        !if (fciqmc_in%sg_correction) then
+        !    do ispace = 1, qs%psip_list%nspaces
+        !        write(*,*) 'q-vectors: '
+        !        do ki = 1, size(qs%estimators(ispace)%q_vectors, 2) ! Number of q vectors
+        !            write(*,*) qs%estimators(ispace)%q_vectors(:, ki)
+        !        end do
+        !    end do
+        !end if
         
         ! Main fciqmc loop.
         if (parent) call write_qmc_report_header(qs%psip_list%nspaces, cmplx_est=sys%read_in%comp, &
@@ -395,6 +407,58 @@ contains
                                                             qs%estimators(ispace), connection, hmatel)
                             end if
                             
+                            ! Calculate S(G) contribution for this deteminant
+                            if (fciqmc_in%sg_correction .and. connection%nexcit == 2) then 
+
+                                km = sys%basis%basis_fns(connection%from_orb(1))%l 
+                                kn = sys%basis%basis_fns(connection%from_orb(2))%l
+                                kp = sys%basis%basis_fns(connection%to_orb(1))%l 
+                                kq = sys%basis%basis_fns(connection%to_orb(2))%l
+
+                                spin_m = sys%basis%basis_fns(connection%from_orb(1))%ms
+                                spin_n = sys%basis%basis_fns(connection%from_orb(2))%ms 
+                                spin_q = sys%basis%basis_fns(connection%to_orb(1))%ms 
+                                spin_p = sys%basis%basis_fns(connection%to_orb(2))%ms
+
+                                omega = sys%lattice%box_length(1)**3
+
+                                ! Get phase change due to permuation
+                                if (connection%perm) then
+                                    phase = 1 
+                                else 
+                                    phase = -1
+                                end if
+
+                                ! Term 1: + δ(sm, sp) δ(km - kp, G) δ(sn, sq) δ(kn - kq, -G)
+                                G = km - kp
+                                ! km - kp == G condition is redundant here as we have defined G that way
+                                ! but it is left for similarity to derivation for now
+                                if (spin_m == spin_p .and. spin_n == spin_q .and. all(km - kp == G) .and. all(kn - kq == -G)) then
+
+                                    ! This function will return 0 if this G is not a valid momentum transfer
+                                    idx = find_q_index(qs%estimators(ispace)%q_vectors, G)
+                                    if (idx /= 0) then
+                                      qs%estimators(ispace)%sg(idx) = &
+                                          qs%estimators(ispace)%sg(idx) + (phase * real_population(ispace)) &
+                                          / (qs%estimators(ispace)%D0_population_old * omega)
+                                    end if 
+                                end if
+
+                                ! Term 2: - δ(sm, sq) δ(km - kq, G) δ(sn, sp) δ(kn - kp, -G)
+                                G = km - kq
+                                ! km - kq == G condition is redundant here as we have defined G that way
+                                ! but it is left for similarity to derivation for now
+                                if (spin_m == spin_q .and. spin_n == spin_p .and. all(km - kq == G) .and. all(kn - kp == -G)) then
+                                    ! This function will return 0 if this G is not a valid momentum transfer
+                                    idx = find_q_index(qs%estimators(ispace)%q_vectors, G)
+                                    if (idx /= 0) then
+                                         qs%estimators(ispace)%sg(idx) = &
+                                            qs%estimators(ispace)%sg(idx) - (phase * real_population(ispace)) &
+                                            / (qs%estimators(ispace)%D0_population_old * omega)
+                                    end if 
+                                end if
+                            end if
+                         
                             nattempts_current_det_ispace = decide_nattempts(rng, real_population(ispace))
 
                             call do_fciqmc_spawning_attempt(rng, qs%spawn_store%spawn, rdm_spawn, bloom_stats, sys, qs, &
@@ -516,6 +580,23 @@ contains
             ! Should we try and update the reference determinant now?
             if (mod(ireport, fciqmc_in%select_ref_det_every_nreports) == 0) &
                     call select_ref_det(sys, fciqmc_in%ref_det_factor, qs)
+      
+            ! Dump S(G) information on the final report loop into a file for debugging
+            if (fciqmc_in%sg_correction .and. ireport == qmc_in%nreport) then 
+
+                open(newunit=sg_unit, file="SG", status="replace", action="write", iostat=ierr)
+
+                do ispace = 1, qs%psip_list%nspaces
+                    do i = 1, size(qs%estimators(ispace)%sg, 1)
+                        write(sg_unit, *) &
+                            qs%estimators(ispace)%q_vectors(1, i), &
+                            qs%estimators(ispace)%q_vectors(2, i), &
+                            qs%estimators(ispace)%q_vectors(3, i), &
+                            qs%estimators(ispace)%sg(i)
+                    end do
+                end do
+                close(sg_unit)
+            end if
 
         end do
 
@@ -571,7 +652,7 @@ contains
         end if
 
         if (state_hist_in%state_histograms) call deallocate_histogram_t(state_hist)
-
+        
         call dSFMT_end(rng)
 
     end subroutine do_fciqmc
