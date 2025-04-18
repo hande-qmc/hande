@@ -915,7 +915,8 @@ type estimators_t
 
     ! Quantities for finite size correction via S(G)
     integer, allocatable :: q_vectors(:, :)
-    real(p), allocatable :: sg(:) 
+    real(p), allocatable :: sg(:)
+    real(p) :: energy_sg
     
 end type estimators_t
 
@@ -1124,6 +1125,7 @@ contains
         estimators%proj_energy_comp = cmplx(0.0, 0.0, p)
         estimators%proj_energy_determ = 0.0_p
         estimators%proj_energy_stoch = 0.0_p
+        estimators%energy_sg = 0.0_p
 
         if (allocated(estimators%sg)) then
             estimators%sg(:) = 0.0_p 

@@ -148,10 +148,8 @@ contains
         integer :: spin_m, spin_n, spin_q, spin_p
         integer :: i, idx
         integer :: ki, ka 
-        integer :: phase
-        integer :: sg_unit
-        real(p) :: omega
-        real(p) :: cycle_N0
+        integer :: phase, sg_unit
+        real(p) :: omega, cycle_N0, mag2
 
         if (parent) then
             write (io_unit,'(1X,"FCIQMC")')
@@ -587,10 +585,20 @@ contains
             if (mod(ireport, fciqmc_in%select_ref_det_every_nreports) == 0) &
                     call select_ref_det(sys, fciqmc_in%ref_det_factor, qs)
 
-            ! Average S(G) over the report loop and convert to real units
+            ! Average S(G) over the report loop and calculate energy
             if (fciqmc_in%sg_correction) then
                 do i = 1, size(qs%estimators(1)%sg)
                     qs%estimators(1)%sg(i) = qs%estimators(1)%sg(i) / qmc_in%ncycles
+
+                    mag2 = ((2 * acos(-1.0)) / sys%lattice%box_length(1))**2 * real(qs%estimators(1)%q_vectors(1, i)**2 & 
+                        + qs%estimators(1)%q_vectors(2, i)**2 &
+                        + qs%estimators(1)%q_vectors(3, i)**2)
+
+                    ! Skip |G| = 0
+                    if (mag2 /= 0.0_p) then 
+                        qs%estimators(1)%energy_sg = qs%estimators(1)%energy_sg & 
+                            + (4 * acos(-1.0) / mag2) * qs%estimators(1)%sg(i)
+                    end if
                 end do 
             end if
 
@@ -601,6 +609,7 @@ contains
                 
                 write(sg_unit, *) 'omega: ', omega
                 write(sg_unit, *) 'reference population: ', cycle_N0
+                write(sg_unit, *) 'energy by S(G): ', qs%estimators(1)%energy_sg
 
                 do ispace = 1, qs%psip_list%nspaces
                     do i = 1, size(qs%estimators(ispace)%sg, 1)
