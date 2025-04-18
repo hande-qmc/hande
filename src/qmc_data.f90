@@ -1126,7 +1126,7 @@ contains
         estimators%proj_energy_stoch = 0.0_p
 
         if (allocated(estimators%sg)) then
-            estimators%sg = 0.0_p 
+            estimators%sg(:) = 0.0_p 
         end if
 
     end subroutine zero_estimators_t
