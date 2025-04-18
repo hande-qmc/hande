@@ -1132,10 +1132,10 @@ contains
         integer :: i 
 
         do i = 1, 3 
-            if (abs(vector1(i)) < abs(vector2(i))) then
+            if (vector1(i) < vector2(i)) then
                 lexicographically_less = .true.
                 return 
-            else if (abs(vector1(i)) > abs(vector2(i))) then
+            else if (vector1(i) > vector2(i)) then
                 lexicographically_less = .false.
                 return
             end if 
