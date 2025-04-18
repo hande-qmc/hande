@@ -144,14 +144,14 @@ contains
         integer :: date_values(8)
         character(:), allocatable :: err_msg
         
-        integer :: sg_unit
-        integer :: q(3)
+        integer :: q(3), G(3), km(3), kn(3), kq(3), kp(3)
+        integer :: spin_m, spin_n, spin_q, spin_p
         integer :: i, idx
         integer :: ki, ka 
         integer :: phase
-        integer :: km(3), kn(3), kq(3), kp(3), G(3)
-        integer :: spin_m, spin_n, spin_q, spin_p
-        real(p) :: omega, n_pop
+        integer :: sg_unit
+        real(p) :: omega
+        real(p) :: cycle_N0
 
         if (parent) then
             write (io_unit,'(1X,"FCIQMC")')
@@ -363,6 +363,10 @@ contains
                     if (fciqmc_in%non_blocking_comm) qs%spawn_store%spawn_recv%proc_map = qs%par_info%load%proc_map
                     ideterm = 0
 
+                    if (fciqmc_in%sg_correction) then 
+                        cycle_N0 = real(qs%psip_list%pops(1, 1), p) / qs%psip_list%pop_real_factor
+                    end if
+
                     do idet = 1, qs%psip_list%nstates ! loop over walkers/dets
                         cdet%f => qs%psip_list%states(:,idet)
                         cdet%data => qs%psip_list%dat(:,idet)
@@ -408,56 +412,58 @@ contains
                             end if
                             
                             ! Calculate S(G) contribution for this deteminant
-                            if (fciqmc_in%sg_correction .and. connection%nexcit == 2) then 
+                            if (fciqmc_in%sg_correction .and. connection%nexcit == 2) then
+                               
+                                ! to_orb contains occupied orbitals, from_orb contains virtual orbitals
+                                km = sys%basis%basis_fns(connection%to_orb(1))%l 
+                                kn = sys%basis%basis_fns(connection%to_orb(2))%l
+                                kp = sys%basis%basis_fns(connection%from_orb(1))%l 
+                                kq = sys%basis%basis_fns(connection%from_orb(2))%l
+                                spin_m = sys%basis%basis_fns(connection%to_orb(1))%ms
+                                spin_n = sys%basis%basis_fns(connection%to_orb(2))%ms 
+                                spin_p = sys%basis%basis_fns(connection%from_orb(1))%ms 
+                                spin_q = sys%basis%basis_fns(connection%from_orb(2))%ms
 
-                                km = sys%basis%basis_fns(connection%from_orb(1))%l 
-                                kn = sys%basis%basis_fns(connection%from_orb(2))%l
-                                kp = sys%basis%basis_fns(connection%to_orb(1))%l 
-                                kq = sys%basis%basis_fns(connection%to_orb(2))%l
-
-                                spin_m = sys%basis%basis_fns(connection%from_orb(1))%ms
-                                spin_n = sys%basis%basis_fns(connection%from_orb(2))%ms 
-                                spin_q = sys%basis%basis_fns(connection%to_orb(1))%ms 
-                                spin_p = sys%basis%basis_fns(connection%to_orb(2))%ms
+                                ! Debugging print
+                                !if (mod(ireport * icycle, 10000) == 0) then
+                                !    write(io_unit, '(/,A,2I6)') 'to_orb: ', connection%to_orb(1), connection%to_orb(2)
+                                !    write(io_unit, '(A,2I6)')  'from_orb:   ', connection%from_orb(1), connection%from_orb(2)
+                                !    write(io_unit, '(A, 3I6)') 'km = ', km
+                                !    write(io_unit, '(A, 3I6)') 'kn = ', kn
+                                !    write(io_unit, '(A, 3I6)') 'kp = ', kp
+                                !    write(io_unit, '(A, 3I6)') 'kq = ', kq
+                                !    write(io_unit, '(A, 4I6)') 'spin_m, spin_n, spin_p, spin_q = ', spin_m, spin_n, spin_p, spin_q
+                                !end if 
 
                                 omega = sys%lattice%box_length(1)**3
 
-                                ! Get phase change due to permuation
                                 if (connection%perm) then
-                                    phase = 1 
+                                    phase = -1 
                                 else 
-                                    phase = -1
+                                    phase = 1
                                 end if
 
-                                ! Term 1: + δ(sm, sp) δ(km - kp, G) δ(sn, sq) δ(kn - kq, -G)
-                                G = km - kp
-                                ! km - kp == G condition is redundant here as we have defined G that way
-                                ! but it is left for similarity to derivation for now
-                                if (spin_m == spin_p .and. spin_n == spin_q .and. all(km - kp == G) .and. all(kn - kq == -G)) then
-
-                                    ! This function will return 0 if this G is not a valid momentum transfer
+                                ! Term 1 
+                                G = km - kp 
+                                if (spin_m == spin_p .and. spin_n == spin_q .and. all(kn - kq == -G)) then 
                                     idx = find_q_index(qs%estimators(ispace)%q_vectors, G)
-                                    if (idx /= 0) then
-                                      qs%estimators(ispace)%sg(idx) = &
-                                          qs%estimators(ispace)%sg(idx) + (phase * real_population(ispace)) &
-                                          / (qs%estimators(ispace)%D0_population_old * omega)
+                                    if (idx /= 0) then 
+                                        qs%estimators(ispace)%sg(idx) = qs%estimators(ispace)%sg(idx) &
+                                            + (phase * real_population(ispace)) / (cycle_N0 * omega)
                                     end if 
                                 end if
 
-                                ! Term 2: - δ(sm, sq) δ(km - kq, G) δ(sn, sp) δ(kn - kp, -G)
-                                G = km - kq
-                                ! km - kq == G condition is redundant here as we have defined G that way
-                                ! but it is left for similarity to derivation for now
-                                if (spin_m == spin_q .and. spin_n == spin_p .and. all(km - kq == G) .and. all(kn - kp == -G)) then
-                                    ! This function will return 0 if this G is not a valid momentum transfer
+                                ! Term 2 
+                                G = km - kq 
+                                if (spin_m == spin_q .and. spin_n == spin_p .and. all(kn - kp == - G)) then
                                     idx = find_q_index(qs%estimators(ispace)%q_vectors, G)
                                     if (idx /= 0) then
-                                         qs%estimators(ispace)%sg(idx) = &
-                                            qs%estimators(ispace)%sg(idx) - (phase * real_population(ispace)) &
-                                            / (qs%estimators(ispace)%D0_population_old * omega)
+                                        qs%estimators(ispace)%sg(idx) = qs%estimators(ispace)%sg(idx) &
+                                            - (phase * real_population(ispace)) / (cycle_N0 * omega)
                                     end if 
                                 end if
                             end if
+
                          
                             nattempts_current_det_ispace = decide_nattempts(rng, real_population(ispace))
 
@@ -506,9 +512,9 @@ contains
                         ! annihilate/communicate spawned rdm particles
                         call update_rdm_from_spawns(sys, qs%psip_list, rdm_spawn, rdm)
                     end if
-                end do
+                end do 
             end do
-
+            
             if (accum_rdm) then
                 call calc_rdm_energy(sys, qs%ref, rdm, qs%estimators(1)%rdm_energy, qs%estimators(1)%rdm_trace)
             end if
@@ -580,11 +586,21 @@ contains
             ! Should we try and update the reference determinant now?
             if (mod(ireport, fciqmc_in%select_ref_det_every_nreports) == 0) &
                     call select_ref_det(sys, fciqmc_in%ref_det_factor, qs)
-      
-            ! Dump S(G) information on the final report loop into a file for debugging
+
+            ! Average S(G) over the report loop and convert to real units
+            if (fciqmc_in%sg_correction) then
+                do i = 1, size(qs%estimators(1)%sg)
+                    qs%estimators(1)%sg(i) = qs%estimators(1)%sg(i) / qmc_in%ncycles
+                end do 
+            end if
+
+            ! Dump S(G) information on final report loop for debugging
             if (fciqmc_in%sg_correction .and. ireport == qmc_in%nreport) then 
 
                 open(newunit=sg_unit, file="SG", status="replace", action="write", iostat=ierr)
+                
+                write(sg_unit, *) 'omega: ', omega
+                write(sg_unit, *) 'reference population: ', cycle_N0
 
                 do ispace = 1, qs%psip_list%nspaces
                     do i = 1, size(qs%estimators(ispace)%sg, 1)
@@ -592,11 +608,14 @@ contains
                             qs%estimators(ispace)%q_vectors(1, i), &
                             qs%estimators(ispace)%q_vectors(2, i), &
                             qs%estimators(ispace)%q_vectors(3, i), &
-                            qs%estimators(ispace)%sg(i)
+                            qs%estimators(ispace)%sg(i) 
                     end do
                 end do
                 close(sg_unit)
             end if
+
+ 
+
 
         end do
 
