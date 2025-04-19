@@ -277,7 +277,8 @@ contains
         ! Main fciqmc loop.
         if (parent) call write_qmc_report_header(qs%psip_list%nspaces, cmplx_est=sys%read_in%comp, &
                                                  rdm_energy=fciqmc_in%density_matrices, io_unit=io_unit, &
-                                                 semi_stoch_sep_stats=semi_stoch_in%separate_stats)
+                                                 semi_stoch_sep_stats=semi_stoch_in%separate_stats, &
+                                                 sg_correction=fciqmc_in%sg_correction)
         restart_proj_est = present(qmc_state_restart) .or. (restart_in%read_restart .and. restart_version_restart >= 2)
         if (.not.restart_proj_est) call initial_ci_projected_energy(sys, qs, fciqmc_in%non_blocking_comm, nparticles_old)
         if (fciqmc_in%non_blocking_comm) then
@@ -462,12 +463,24 @@ contains
                                                                                                        ireport, io_unit)
             end if
 
+            ! Average S(G) over the report loop and calculate energy
+            if (fciqmc_in%sg_correction) then
+                call calculate_sg_energy(qs, qmc_in, sys)
+                
+                ! Print out S(G) data on final report loop
+                if (ireport == qmc_in%nreport) then 
+                    call dump_sg_data(qs)
+                end if 
+
+            end if
+
             if (parent) then
                 if (bloom_stats%nblooms_curr > 0) call bloom_stats_warning(bloom_stats, io_unit=io_unit)
                 call write_qmc_report(qmc_in, qs, ireport, nparticles_old, t2-t1, .false., &
                                         fciqmc_in%non_blocking_comm, io_unit=io_unit, &
                                         cmplx_est=sys%read_in%comp, rdm_energy=fciqmc_in%density_matrices, &
-                                        semi_stoch_sep_stats=semi_stoch_in%separate_stats)
+                                        semi_stoch_sep_stats=semi_stoch_in%separate_stats, &
+                                        sg_correction=fciqmc_in%sg_correction)
                 if (blocking_in%blocking_on_the_fly) then
                     call do_blocking(bl, qs, qmc_in, ireport, iter, iunit, blocking_in, sys%read_in%comp)
                 end if
@@ -505,17 +518,6 @@ contains
             ! Should we try and update the reference determinant now?
             if (mod(ireport, fciqmc_in%select_ref_det_every_nreports) == 0) &
                     call select_ref_det(sys, fciqmc_in%ref_det_factor, qs)
-
-            ! Average S(G) over the report loop and calculate energy
-            if (fciqmc_in%sg_correction) then
-                call calculate_sg_energy(qs, qmc_in, sys)
-                
-                ! Print out S(G) data on final report loop
-                if (ireport == qmc_in%nreport) then 
-                    call dump_sg_data(qs)
-                end if 
-
-            end if
 
         end do
 
