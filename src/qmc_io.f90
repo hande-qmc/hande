@@ -74,7 +74,10 @@ contains
         write (iunit,'(1X,"# states: number of many-particle states occupied.")')
         write (iunit,'(1X,"spawn_events: number of successful spawning events across all processors.")')
         write (iunit,'(1X,"R_spawn: average rate of spawning across all processors.")')
-        write (iunit,'(1X,"time: average time per Monte Carlo cycle.",/)')
+        write (iunit,'(1X,"time: average time per Monte Carlo cycle.")')
+                if (present(sg_correction) .and. sg_correction) then 
+            write (iunit, '(1X, "sg-ener-u: (Uncorrected) energy calculated via S(G).", /)')
+        end if
         write (iunit,'(1X,"Note that all particle populations are averaged over the report loop.",/)')
 
         if (cmplx_est_set) then
@@ -159,7 +162,7 @@ contains
         call write_column_title(iunit, '  time', low_prec_val=.true., justify=2)
 
         if (present(sg_correction) .and. sg_correction) then 
-            call write_column_title(iunit, 'S(G) Energy')
+            call write_column_title(iunit, 'sg-ener-u')
         end if
 
         write (iunit,'()')
