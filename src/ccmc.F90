@@ -344,6 +344,7 @@ contains
         use propagators, only: update_chebyshev
 
         use sort, only: insert_sort_unique_vector
+        use sg_correction, only: get_q_vectors, calculate_sg_energy, dump_sg_data
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -405,10 +406,6 @@ contains
         integer :: iunit, restart_version_restart
         integer :: date_values(8)
         character(:), allocatable :: err_msg
-
-        integer :: q(3)
-        integer :: ki 
-        integer :: ka 
 
         if (parent) then
             write (io_unit,'(1X,"CCMC")')
@@ -580,7 +577,7 @@ contains
         if (parent) then
             call write_qmc_report_header(qs%psip_list%nspaces, cmplx_est=sys%read_in%comp, rdm_energy=ccmc_in%density_matrices, &
                                          nattempts=.true., io_unit=io_unit, &
-                                         semi_stoch_sep_stats=semi_stoch_in%separate_stats)
+                                         semi_stoch_sep_stats=semi_stoch_in%separate_stats, sg_correction=ccmc_in%sg_correction)
         end if
 
         restart_proj_est = present(qmc_state_restart) .or. (restart_in%read_restart .and. restart_version_restart >= 2)
@@ -617,23 +614,10 @@ contains
         if (blocking_in%blocking_on_the_fly) &
                     call init_blocking(qmc_in, blocking_in, bl, qs%shift_damping_status)
 
-        ! Accumulate q vectors for calculation of S(G)
+        ! Accumulate q vectors for calculation of S(G) and allocate S(G) array
         if (ccmc_in%sg_correction) then
-            do ki = 1, sys%basis%nbasis 
-                do ka = 1, sys%basis%nbasis 
-                    q = sys%basis%basis_fns(ki)%l - sys%basis%basis_fns(ka)%l 
-                    call insert_sort_unique_vector(qs%estimators(1)%q_vectors, q) ! Index one here as ccmc has no ispace (?)
-                end do 
-            end do
+            call get_q_vectors(sys, qs)
         end if
-
-        ! Output q vectors for debugging
-        !if (ccmc_in%sg_correction) then
-        !        write(*,*) 'q-vectors: '
-        !        do ki = 1, size(qs%estimators(1)%q_vectors, 2) ! Number of q vectors
-        !            write(*,*) qs%estimators(1)%q_vectors(:, ki)
-        !        end do
-        !end if
 
         ! Counter for the number of discarded clusters, see ccmc_in%discard_threshold
         count_discard = 0_i0
@@ -1051,11 +1035,23 @@ contains
             ! Chebyshev only works with real read-in systems for now (nspaces=1)
             if (qs%cheby_prop%using_chebyshev) call update_chebyshev(qs%cheby_prop, qs%shift(1))
 
+            ! Average S(G) over the report loop and calculate energy
+            if (ccmc_in%sg_correction) then
+                call calculate_sg_energy(qs, qmc_in, sys)
+                
+                ! Print out S(G) data on final report loop
+                if (ireport == qmc_in%nreport) then 
+                    call dump_sg_data(qs)
+                end if 
+
+            end if
+
             if (parent) then
                 if (bloom_stats%nblooms_curr > 0) call bloom_stats_warning(bloom_stats, io_unit=io_unit)
                 call write_qmc_report(qmc_in, qs, ireport, nparticles_old, real((t2-t1)/count_rate), .false., .false., &
                                         io_unit=io_unit, cmplx_est=sys%read_in%comp, rdm_energy=ccmc_in%density_matrices, &
-                                        nattempts=.true., semi_stoch_sep_stats=semi_stoch_in%separate_stats)
+                                        nattempts=.true., semi_stoch_sep_stats=semi_stoch_in%separate_stats, &
+                                        sg_correction=ccmc_in%sg_correction)
                 if (blocking_in%blocking_on_the_fly) then
                     call do_blocking(bl, qs, qmc_in, ireport, iter, iunit, blocking_in, sys%read_in%comp)
                 end if
@@ -1159,7 +1155,6 @@ contains
 
         ! In:
         !   sys: information on system under consideration.
-        !   qs: information on current state of qmc calculation.
         !   ccmc_in: options relating to ccmc passed in to calculation.
         !   cdet: information on determinant resulting from collapsing current
         !       cluster.
@@ -1171,6 +1166,7 @@ contains
         !       deterministic and stochastic contributions to E_proj separately.
 
         ! In/Out:
+        !   qs: information on current state of qmc calculation.
         !   D0_population_cycle: running total of reference population from any size cluster.
         !   proj_energy_cycle: running total of projected energy contributions.
         !   proj_energy_cycle_determ: running total of projected energy contributions.
@@ -1192,12 +1188,14 @@ contains
         use replica_rdm, only: update_rdm
         use logging, only: logging_t
 
+        use sg_correction, only: calculate_sg_contribution
+
         type(sys_t), intent(in) :: sys
-        type(qmc_state_t), intent(in) :: qs
         type(ccmc_in_t), intent(in) :: ccmc_in
         type(det_info_t), intent(in) :: cdet, ref_det
         type(cluster_t), intent(in) :: cluster
         type(logging_t), intent(in) :: logging_info
+        type(qmc_state_t), intent(inout) :: qs
         complex(p), intent(inout) :: D0_population_cycle, proj_energy_cycle
         real(p), intent(inout) :: proj_energy_cycle_determ, proj_energy_cycle_stoch
         real(p), allocatable, intent(inout) :: rdm(:,:)
@@ -1209,7 +1207,7 @@ contains
         type(excit_t) :: connection
         type(hmatel_t) :: hmatel
         type(estimators_t) :: estimators_cycle
-        real(p) :: pop
+        real(p) :: pop, pop_real
         if (debug) call update_selection_data(selection_data, cluster, logging_info)
 
         if (cluster%excitation_level /= huge(0)) then
@@ -1246,6 +1244,12 @@ contains
                 end if
             end if
         end if
+        
+        ! Calculate S(G) contribution for this cluster
+        if (ccmc_in%sg_correction .and. connection%nexcit == 2) then
+            pop_real = real(cluster%amplitude, p) * cluster%cluster_to_det_sign / cluster%pselect 
+            call calculate_sg_contribution(sys, connection, qs, pop_real, 1) ! ispace always = 1 in CCMC
+        end if 
 
         if (ccmc_in%density_matrices .and. cluster%excitation_level <= 2 .and. qs%vary_shift(1) &
             .and. cluster%excitation_level /= 0 .and. .not. sys%read_in%comp) then
