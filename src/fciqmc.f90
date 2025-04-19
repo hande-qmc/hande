@@ -86,7 +86,7 @@ contains
         use mrcc_utils, only: init_highest_dets_t, update_highest_dets, write_out_highest_dets
 
         use sort, only: insert_sort_unique_vector
-        use sg_correction, only: find_q_index
+        use sg_correction
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -144,12 +144,9 @@ contains
         integer :: date_values(8)
         character(:), allocatable :: err_msg
         
-        integer :: q(3), G(3), km(3), kn(3), kq(3), kp(3)
-        integer :: spin_m, spin_n, spin_q, spin_p
-        integer :: i, idx
-        integer :: ki, ka 
-        integer :: phase, sg_unit
-        real(p) :: omega, cycle_N0, mag2
+        integer :: sg_unit
+        integer :: i
+        real(p) :: mag2
 
         if (parent) then
             write (io_unit,'(1X,"FCIQMC")')
@@ -272,34 +269,11 @@ contains
             call init_highest_dets_t(qs, sys, fciqmc_in)
         end if
 
-        ! Accumulate q vectors for calculation of S(G)
+        ! Accumulate q vectors for calculation of S(G) and allocate S(G) array
         if (fciqmc_in%sg_correction) then
-            do ispace = 1, qs%psip_list%nspaces ! In real FCIQMC this is essentially ignored
-                do ki = 1, sys%basis%nbasis 
-                    do ka = 1, sys%basis%nbasis 
-                        q = sys%basis%basis_fns(ki)%l - sys%basis%basis_fns(ka)%l 
-                        call insert_sort_unique_vector(qs%estimators(ispace)%q_vectors, q)
-                    end do 
-                end do
-
-                ! Allocate space for S(G) by size of allowed momentum transfers
-                allocate(qs%estimators(ispace)%sg(size(qs%estimators(ispace)%q_vectors, 2)), stat=ierr)
-                call check_allocate('sg', size(qs%estimators(ispace)%q_vectors, 2), ierr)
-                qs%estimators(ispace)%sg(:) = 0.0_p
-
-            end do 
+            call get_q_vectors(sys, qs)
         end if
 
-        ! Output q vectors for debugging
-        !if (fciqmc_in%sg_correction) then
-        !    do ispace = 1, qs%psip_list%nspaces
-        !        write(*,*) 'q-vectors: '
-        !        do ki = 1, size(qs%estimators(ispace)%q_vectors, 2) ! Number of q vectors
-        !            write(*,*) qs%estimators(ispace)%q_vectors(:, ki)
-        !        end do
-        !    end do
-        !end if
-        
         ! Main fciqmc loop.
         if (parent) call write_qmc_report_header(qs%psip_list%nspaces, cmplx_est=sys%read_in%comp, &
                                                  rdm_energy=fciqmc_in%density_matrices, io_unit=io_unit, &
@@ -360,11 +334,7 @@ contains
                                                 qs%par_info, determ)
                     if (fciqmc_in%non_blocking_comm) qs%spawn_store%spawn_recv%proc_map = qs%par_info%load%proc_map
                     ideterm = 0
-
-                    if (fciqmc_in%sg_correction) then 
-                        cycle_N0 = real(qs%psip_list%pops(1, 1), p) / qs%psip_list%pop_real_factor
-                    end if
-
+                    
                     do idet = 1, qs%psip_list%nstates ! loop over walkers/dets
                         cdet%f => qs%psip_list%states(:,idet)
                         cdet%data => qs%psip_list%dat(:,idet)
@@ -410,58 +380,9 @@ contains
                             end if
                             
                             ! Calculate S(G) contribution for this deteminant
-                            if (fciqmc_in%sg_correction .and. connection%nexcit == 2) then
-                               
-                                ! to_orb contains occupied orbitals, from_orb contains virtual orbitals
-                                km = sys%basis%basis_fns(connection%to_orb(1))%l 
-                                kn = sys%basis%basis_fns(connection%to_orb(2))%l
-                                kp = sys%basis%basis_fns(connection%from_orb(1))%l 
-                                kq = sys%basis%basis_fns(connection%from_orb(2))%l
-                                spin_m = sys%basis%basis_fns(connection%to_orb(1))%ms
-                                spin_n = sys%basis%basis_fns(connection%to_orb(2))%ms 
-                                spin_p = sys%basis%basis_fns(connection%from_orb(1))%ms 
-                                spin_q = sys%basis%basis_fns(connection%from_orb(2))%ms
-
-                                ! Debugging print
-                                !if (mod(ireport * icycle, 10000) == 0) then
-                                !    write(io_unit, '(/,A,2I6)') 'to_orb: ', connection%to_orb(1), connection%to_orb(2)
-                                !    write(io_unit, '(A,2I6)')  'from_orb:   ', connection%from_orb(1), connection%from_orb(2)
-                                !    write(io_unit, '(A, 3I6)') 'km = ', km
-                                !    write(io_unit, '(A, 3I6)') 'kn = ', kn
-                                !    write(io_unit, '(A, 3I6)') 'kp = ', kp
-                                !    write(io_unit, '(A, 3I6)') 'kq = ', kq
-                                !    write(io_unit, '(A, 4I6)') 'spin_m, spin_n, spin_p, spin_q = ', spin_m, spin_n, spin_p, spin_q
-                                !end if 
-
-                                omega = sys%lattice%box_length(1)**3
-
-                                if (connection%perm) then
-                                    phase = -1 
-                                else 
-                                    phase = 1
-                                end if
-
-                                ! Term 1 
-                                G = km - kp 
-                                if (spin_m == spin_p .and. spin_n == spin_q .and. all(kn - kq == -G)) then 
-                                    idx = find_q_index(qs%estimators(ispace)%q_vectors, G)
-                                    if (idx /= 0) then 
-                                        qs%estimators(ispace)%sg(idx) = qs%estimators(ispace)%sg(idx) &
-                                            + (phase * real_population(ispace)) / (cycle_N0 * omega)
-                                    end if 
-                                end if
-
-                                ! Term 2 
-                                G = km - kq 
-                                if (spin_m == spin_q .and. spin_n == spin_p .and. all(kn - kp == - G)) then
-                                    idx = find_q_index(qs%estimators(ispace)%q_vectors, G)
-                                    if (idx /= 0) then
-                                        qs%estimators(ispace)%sg(idx) = qs%estimators(ispace)%sg(idx) &
-                                            - (phase * real_population(ispace)) / (cycle_N0 * omega)
-                                    end if 
-                                end if
+                            if (fciqmc_in%sg_correction .and. connection%nexcit == 2 .and. ispace == 1) then
+                                call calculate_sg_contribution(sys, connection, qs, real_population(ispace), ispace)
                             end if
-
                          
                             nattempts_current_det_ispace = decide_nattempts(rng, real_population(ispace))
 
@@ -587,44 +508,14 @@ contains
 
             ! Average S(G) over the report loop and calculate energy
             if (fciqmc_in%sg_correction) then
-                do i = 1, size(qs%estimators(1)%sg)
-                    qs%estimators(1)%sg(i) = qs%estimators(1)%sg(i) / qmc_in%ncycles
-
-                    mag2 = ((2 * acos(-1.0)) / sys%lattice%box_length(1))**2 * real(qs%estimators(1)%q_vectors(1, i)**2 & 
-                        + qs%estimators(1)%q_vectors(2, i)**2 &
-                        + qs%estimators(1)%q_vectors(3, i)**2)
-
-                    ! Skip |G| = 0
-                    if (mag2 /= 0.0_p) then 
-                        qs%estimators(1)%energy_sg = qs%estimators(1)%energy_sg & 
-                            + (4 * acos(-1.0) / mag2) * qs%estimators(1)%sg(i)
-                    end if
-                end do 
-            end if
-
-            ! Dump S(G) information on final report loop for debugging
-            if (fciqmc_in%sg_correction .and. ireport == qmc_in%nreport) then 
-
-                open(newunit=sg_unit, file="SG", status="replace", action="write", iostat=ierr)
+                call calculate_sg_energy(qs, qmc_in, sys)
                 
-                write(sg_unit, *) 'omega: ', omega
-                write(sg_unit, *) 'reference population: ', cycle_N0
-                write(sg_unit, *) 'energy by S(G): ', qs%estimators(1)%energy_sg
+                ! Print out S(G) data on final report loop
+                if (ireport == qmc_in%nreport) then 
+                    call dump_sg_data(qs)
+                end if 
 
-                do ispace = 1, qs%psip_list%nspaces
-                    do i = 1, size(qs%estimators(ispace)%sg, 1)
-                        write(sg_unit, *) &
-                            qs%estimators(ispace)%q_vectors(1, i), &
-                            qs%estimators(ispace)%q_vectors(2, i), &
-                            qs%estimators(ispace)%q_vectors(3, i), &
-                            qs%estimators(ispace)%sg(i) 
-                    end do
-                end do
-                close(sg_unit)
             end if
-
- 
-
 
         end do
 
