@@ -478,7 +478,7 @@ contains
                 ! Interpolate S(G) values onto fibonacci sphere for each unique magnitude
                 n_spheres = size(qs%estimators(1)%unique_q_mags)
                 allocate(qs%estimators(1)%sg_fibonacci(n_points, n_spheres), stat=ierr) 
-                call Interpolate_sg_fibonacci(qs)
+                call interpolate_sg_fibonacci(qs)
 
                 ! Print out S(G) data on final report loop
                 if (ireport == qmc_in%nreport) then 
