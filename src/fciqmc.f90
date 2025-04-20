@@ -145,7 +145,7 @@ contains
         character(:), allocatable :: err_msg
 
         real(p) :: tolerance = 1e-8_p
-        integer :: n_points
+        integer :: n_points, n_spheres
         integer :: i 
         
         if (parent) then
@@ -280,15 +280,6 @@ contains
 
             ! Get unique magnitudes of q_vectors and generate a fibonacci sphere for each magnitude
             call generate_unique_mag_fibonacci_sphere(qs, tolerance, qs%estimators(1)%fibonacci_points_unit, n_points)
-
-            ! Debugging print
-            write(io_unit, *) 'Fibonacci sphere points for unique_q_mags(1)'
-            do i = 1, size(qs%estimators(1)%fibonacci_spheres, 2)
-                write(io_unit, *) qs%estimators(1)%fibonacci_spheres(1, i, 1), &
-                                  qs%estimators(1)%fibonacci_spheres(2, i, 1), &
-                                  qs%estimators(1)%fibonacci_spheres(3, i, 1)
-                                    
-            end do 
 
         end if
       
@@ -482,8 +473,13 @@ contains
 
             ! Average S(G) over the report loop and calculate energy
             if (fciqmc_in%sg_correction) then
-                call calculate_sg_energy(qs, qmc_in, sys)
+                call calculate_uncorrected_sg_energy(qs, qmc_in, sys)
                 
+                ! Interpolate S(G) values onto fibonacci sphere for each unique magnitude
+                n_spheres = size(qs%estimators(1)%unique_q_mags)
+                allocate(qs%estimators(1)%sg_fibonacci(n_points, n_spheres), stat=ierr) 
+                call Interpolate_sg_fibonacci(qs)
+
                 ! Print out S(G) data on final report loop
                 if (ireport == qmc_in%nreport) then 
                     call dump_sg_data(qs)

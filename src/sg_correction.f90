@@ -195,7 +195,7 @@ module sg_correction
 
         end subroutine calculate_sg_contribution
 
-        subroutine calculate_sg_energy(qs, qmc_in, sys)
+        subroutine calculate_uncorrected_sg_energy(qs, qmc_in, sys)
 
             ! Average the S(G) values at the end of each report loop and calculate 
             ! the (uncorrected) correlation energy.
@@ -227,7 +227,59 @@ module sg_correction
                 end if
             end do 
 
-        end subroutine calculate_sg_energy
+        end subroutine calculate_uncorrected_sg_energy
+
+        subroutine interpolate_sg_fibonacci(qs)
+
+            ! Interpolate the calculated S(G) values of each unique magnitude onto the fibonacci
+            ! sphere points using inverse distance weighting interpolation. 
+            ! See: https://en.wikipedia.org/wiki/Inverse_distance_weighting.
+
+            ! In/Out:
+            !   qs: QMC state (qmc_state_t) object. Contains various information about the QMC state. 
+        
+            type(qmc_state_t), intent(inout) :: qs 
+            
+            real(p) :: locality = 2.0_p
+            real(p) :: d, w, sum_w, sum_wS
+            real(p) :: tolerance = 1e-8_p
+            integer :: i, j, k
+
+            ! Interpolate for each fibonacci sphere 
+            do i = 1, size(qs%estimators(1)%unique_q_mags)
+                
+                ! Loop over fibonacci points 
+                do j = 1, size(qs%estimators(1)%fibonacci_spheres, 2)
+
+                    sum_w = 0.0_p 
+                    sum_wS = 0.0_p
+
+                    ! Sum over S(G) values / q_vectors
+                    do k = 1, size(qs%estimators(1)%q_vectors, 2)
+
+                        d = sqrt((qs%estimators(1)%fibonacci_spheres(1, j, i) - qs%estimators(1)%q_vectors(1, k))**2 &
+                               + (qs%estimators(1)%fibonacci_spheres(2, j, i) - qs%estimators(1)%q_vectors(2, k))**2 &
+                               + (qs%estimators(1)%fibonacci_spheres(3, j, i) - qs%estimators(1)%q_vectors(3, k))**2)
+
+                        if (d < tolerance) then
+                            sum_wS = qs%estimators(1)%sg(k)
+                            sum_w = 1.0_p
+                            exit 
+                        end if 
+
+                        w = 1.0_p / d**locality 
+                        sum_w = sum_w + w 
+                        sum_wS = sum_wS + (w * qs%estimators(1)%sg(k))
+
+                    end do 
+
+                    qs%estimators(1)%sg_fibonacci(j, i) = sum_wS / sum_w 
+
+                end do 
+            end do
+
+        end subroutine interpolate_sg_fibonacci
+
 
         subroutine dump_sg_data(qs)
 

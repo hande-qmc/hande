@@ -916,6 +916,7 @@ type estimators_t
     ! Quantities for finite size correction via S(G)
     integer, allocatable :: q_vectors(:, :)
     real(p), allocatable :: sg(:)
+    real(p), allocatable :: sg_fibonacci(:, :)
     real(p), allocatable :: q_mags(:)
     real(p), allocatable :: fibonacci_points_unit(:, :)
     real(p), allocatable :: fibonacci_spheres(:, :, :)
