@@ -344,7 +344,7 @@ contains
         use propagators, only: update_chebyshev
 
         use sort, only: insert_sort_unique_vector
-        use sg_correction, only: get_q_vectors, calculate_sg_energy, dump_sg_data
+        use sg_correction
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -1037,7 +1037,7 @@ contains
 
             ! Average S(G) over the report loop and calculate energy
             if (ccmc_in%sg_correction) then
-                call calculate_sg_energy(qs, qmc_in, sys)
+                call calculate_uncorrected_sg_energy(qs, qmc_in, sys)
                 
                 ! Print out S(G) data on final report loop
                 if (ireport == qmc_in%nreport) then 
@@ -1188,7 +1188,7 @@ contains
         use replica_rdm, only: update_rdm
         use logging, only: logging_t
 
-        use sg_correction, only: calculate_sg_contribution
+        use sg_correction
 
         type(sys_t), intent(in) :: sys
         type(ccmc_in_t), intent(in) :: ccmc_in
