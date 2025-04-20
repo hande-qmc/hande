@@ -15,15 +15,14 @@ module sg_correction
 
         subroutine get_q_vectors(sys, qs)
 
-            ! Find all unique pairs of momentum transfer vectors between basis functions 
-            ! and allocate the corresponding array to store S(G) values
+            ! Find all unique pairs of momentum transfer vectors (q_vectors) between basis functions 
+            ! and allocate sg_array which will contain the corresponding S(G) contribution of each
+            ! q_vector.
 
             ! In:
-            !   sys: Information about system, specifically the number of basis functions and 
-            !        the basis functions themselves
+            !   sys: System (sys_t) object. Contains basis set information.
             ! In/Out:
-            !   qs: Information about state, nspaces, q_vectors are access through here, and 
-            !       the sg arrat is allocated and zerod
+            !   qs: QMC state (qmc_state_t) object. Contains various information about the QMC state. 
             
             type(sys_t), intent(in) :: sys 
             type(qmc_state_t), intent(inout) :: qs 
@@ -50,19 +49,103 @@ module sg_correction
 
         end subroutine get_q_vectors
 
-        subroutine calculate_sg_contribution(sys, connection, qs, real_population, ispace)
+        subroutine generate_fibonacci_sphere(n_points, points)
 
-            ! Calculate the contribution to S(G) of the current determinant
+            ! Generate a fibonacci unit sphere with n_points points. 
 
             ! In:
-            !   sys: Information about system, the cell length and basis functions are used 
-            !   connection: Used to identify the occupied and virtual orbitals as well as phase 
-            !               change required due to permutation
-            !   ispace: Identifies current walker space, this should always be 1 (i.e., the real part)
-            !   real_population :: Current determinant population 
+            !   n_points: Number of points on the fibonacci sphere. 
+            ! Out:
+            !   points: Array of 3D vectors containing the fibonacci sphere points.
+                
+            integer, intent(in) :: n_points
+            real(p), intent(out) :: points(3, n_points)
+
+            integer :: n, k, idx
+            real(p) :: phi, lat, lon
+
+            phi = (1.0_p + sqrt(5.0_p)) / 2.0_p 
+            n = (n_points - 1) / 2
+
+            do k = -n, n 
+               
+                idx = k + (n + 1) ! Maps k values to correct index
+
+                lat = asin(2.0_p * k / (2.0_p * n + 1.0_p))
+                lon = 2.0_p * acos(-1.0_p) * k / phi    
+
+                points(1, idx) = cos(lat) * cos(lon)
+                points(2, idx) = cos(lat) * sin(lon)
+                points(3, idx) = sin(lat)
+
+            end do
+            
+        end subroutine generate_fibonacci_sphere
+
+        subroutine generate_unique_mag_fibonacci_sphere(qs, tolerance, fibonacci_points_unit, n_points)
+
+            ! Calculates the magnitudes of the stored q_vectors and creates a list 
+            ! containing only unique magnitudes. 
+
+            ! In:
+            !   tolerance: Real number which dictates to what extent 2 magnitudes close in value 
+            !              are the same.
+            !   n_points: Number of points on each fibonacci sphere.
+            !   fibonacci_points_unit: Fibonacci sphere points on a unit sphere. 
             ! In/Out:
-            !   qs: State information, used to access population data and q_vectors. Updates to sg array 
-            !       go through here
+            !   qs: QMC state (qmc_state_t) object. Contains various information about the QMC state.
+
+            type(qmc_state_t), intent(inout) :: qs
+            real(p), intent(in) :: fibonacci_points_unit(:, :)
+            real(p), intent(in) :: tolerance
+            integer, intent(in) :: n_points
+
+            integer :: i 
+            integer :: n_unique
+
+            ! Get magnitudes of q_vectors
+            allocate(qs%estimators(1)%q_mags(size(qs%estimators(1)%q_vectors)))
+            do i = 1, size(qs%estimators(1)%q_vectors, 2)
+                qs%estimators(1)%q_mags(i) = sqrt(real(qs%estimators(1)%q_vectors(1, i)**2 + &
+                                                       qs%estimators(1)%q_vectors(2, i)**2 + &
+                                                       qs%estimators(1)%q_vectors(3, i)**2, p))
+            end do
+
+            ! Find unique magnitudes only 
+            allocate(qs%estimators(1)%unique_q_mags(size(qs%estimators(1)%q_vectors)))
+            n_unique = 0 
+            do i = 1, size(qs%estimators(1)%q_vectors)
+                if (qs%estimators(1)%q_mags(i) > tolerance) then ! Do not add zero magnitude to list 
+                    if (i == 1 .or. abs(qs%estimators(1)%q_mags(i) - qs%estimators(1)%q_mags(i - 1)) > tolerance) then 
+                        n_unique = n_unique + 1 
+                        qs%estimators(1)%unique_q_mags(n_unique) = qs%estimators(1)%q_mags(i)
+                    end if
+                end if 
+            end do 
+            
+            ! Remove excess size
+            qs%estimators(1)%unique_q_mags = qs%estimators(1)%unique_q_mags(1:n_unique)
+
+            ! Generate 1 fibonacci sphere per unique magnitude
+            allocate(qs%estimators(1)%fibonacci_spheres(3, n_points, n_unique))
+            do i = 1, n_unique 
+                qs%estimators(1)%fibonacci_spheres(:, :, i) = qs%estimators(1)%unique_q_mags(i) * fibonacci_points_unit
+            end do
+
+        end subroutine generate_unique_mag_fibonacci_sphere
+
+        subroutine calculate_sg_contribution(sys, connection, qs, real_population, ispace)
+
+            ! Calculate the contribution to S(G) of the current determinant or cluster.
+
+            ! In:
+            !   sys: System (sys_t) object. Contains basis set information.
+            !   connection: Excitation (excit_t) object. Contains information about the excitation between 
+            !               the current determinant or cluster and their children. 
+            !   ispace: Integer identifying the current walker space. This is always 1 for S(G) correction (at present).
+            !   real_population :: Real number which gives the population of the current determinant or cluster.
+            ! In/Out:
+            !   qs: QMC state (qmc_state_t) object. Contains various information about the QMC state.
 
             type(sys_t), intent(in) :: sys
             type(excit_t), intent(in) :: connection
@@ -114,15 +197,14 @@ module sg_correction
 
         subroutine calculate_sg_energy(qs, qmc_in, sys)
 
-            ! Average the calculated S(G) values at the end of the report loop and calculate 
-            ! the uncorrected correlation energy via S(G)
+            ! Average the S(G) values at the end of each report loop and calculate 
+            ! the (uncorrected) correlation energy.
 
             ! In:
-            !   qmc_in: Read in qmc options, gives the number of cycles per report loop 
-            !   sys: System information, provides cell length 
-            ! In/Out: 
-            !   qs: State information, gives S(G) values which are averaged, as well as 
-            !       access to the q_vectors 
+            !   qmc_in: Input options which realte to the QMC method, (qmc_in_t) type.
+            !   sys: System (sys_t) object. Contains lattice box length information. 
+            ! In/Out:
+            !   qs: QMC state (qmc_state_t) object. Contains various information about the QMC state. 
         
             type(qmc_state_t), intent(inout) :: qs 
             type(qmc_in_t), intent(in) :: qmc_in
@@ -149,11 +231,10 @@ module sg_correction
 
         subroutine dump_sg_data(qs)
 
-            ! Dump information about each momentum transfer vector, its contribution to S(G)
-            ! and the current uncorrected correlation energy 
+            ! Dump information about q_vectors and their contribution S(G) to file SG.
 
             ! In:
-            !   qs: State information, used to access sg array and q_vectors
+            !   qs: QMC state (qmc_state_t) object. Contains various information about the QMC state.
 
             type(qmc_state_t), intent(in) :: qs 
 
@@ -161,7 +242,6 @@ module sg_correction
             integer :: i
 
             open(newunit=sg_unit, file="SG", status="replace", action="write", iostat=ierr)
-            write(sg_unit, *) 'energy by S(G): ', qs%estimators(1)%energy_sg
 
             do i = 1, size(qs%estimators(1)%sg, 1)
                 write(sg_unit, *) &
@@ -175,18 +255,17 @@ module sg_correction
 
         end subroutine dump_sg_data
         
-        ! This can probably be a lot faster
         pure function find_q_index(q_vectors, G) result(idx)
 
-            ! Given a momentum tranfser vector G, compare it to a full list
-            ! of vectors q_vectors and find the index of the q vector which
-            ! matches G, if none are found return 0
+            ! Compare a vector G to list of vectors q_vectors and find the 
+            ! index of q_vectors where q_vectors(idx) == G. If not found 
+            ! return 0.
 
             ! In:
-            !   q_vectors: Full list of 3D vectors to compare to
-            !   G: A single 3D vector to check
+            !   q_vectors: List of 3D vectors.
+            !   G: One 3D vector.
             ! Out:
-            !   idx: Index of the q vector which matches G 
+            !   idx: Index for which q_vectors(idx) == G. 0 if not Found. 
 
             integer, intent(in) :: q_vectors(:, :)
             integer, intent(in) :: G(3)

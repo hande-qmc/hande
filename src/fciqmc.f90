@@ -143,11 +143,11 @@ contains
         integer :: iunit, restart_version_restart
         integer :: date_values(8)
         character(:), allocatable :: err_msg
-        
-        integer :: sg_unit
-        integer :: i
-        real(p) :: mag2
 
+        real(p) :: tolerance = 1e-8_p
+        integer :: n_points
+        integer :: i 
+        
         if (parent) then
             write (io_unit,'(1X,"FCIQMC")')
             write (io_unit,'(1X,"------",/)')
@@ -268,12 +268,30 @@ contains
             print*, 'initialising highest dets'
             call init_highest_dets_t(qs, sys, fciqmc_in)
         end if
-
-        ! Accumulate q vectors for calculation of S(G) and allocate S(G) array
+ 
         if (fciqmc_in%sg_correction) then
+            ! Accumulate q vectors for calculation of S(G) and allocate S(G) array
             call get_q_vectors(sys, qs)
-        end if
+            
+            ! Generate unit fibonacci sphere
+            n_points = 199 ! Number of fibonacci_points, experiment with changing this value, keep odd for now 
+            allocate(qs%estimators(1)%fibonacci_points_unit(3, n_points))
+            call generate_fibonacci_sphere(n_points, qs%estimators(1)%fibonacci_points_unit)
 
+            ! Get unique magnitudes of q_vectors and generate a fibonacci sphere for each magnitude
+            call generate_unique_mag_fibonacci_sphere(qs, tolerance, qs%estimators(1)%fibonacci_points_unit, n_points)
+
+            ! Debugging print
+            write(io_unit, *) 'Fibonacci sphere points for unique_q_mags(1)'
+            do i = 1, size(qs%estimators(1)%fibonacci_spheres, 2)
+                write(io_unit, *) qs%estimators(1)%fibonacci_spheres(1, i, 1), &
+                                  qs%estimators(1)%fibonacci_spheres(2, i, 1), &
+                                  qs%estimators(1)%fibonacci_spheres(3, i, 1)
+                                    
+            end do 
+
+        end if
+      
         ! Main fciqmc loop.
         if (parent) call write_qmc_report_header(qs%psip_list%nspaces, cmplx_est=sys%read_in%comp, &
                                                  rdm_energy=fciqmc_in%density_matrices, io_unit=io_unit, &
@@ -379,8 +397,7 @@ contains
                                                             weighted_population(ispace:ispace+1), &
                                                             qs%estimators(ispace), connection, hmatel)
                             end if
-                            
-                            ! Calculate S(G) contribution for this deteminant
+                             
                             if (fciqmc_in%sg_correction .and. connection%nexcit == 2 .and. ispace == 1) then
                                 call calculate_sg_contribution(sys, connection, qs, real_population(ispace), ispace)
                             end if
@@ -432,7 +449,7 @@ contains
                         ! annihilate/communicate spawned rdm particles
                         call update_rdm_from_spawns(sys, qs%psip_list, rdm_spawn, rdm)
                     end if
-                end do 
+                end do
             end do
             
             if (accum_rdm) then
