@@ -91,6 +91,7 @@ contains
         use qmc_data, only: fciqmc_in_t, single_basis, no_guiding, neel_singlet_guiding, neel_singlet, blocking_in_t
         use system, only: sys_t, heisenberg, ueg
         use errors, only: stop_all
+        use parallel, only: nprocs
 
         type(sys_t), intent(in) :: sys
         type(fciqmc_in_t), intent(in) :: fciqmc_in
@@ -130,11 +131,9 @@ contains
             call stop_all(this, 'Finite size correction via S(G) is currently only avaliable for UEG')
         end if
 
-#ifdef PARALLEL 
-        if (fciqmc_in%sg_correction) then 
+        if (fciqmc_in%sg_correction .and. nprocs > 1) then 
             call stop_all(this, 'Finite size correction via S(G) is currently not implemented for use with MPI')
         end if 
-#endif
         ! This is mainly a precaution, as the majority of functionality is possible, but totally unused.
         ! Major unresolved issue is likely to be semistochastic restart files.
         if (sys%basis%info_string_len /= 0) call stop_all(this, &
@@ -539,6 +538,7 @@ contains
         use qmc_data, only: excit_gen_no_renorm, excit_gen_renorm
         use system, only: sys_t, read_in, ueg
         use errors, only: stop_all
+        use parallel, only: nprocs
 
         type(sys_t), intent(in) :: sys
         type(ccmc_in_t), intent(in) :: ccmc_in
@@ -579,11 +579,9 @@ contains
             call stop_all(this, 'Excitation Generators other than no_renorm and renorm not yet implemented for linked CCMC.')
         end if
 
-#ifdef PARALLEL 
-        if (ccmc_in%sg_correction) then 
+        if (ccmc_in%sg_correction .and. nprocs > 1) then 
             call stop_all(this, 'Finite size correction via S(G) is currently not implemented for use with MPI')
         end if 
-#endif
         
         if (ccmc_in%sg_correction .and. sys%system /= ueg) then
             call stop_all(this, 'Finite size correction via S(G) is currently only avaliable for UEG')
