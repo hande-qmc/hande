@@ -110,10 +110,6 @@ contains
                     'This guiding function is only available when using the Neel singlet state as an energy estimator.')
         end if
 
-        if (fciqmc_in%sg_correction .and. sys%system /= ueg) then
-            call stop_all(this, 'Finite size correction via S(G) is currently only avaliable for UEG')
-        end if
-
         if (fciqmc_in%init_spin_inv_D0 .and. sys%Ms /= 0) then
             call stop_all(this, &
                 'Flipping the reference state will give a state which has a different value of Ms and so cannot be used here.')
@@ -129,7 +125,16 @@ contains
             call stop_all(this, &
                 'Complex non-blocking comms not yet implemented.')
         end if
+ 
+        if (fciqmc_in%sg_correction .and. sys%system /= ueg) then
+            call stop_all(this, 'Finite size correction via S(G) is currently only avaliable for UEG')
+        end if
 
+#ifdef PARALLEL 
+        if (fciqmc_in%sg_correction) then 
+            call stop_all(this, 'Finite size correction via S(G) is currently not implemented for use with MPI')
+        end if 
+#endif
         ! This is mainly a precaution, as the majority of functionality is possible, but totally unused.
         ! Major unresolved issue is likely to be semistochastic restart files.
         if (sys%basis%info_string_len /= 0) call stop_all(this, &
@@ -573,6 +578,12 @@ contains
                                          (qmc_in%excit_gen == excit_gen_renorm))) then
             call stop_all(this, 'Excitation Generators other than no_renorm and renorm not yet implemented for linked CCMC.')
         end if
+
+#ifdef PARALLEL 
+        if (ccmc_in%sg_correction) then 
+            call stop_all(this, 'Finite size correction via S(G) is currently not implemented for use with MPI')
+        end if 
+#endif
         
         if (ccmc_in%sg_correction .and. sys%system /= ueg) then
             call stop_all(this, 'Finite size correction via S(G) is currently only avaliable for UEG')
