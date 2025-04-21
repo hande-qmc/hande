@@ -276,7 +276,7 @@ contains
             ! Generate unit fibonacci sphere
             n_points = 199 ! Number of fibonacci_points, experiment with changing this value, keep odd for now 
             allocate(qs%estimators(1)%fibonacci_points_unit(3, n_points))
-            call generate_fibonacci_sphere(n_points, qs%estimators(1)%fibonacci_points_unit)
+            call generate_unit_fibonacci_sphere(n_points, qs%estimators(1)%fibonacci_points_unit)
 
             ! Get unique magnitudes of q_vectors and generate a fibonacci sphere for each magnitude
             call generate_unique_mag_fibonacci_sphere(qs, tolerance, qs%estimators(1)%fibonacci_points_unit, n_points)
@@ -479,6 +479,10 @@ contains
                 n_spheres = size(qs%estimators(1)%unique_q_mags)
                 allocate(qs%estimators(1)%sg_fibonacci(n_points, n_spheres), stat=ierr) 
                 call interpolate_sg_fibonacci(qs)
+
+                ! Perform spherical averaging for each unique magnitude
+                allocate(qs%estimators(1)%spherically_averaged_sg(n_spheres), stat=ierr) 
+                call spherical_average_sg(qs)
 
                 ! Print out S(G) data on final report loop
                 if (ireport == qmc_in%nreport) then 

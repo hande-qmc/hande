@@ -921,6 +921,7 @@ type estimators_t
     real(p), allocatable :: fibonacci_points_unit(:, :)
     real(p), allocatable :: fibonacci_spheres(:, :, :)
     real(p), allocatable :: unique_q_mags(:)
+    real(p), allocatable :: spherically_averaged_sg(:)
     real(p) :: energy_sg
     
 end type estimators_t

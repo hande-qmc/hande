@@ -49,7 +49,7 @@ module sg_correction
 
         end subroutine get_q_vectors
 
-        subroutine generate_fibonacci_sphere(n_points, points)
+        subroutine generate_unit_fibonacci_sphere(n_points, points)
 
             ! Generate a fibonacci unit sphere with n_points points. 
 
@@ -80,7 +80,7 @@ module sg_correction
 
             end do
             
-        end subroutine generate_fibonacci_sphere
+        end subroutine generate_unit_fibonacci_sphere
 
         subroutine generate_unique_mag_fibonacci_sphere(qs, tolerance, fibonacci_points_unit, n_points)
 
@@ -96,8 +96,8 @@ module sg_correction
             !   qs: QMC state (qmc_state_t) object. Contains various information about the QMC state.
 
             type(qmc_state_t), intent(inout) :: qs
+            real(p), intent(in) :: tolerance 
             real(p), intent(in) :: fibonacci_points_unit(:, :)
-            real(p), intent(in) :: tolerance
             integer, intent(in) :: n_points
 
             integer :: i 
@@ -114,13 +114,11 @@ module sg_correction
             ! Find unique magnitudes only 
             allocate(qs%estimators(1)%unique_q_mags(size(qs%estimators(1)%q_vectors)))
             n_unique = 0 
-            do i = 1, size(qs%estimators(1)%q_vectors)
-                if (qs%estimators(1)%q_mags(i) > tolerance) then ! Do not add zero magnitude to list 
-                    if (i == 1 .or. abs(qs%estimators(1)%q_mags(i) - qs%estimators(1)%q_mags(i - 1)) > tolerance) then 
-                        n_unique = n_unique + 1 
-                        qs%estimators(1)%unique_q_mags(n_unique) = qs%estimators(1)%q_mags(i)
-                    end if
-                end if 
+            do i = 1, size(qs%estimators(1)%q_vectors, 2)
+                if (i == 1 .or. abs(qs%estimators(1)%q_mags(i) - qs%estimators(1)%q_mags(i - 1)) > tolerance) then 
+                    n_unique = n_unique + 1 
+                    qs%estimators(1)%unique_q_mags(n_unique) = qs%estimators(1)%q_mags(i)
+                end if
             end do 
             
             ! Remove excess size
@@ -240,13 +238,19 @@ module sg_correction
         
             type(qmc_state_t), intent(inout) :: qs 
             
-            real(p) :: locality = 2.0_p
+            real(p) :: locality = 6.0_p
             real(p) :: d, w, sum_w, sum_wS
             real(p) :: tolerance = 1e-8_p
             integer :: i, j, k
 
             ! Interpolate for each fibonacci sphere 
             do i = 1, size(qs%estimators(1)%unique_q_mags)
+                
+                ! Skip interpolation for zero magnitude sphere and just set S(G) at all points to zero
+                if (abs(qs%estimators(1)%unique_q_mags(i)) < tolerance) then 
+                    qs%estimators(1)%sg_fibonacci(:, i) = 0.0_p
+                    cycle 
+                end if 
                 
                 ! Loop over fibonacci points 
                 do j = 1, size(qs%estimators(1)%fibonacci_spheres, 2)
@@ -280,6 +284,25 @@ module sg_correction
 
         end subroutine interpolate_sg_fibonacci
 
+        subroutine spherical_average_sg(qs)
+
+            type (qmc_state_t), intent(inout) :: qs
+
+            real(p) :: sum_sg
+            integer :: i, j
+
+            do i = 1, size(qs%estimators(1)%sg_fibonacci, 2)
+                
+                sum_sg = 0.0_p
+
+                do j = 1, size(qs%estimators(1)%sg_fibonacci, 1)
+                    sum_sg = sum_sg + qs%estimators(1)%sg_fibonacci(j, i)
+                end do 
+
+                qs%estimators(1)%spherically_averaged_sg(i) = sum_sg / size(qs%estimators(1)%sg_fibonacci, 1)
+            end do 
+       
+        end subroutine spherical_average_sg
 
         subroutine dump_sg_data(qs)
 
@@ -295,13 +318,22 @@ module sg_correction
 
             open(newunit=sg_unit, file="SG", status="replace", action="write", iostat=ierr)
 
-            do i = 1, size(qs%estimators(1)%sg, 1)
-                write(sg_unit, *) &
-                    qs%estimators(1)%q_vectors(1, i), &
-                    qs%estimators(1)%q_vectors(2, i), &
-                    qs%estimators(1)%q_vectors(3, i), &
-                    qs%estimators(1)%sg(i) 
+            write(sg_unit, *) 'G vectors and their S(G) contribution: '
+            do i = 1, size(qs%estimators(1)%sg)
+                write(sg_unit, *) qs%estimators(1)%q_vectors(1, i), &
+                                  qs%estimators(1)%q_vectors(2, i), &
+                                  qs%estimators(1)%q_vectors(3, i), &
+                                  qs%estimators(1)%sg(i) 
             end do
+
+            write(sg_unit,*) 'n_unique =', size(qs%estimators(1)%unique_q_mags)
+            write(sg_unit,*) 'n_avg    =', size(qs%estimators(1)%spherically_averaged_sg)
+            
+            write(sg_unit, *) '|G| and their spherically averaged S(G) values: '
+            do i = 1, size(qs%estimators(1)%spherically_averaged_sg)
+                write(sg_unit, *) qs%estimators(1)%unique_q_mags(i), &
+                                  qs%estimators(1)%spherically_averaged_sg(i)
+            end do 
 
             close(sg_unit)
 
