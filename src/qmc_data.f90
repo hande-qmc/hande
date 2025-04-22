@@ -1135,14 +1135,17 @@ contains
         estimators%proj_energy_comp = cmplx(0.0, 0.0, p)
         estimators%proj_energy_determ = 0.0_p
         estimators%proj_energy_stoch = 0.0_p
-        estimators%energy_sg = 0.0_p
-        estimators%sg(:) = 0.0_p
-        estimators%sg_fibonacci = 0.0_p
-        estimators%spherically_averaged_sg = 0.0_p
-        estimators%spline_coeffs_a = 0.0_p
-        estimators%spline_coeffs_b = 0.0_p
-        estimators%spline_coeffs_c = 0.0_p
-        estimators%spline_coeffs_d = 0.0_p
+
+        if (allocated(estimators%sg)) then 
+            estimators%energy_sg = 0.0_p
+            estimators%sg(:) = 0.0_p
+            estimators%sg_fibonacci = 0.0_p
+            estimators%spherically_averaged_sg = 0.0_p
+            estimators%spline_coeffs_a = 0.0_p
+            estimators%spline_coeffs_b = 0.0_p
+            estimators%spline_coeffs_c = 0.0_p
+            estimators%spline_coeffs_d = 0.0_p 
+        end if 
 
     end subroutine zero_estimators_t
 
