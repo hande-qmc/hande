@@ -304,6 +304,97 @@ module sg_correction
        
         end subroutine spherical_average_sg
 
+        subroutine cubic_spline_sg(qs)
+
+            type(qmc_state_t), intent(inout) :: qs
+
+            integer :: n_points, i, w
+            real(p), allocatable :: q_points(:), sg_points(:)
+            real(p), allocatable :: h(:)
+            real(p), allocatable :: lower_diag(:), main_diag(:), upper_diag(:) ! Tridiagonal matrix
+            real(p), allocatable :: m_vector(:), right_vector(:)
+
+            n_points = size(qs%estimators(1)%spherically_averaged_sg)
+            allocate(q_points(n_points), sg_points(n_points))
+            sg_points = qs%estimators(1)%spherically_averaged_sg
+            q_points = qs%estimators(1)%unique_q_mags
+
+            allocate(h(n_points - 1), lower_diag(n_points), main_diag(n_points), upper_diag(n_points), &
+                     right_vector(n_points), m_vector(n_points))
+            
+            do i = 1, n_points - 1 
+                h(i) = q_points(i + 1) - q_points(i)
+            end do 
+
+            ! Natural spline boundary conditions 
+            main_diag = 0.0_p
+            lower_diag = 0.0_p
+            upper_diag = 0.0_p
+            right_vector = 0.0_p
+
+            main_diag(1) = 1.0_p
+            main_diag(n_points) = 1.0_p
+            right_vector(1) = 0.0_p
+            right_vector(n_points) = 0.0_p
+            
+            ! Build matrix
+            do i = 2, n_points - 1 
+                lower_diag(i) = h(i - 1) ! lower_diag(1) = 0 as there is no matrix element (1, 0)
+                main_diag(i) = 2.0_p * (h(i-1) + h(i)) ! Boundary conditions give main_diag(1) and main_diag(n_points) = 1
+                upper_diag(i) = h(i) ! upper_diag(1) = 0 as there is no matrix element (0, 1)
+                right_vector(i) = 6.0_p * ((sg_points(i + 1) - sg_points(i)) / h(i) &
+                                       - (sg_points(i) - sg_points(i - 1)) / h(i - 1)) ! Boundary conditions give right_vector(1) 
+                                                                                       ! and right_vector(n_points) = 0
+            end do
+
+            ! Thomas algorithm
+            do i = 2, n_points 
+                w = lower_diag(i) / main_diag(i - 1)
+                main_diag(i) = main_diag(i) - w * upper_diag(i - 1)
+                right_vector(i) = right_vector(i) - w * right_vector(i - 1)
+            end do 
+
+            ! Back substitution 
+            m_vector(n_points) = right_vector(n_points) / main_diag(n_points)
+            do i = n_points - 1, 1, -1 ! Reverse loop
+                m_vector(i) = (right_vector(i) - upper_diag(i) * m_vector(i + 1)) / main_diag(i)
+            end do 
+
+            ! Compute coefficients 
+            do i = 1, n_points - 1
+                qs%estimators(1)%spline_coeffs_a(i) = (m_vector(i + 1) - m_vector(i)) / (6.0_p * h(i))
+                qs%estimators(1)%spline_coeffs_b(i) = m_vector(i) / 2.0_p
+                qs%estimators(1)%spline_coeffs_c(i) = (sg_points(i + 1) - sg_points(i)) / h(i) &
+                                                    - (h(i) / 6.0_p) * (2 * m_vector(i) + m_vector(i + 1))
+                qs%estimators(1)%spline_coeffs_d(i) = sg_points(i)
+                
+            end do 
+
+        end subroutine
+
+        pure function evaluate_spline(q, n_knots, qs) result(sg)
+
+            real(p), intent(in) :: q 
+            integer, intent(in) :: n_knots 
+            type(qmc_state_t), intent(in) :: qs 
+
+            integer :: i 
+            real(p) :: delta
+            real(p) :: sg
+
+            ! Find which interval contains q 
+            do i = 1, n_knots - 1 
+                if (q < qs%estimators(1)%unique_q_mags(i + 1)) exit 
+            end do 
+
+            ! Evaluate spline in this interval 
+            delta = q - qs%estimators(1)%unique_q_mags(i)
+            sg = qs%estimators(1)%spline_coeffs_a(i) * delta**3 + qs%estimators(1)%spline_coeffs_b(i) * delta**2 &
+                                                                + qs%estimators(1)%spline_coeffs_c(i) * delta &
+                                                                + qs%estimators(1)%spline_coeffs_d(i)
+
+        end function evaluate_spline
+
         subroutine dump_sg_data(qs)
 
             ! Dump information about q_vectors and their contribution S(G) to file SG.

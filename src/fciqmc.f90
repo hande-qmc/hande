@@ -146,7 +146,12 @@ contains
 
         real(p) :: tolerance = 1e-8_p
         integer :: n_points, n_spheres
-        integer :: i 
+        integer :: i, idx
+        integer :: n_spline_points
+        real :: q_min 
+        real :: q_max
+        real(p), allocatable :: q_spline_vals(:)
+        real(p), allocatable :: sg_spline_vals(:)
         
         if (parent) then
             write (io_unit,'(1X,"FCIQMC")')
@@ -272,17 +277,29 @@ contains
         if (fciqmc_in%sg_correction) then
             ! Accumulate q vectors for calculation of S(G) and allocate S(G) array
             call get_q_vectors(sys, qs)
-            
-            ! Generate unit fibonacci sphere
-            n_points = 199 ! Number of fibonacci_points, experiment with changing this value, keep odd for now 
-            allocate(qs%estimators(1)%fibonacci_points_unit(3, n_points))
-            call generate_unit_fibonacci_sphere(n_points, qs%estimators(1)%fibonacci_points_unit)
 
+            n_points = 199 ! Number of fibonacci_points, experiment with changing this value, keep odd for now
+            n_spline_points = 100
+
+            allocate( qs%estimators(1)%fibonacci_points_unit(3, n_points))
+
+            ! Generate unit fibonacci sphere
+            call generate_unit_fibonacci_sphere(n_points, qs%estimators(1)%fibonacci_points_unit)
             ! Get unique magnitudes of q_vectors and generate a fibonacci sphere for each magnitude
             call generate_unique_mag_fibonacci_sphere(qs, tolerance, qs%estimators(1)%fibonacci_points_unit, n_points)
+            n_spheres = size(qs%estimators(1)%unique_q_mags) ! Number of fibonacci spheres
 
-        end if
-      
+            allocate( qs%estimators(1)%sg_fibonacci(n_points, n_spheres))
+            allocate( qs%estimators(1)%spherically_averaged_sg(n_spheres))
+            allocate( qs%estimators(1)%spline_coeffs_a(n_spheres-1))
+            allocate( qs%estimators(1)%spline_coeffs_b(n_spheres-1))
+            allocate( qs%estimators(1)%spline_coeffs_c(n_spheres-1))
+            allocate( qs%estimators(1)%spline_coeffs_d(n_spheres-1))
+            allocate( q_spline_vals(n_spline_points))
+            allocate( sg_spline_vals(n_spline_points))
+
+        end if 
+
         ! Main fciqmc loop.
         if (parent) call write_qmc_report_header(qs%psip_list%nspaces, cmplx_est=sys%read_in%comp, &
                                                  rdm_energy=fciqmc_in%density_matrices, io_unit=io_unit, &
@@ -388,7 +405,8 @@ contains
                                                             weighted_population(ispace:ispace+1), &
                                                             qs%estimators(ispace), connection, hmatel)
                             end if
-                             
+                            
+                            ! Get contribution to S(G) of this determinant
                             if (fciqmc_in%sg_correction .and. connection%nexcit == 2 .and. ispace == 1) then
                                 call calculate_sg_contribution(sys, connection, qs, real_population(ispace), ispace)
                             end if
@@ -475,19 +493,41 @@ contains
             if (fciqmc_in%sg_correction) then
                 call calculate_uncorrected_sg_energy(qs, qmc_in, sys)
                 
-                ! Interpolate S(G) values onto fibonacci sphere for each unique magnitude
-                n_spheres = size(qs%estimators(1)%unique_q_mags)
-                allocate(qs%estimators(1)%sg_fibonacci(n_points, n_spheres), stat=ierr) 
+                ! Interpolate S(G) values onto fibonacci sphere for each unique magnitude 
                 call interpolate_sg_fibonacci(qs)
 
                 ! Perform spherical averaging for each unique magnitude
-                allocate(qs%estimators(1)%spherically_averaged_sg(n_spheres), stat=ierr) 
                 call spherical_average_sg(qs)
+
+                ! Form cubic spline
+                call cubic_spline_sg(qs)
+
+                ! Evaluate spline at range of points
+                q_min = qs%estimators(1)%unique_q_mags(1)
+                q_max = qs%estimators(1)%unique_q_mags(n_spheres)
+
+                do i = 1, n_spline_points
+                    ! Uniform distribution of q magnitudes
+                    q_spline_vals(i) = q_min + (i - 1) * (q_max - q_min) / (n_spline_points - 1) 
+                    sg_spline_vals(i) = evaluate_spline(q_spline_vals(i), n_spheres, qs)
+                end do
+                
+                ! Debugging 
+                if (ireport == qmc_in%nreport) then 
+                    write(io_unit, *) 'q vals to evaluate on spline: '
+                    write(io_unit, *) q_spline_vals
+                    write(io_unit, *) 'sg vals evaluated by spline: '
+                    write(io_unit, *) sg_spline_vals
+                end if 
 
                 ! Print out S(G) data on final report loop
                 if (ireport == qmc_in%nreport) then 
                     call dump_sg_data(qs)
-                end if 
+                end if
+
+                ! Zero spline values 
+                q_spline_vals(:) = 0.0_p 
+                sg_spline_vals(:) = 0.0_p
 
             end if
 

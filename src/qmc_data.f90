@@ -923,6 +923,10 @@ type estimators_t
     real(p), allocatable :: unique_q_mags(:)
     real(p), allocatable :: spherically_averaged_sg(:)
     real(p) :: energy_sg
+    real(p), allocatable :: spline_coeffs_a(:)
+    real(p), allocatable :: spline_coeffs_b(:)
+    real(p), allocatable :: spline_coeffs_c(:)
+    real(p), allocatable :: spline_coeffs_d(:)
     
 end type estimators_t
 
@@ -1132,10 +1136,13 @@ contains
         estimators%proj_energy_determ = 0.0_p
         estimators%proj_energy_stoch = 0.0_p
         estimators%energy_sg = 0.0_p
-
-        if (allocated(estimators%sg)) then
-            estimators%sg(:) = 0.0_p 
-        end if
+        estimators%sg(:) = 0.0_p
+        estimators%sg_fibonacci = 0.0_p
+        estimators%spherically_averaged_sg = 0.0_p
+        estimators%spline_coeffs_a = 0.0_p
+        estimators%spline_coeffs_b = 0.0_p
+        estimators%spline_coeffs_c = 0.0_p
+        estimators%spline_coeffs_d = 0.0_p
 
     end subroutine zero_estimators_t
 
