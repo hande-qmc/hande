@@ -927,6 +927,7 @@ type estimators_t
     real(p), allocatable :: spline_coeffs_b(:)
     real(p), allocatable :: spline_coeffs_c(:)
     real(p), allocatable :: spline_coeffs_d(:)
+    real(p) :: corrected_energy_sg
     
 end type estimators_t
 
@@ -1144,7 +1145,8 @@ contains
             estimators%spline_coeffs_a = 0.0_p
             estimators%spline_coeffs_b = 0.0_p
             estimators%spline_coeffs_c = 0.0_p
-            estimators%spline_coeffs_d = 0.0_p 
+            estimators%spline_coeffs_d = 0.0_p
+            estimators%corrected_energy_sg = 0.0_p
         end if 
 
     end subroutine zero_estimators_t

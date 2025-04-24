@@ -281,7 +281,7 @@ contains
             n_points = 199 ! Number of fibonacci_points, experiment with changing this value, keep odd for now
             n_spline_points = 100
 
-            allocate( qs%estimators(1)%fibonacci_points_unit(3, n_points))
+            allocate(qs%estimators(1)%fibonacci_points_unit(3, n_points))
 
             ! Generate unit fibonacci sphere
             call generate_unit_fibonacci_sphere(n_points, qs%estimators(1)%fibonacci_points_unit)
@@ -289,14 +289,14 @@ contains
             call generate_unique_mag_fibonacci_sphere(qs, tolerance, qs%estimators(1)%fibonacci_points_unit, n_points)
             n_spheres = size(qs%estimators(1)%unique_q_mags) ! Number of fibonacci spheres
 
-            allocate( qs%estimators(1)%sg_fibonacci(n_points, n_spheres))
-            allocate( qs%estimators(1)%spherically_averaged_sg(n_spheres))
-            allocate( qs%estimators(1)%spline_coeffs_a(n_spheres-1))
-            allocate( qs%estimators(1)%spline_coeffs_b(n_spheres-1))
-            allocate( qs%estimators(1)%spline_coeffs_c(n_spheres-1))
-            allocate( qs%estimators(1)%spline_coeffs_d(n_spheres-1))
-            allocate( q_spline_vals(n_spline_points))
-            allocate( sg_spline_vals(n_spline_points))
+            allocate(qs%estimators(1)%sg_fibonacci(n_points, n_spheres))
+            allocate(qs%estimators(1)%spherically_averaged_sg(n_spheres))
+            allocate(qs%estimators(1)%spline_coeffs_a(n_spheres-1))
+            allocate(qs%estimators(1)%spline_coeffs_b(n_spheres-1))
+            allocate(qs%estimators(1)%spline_coeffs_c(n_spheres-1))
+            allocate(qs%estimators(1)%spline_coeffs_d(n_spheres-1))
+            allocate(q_spline_vals(n_spline_points))
+            allocate(sg_spline_vals(n_spline_points))
 
         end if 
 
@@ -491,6 +491,8 @@ contains
 
             ! Average S(G) over the report loop and calculate energy
             if (fciqmc_in%sg_correction) then
+
+                ! Calculate correlation energy via S(G) with no correction
                 call calculate_uncorrected_sg_energy(qs, qmc_in, sys)
                 
                 ! Interpolate S(G) values onto fibonacci sphere for each unique magnitude 
@@ -503,7 +505,7 @@ contains
                 call cubic_spline_sg(qs)
 
                 ! Evaluate spline at range of points
-                q_min = qs%estimators(1)%unique_q_mags(1)
+                q_min = qs%estimators(1)%unique_q_mags(1) + 1.0e-6_p ! Non-zero q_min avoids divergence in long range integral
                 q_max = qs%estimators(1)%unique_q_mags(n_spheres)
 
                 do i = 1, n_spline_points
@@ -511,16 +513,11 @@ contains
                     q_spline_vals(i) = q_min + (i - 1) * (q_max - q_min) / (n_spline_points - 1) 
                     sg_spline_vals(i) = evaluate_spline(q_spline_vals(i), n_spheres, qs)
                 end do
-                
-                ! Debugging 
-                if (ireport == qmc_in%nreport) then 
-                    write(io_unit, *) 'q vals to evaluate on spline: '
-                    write(io_unit, *) q_spline_vals
-                    write(io_unit, *) 'sg vals evaluated by spline: '
-                    write(io_unit, *) sg_spline_vals
-                end if 
 
-                ! Print out S(G) data on final report loop
+                ! Calculate the energy via S(G) with the additional long range correction
+                call calculate_corrected_sg_energy(qs, sys, q_spline_vals, sg_spline_vals, n_spline_points)
+                
+                ! Print out S(G) data on final report loop for debugging
                 if (ireport == qmc_in%nreport) then 
                     call dump_sg_data(qs)
                 end if

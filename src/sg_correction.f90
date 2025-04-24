@@ -213,7 +213,8 @@ module sg_correction
             
             do i = 1, size(qs%estimators(1)%sg)
                 qs%estimators(1)%sg(i) = qs%estimators(1)%sg(i) / qmc_in%ncycles
-
+                
+                ! Prefactor converts from dimensionless to real units
                 mag2 = ((2 * acos(-1.0)) / sys%lattice%box_length(1))**2 * real(qs%estimators(1)%q_vectors(1, i)**2 & 
                         + qs%estimators(1)%q_vectors(2, i)**2 &
                         + qs%estimators(1)%q_vectors(3, i)**2)
@@ -325,13 +326,13 @@ module sg_correction
             do i = 1, n_points - 1 
                 h(i) = q_points(i + 1) - q_points(i)
             end do 
-
-            ! Natural spline boundary conditions 
+            
             main_diag = 0.0_p
             lower_diag = 0.0_p
             upper_diag = 0.0_p
             right_vector = 0.0_p
 
+            ! Natural spline boundary conditions. S''(G) = 0.  
             main_diag(1) = 1.0_p
             main_diag(n_points) = 1.0_p
             right_vector(1) = 0.0_p
@@ -370,7 +371,7 @@ module sg_correction
                 
             end do 
 
-        end subroutine
+        end subroutine cubic_spline_sg
 
         pure function evaluate_spline(q, n_knots, qs) result(sg)
 
@@ -394,6 +395,67 @@ module sg_correction
                                                                 + qs%estimators(1)%spline_coeffs_d(i)
 
         end function evaluate_spline
+
+        subroutine calculate_corrected_sg_energy(qs, sys, q_spline_vals, sg_spline_vals, n_spline_points)
+
+            type(qmc_state_t), intent(inout) :: qs 
+            type(sys_t), intent(in) :: sys
+            integer, intent(in) :: n_spline_points
+            real(p), intent(in) :: q_spline_vals(n_spline_points), sg_spline_vals(n_spline_points) 
+            
+            real(p) :: mag2, window, Gc, h
+            integer :: i, Nk, Mk
+            real(p) :: contribution, term1, term2, term3, term4
+            real(p) :: real_unit_conversion
+            
+            ! Calculate short range part with non-interpolated q_vectors and S(G)
+            qs%estimators(1)%corrected_energy_sg = 0.0_p
+
+            do i = 1, size(qs%estimators(1)%q_vectors, 2) 
+
+                mag2 = ((2 * acos(-1.0)) / sys%lattice%box_length(1))**2 * real(qs%estimators(1)%q_vectors(1, i)**2 & 
+                        + qs%estimators(1)%q_vectors(2, i)**2 &
+                        + qs%estimators(1)%q_vectors(3, i)**2)
+                
+                Gc = qs%estimators(1)%unique_q_mags(2) ! Largest non-zero magnitude
+                window = window_function(sqrt(mag2), Gc)
+                
+                ! Skip |G| = 0. Short range contriubtion to corrected energy
+                if (mag2 /= 0.0_p) then 
+                    qs%estimators(1)%corrected_energy_sg = qs%estimators(1)%corrected_energy_sg & 
+                        + (4 * acos(-1.0) / mag2) * (1 - window) * qs%estimators(1)%sg(i)
+                end if
+
+            end do
+
+            ! Long range contriubtion (correction) to energy 
+            Nk = 1 ! Number of k-points per cell. Need to find where this is given 
+            Mk = Nk**3
+            
+            ! Simpson quadrature. See thesis for derivation of integrand. 
+            real_unit_conversion = ((2 * acos(-1.0)) / sys%lattice%box_length(1)**2)
+            h = (q_spline_vals(n_spline_points) - q_spline_vals(1)) / (n_spline_points - 1)
+            term1 = sg_spline_vals(1) * window_function(q_spline_vals(1), Gc)
+            term4 = sg_spline_vals(n_spline_points) * window_function(q_spline_vals(n_spline_points), Gc)
+            term2 = 0.0_p
+            term3 = 0.0_p
+
+            do i = 2, n_spline_points - 1 
+                
+                contribution = sg_spline_vals(i) * window_function(q_spline_vals(i), Gc)
+
+                if (mod(i, 2) == 0) then 
+                    term2 = term2 + contribution  
+                else if (mod(i, 2) /= 0) then 
+                    term3 = term3 + contribution
+                end if 
+            end do
+
+            qs%estimators(1)%corrected_energy_sg = qs%estimators(1)%corrected_energy_sg + Mk * (2 / acos(-1.0)) * (h / 3.0_p) &
+                            * (term1 + 4 * term2 + 2 * term3 + term4) * real_unit_conversion 
+
+            
+        end subroutine calculate_corrected_sg_energy
 
         subroutine dump_sg_data(qs)
 
@@ -458,5 +520,21 @@ module sg_correction
             end do 
 
         end function find_q_index
+
+        pure function window_function(magnitude, Gc) result (window)
+
+            real(p), intent(in) :: magnitude 
+            real(p), intent(in) :: Gc 
+
+            real(p) :: window 
+
+            ! Heaviside function
+            if ((Gc - magnitude) >= 0.0_p) then 
+                window = 0.5_p * (cos(acos(-1.0_p) * (magnitude / Gc)) + 1.0_p) 
+            else if ((Gc - magnitude) < 0.0_p) then 
+                window = 0.0_p
+            end if
+            
+        end function window_function
 
 end module sg_correction

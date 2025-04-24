@@ -75,8 +75,9 @@ contains
         write (iunit,'(1X,"spawn_events: number of successful spawning events across all processors.")')
         write (iunit,'(1X,"R_spawn: average rate of spawning across all processors.")')
         write (iunit,'(1X,"time: average time per Monte Carlo cycle.")')
-                if (present(sg_correction) .and. sg_correction) then 
-            write (iunit, '(1X, "sg-ener-u: (Uncorrected) energy calculated via S(G).", /)')
+        if (present(sg_correction) .and. sg_correction) then 
+            write (iunit, '(1X, "sg-ener-u: (Uncorrected) energy calculated via S(G).")')
+            write (iunit, '(1X, "sg-ener-c: (Corrected) energy calculated via S(G).",/)')
         end if
         write (iunit,'(1X,"Note that all particle populations are averaged over the report loop.",/)')
 
@@ -163,6 +164,7 @@ contains
 
         if (present(sg_correction) .and. sg_correction) then 
             call write_column_title(iunit, 'sg-ener-u')
+            call write_column_title(iunit, 'sg-ener-c')
         end if
 
         write (iunit,'()')
@@ -595,6 +597,7 @@ contains
 
         if (present(sg_correction) .and. sg_correction) then 
             call write_qmc_var(iunit, qs%estimators(1)%energy_sg)
+            call write_qmc_var(iunit, qs%estimators(1)%corrected_energy_sg)
         end if 
 
         write (iunit,'()')
