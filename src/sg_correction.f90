@@ -433,7 +433,7 @@ module sg_correction
             Mk = Nk**3
             
             ! Simpson quadrature. See thesis for derivation of integrand. 
-            real_unit_conversion = ((2 * acos(-1.0)) / sys%lattice%box_length(1)**2)
+            real_unit_conversion = ((2 * acos(-1.0)) / sys%lattice%box_length(1))
             h = (q_spline_vals(n_spline_points) - q_spline_vals(1)) / (n_spline_points - 1)
             term1 = sg_spline_vals(1) * window_function(q_spline_vals(1), Gc)
             term4 = sg_spline_vals(n_spline_points) * window_function(q_spline_vals(n_spline_points), Gc)
@@ -451,10 +451,10 @@ module sg_correction
                 end if 
             end do
 
-            qs%estimators(1)%corrected_energy_sg = qs%estimators(1)%corrected_energy_sg + Mk * (2 / acos(-1.0)) * (h / 3.0_p) &
-                            * (term1 + 4 * term2 + 2 * term3 + term4) * real_unit_conversion 
+            qs%estimators(1)%corrected_energy_sg = qs%estimators(1)%corrected_energy_sg &
+                + real_unit_conversion * Mk * sys%lattice%box_length(1)**3 * (2 / acos(-1.0)) * (h / 3.0_p) &
+                * (term1 + 4 * term2 + 2 * term3 + term4) 
 
-            
         end subroutine calculate_corrected_sg_energy
 
         subroutine dump_sg_data(qs)
