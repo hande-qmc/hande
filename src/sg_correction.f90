@@ -28,25 +28,37 @@ module sg_correction
             type(sys_t), intent(in) :: sys 
             type(qmc_state_t), intent(inout) :: qs 
 
-            integer :: ispace, ierr, ki, ka, q(3)
+            integer :: i, ierr, ki, ka, q(3)
+            integer :: qx_min, qx_max, qy_min, qy_max, qz_min, qz_max
 
-            do ispace = 1, qs%psip_list%nspaces 
-
-                ! Get all unique q vectors
-                do ki = 1, sys%basis%nbasis
-                    do ka = 1, sys%basis%nbasis 
-                        q = sys%basis%basis_fns(ki)%l - sys%basis%basis_fns(ka)%l
-                        call insert_sort_unique_vector(qs%estimators(ispace)%q_vectors, q)
-                    end do 
+            ! Get all unique q vectors
+            do ki = 1, sys%basis%nbasis
+                do ka = 1, sys%basis%nbasis 
+                    q = sys%basis%basis_fns(ki)%l - sys%basis%basis_fns(ka)%l
+                    call insert_sort_unique_vector(qs%estimators(1)%q_vectors, q)
                 end do 
+            end do 
 
-                ! Allocate corresponding S(G) array 
-                allocate(qs%estimators(ispace)%sg(size(qs%estimators(ispace)%q_vectors, 2)), stat=ierr)
-                call check_allocate('sg', size(qs%estimators(ispace)%q_vectors, 2), ierr)
+            ! Allocate corresponding S(G) array 
+            allocate(qs%estimators(1)%sg(size(qs%estimators(1)%q_vectors, 2)), stat=ierr)
+            call check_allocate('sg', size(qs%estimators(1)%q_vectors, 2), ierr)
 
-                qs%estimators(ispace)%sg = 0.0_p
+            qs%estimators(1)%sg = 0.0_p
 
-            end do
+            ! Construct lookup map for the index of the q_vectors 
+            qx_min = minval(qs%estimators(1)%q_vectors(1, :))
+            qx_max = maxval(qs%estimators(1)%q_vectors(1, :))
+            qy_min = minval(qs%estimators(1)%q_vectors(2, :))
+            qy_max = maxval(qs%estimators(1)%q_vectors(2, :))
+            qz_min = minval(qs%estimators(1)%q_vectors(3, :))
+            qz_max = maxval(qs%estimators(1)%q_vectors(3, :))
+            allocate(qs%estimators(1)%q_map(qx_min:qx_max, qy_min:qy_max, qz_min:qz_max))
+            qs%estimators(1)%q_map = 0.0_p ! If q vector not in the list of q_vectors the map should return 0 
+
+            do i = 1, size(qs%estimators(1)%q_vectors, 2)
+                q = qs%estimators(1)%q_vectors(:, i)
+                qs%estimators(1)%q_map(q(1), q(2), q(3)) = i
+            end do 
 
         end subroutine get_q_vectors
 
@@ -174,7 +186,7 @@ module sg_correction
             ! Term 1
             G = km - kp
             if (sm == sp .and. sn == sq .and. all(kn - kq == -G)) then 
-                idx = find_q_index(qs%estimators(ispace)%q_vectors, G)
+                idx = qs%estimators(1)%q_map(G(1), G(2), G(3))
                 if (idx /= 0) then 
                     qs%estimators(ispace)%sg(idx) = qs%estimators(ispace)%sg(idx) &
                         + (phase * real_population) / omega
@@ -184,7 +196,7 @@ module sg_correction
             ! Term 2 
             G = km - kq 
             if (sm == sq .and. sn == sp .and. all(kn - kp == - G)) then
-                idx = find_q_index(qs%estimators(ispace)%q_vectors, G)
+                idx = qs%estimators(1)%q_map(G(1), G(2), G(3))
                 if (idx /= 0) then
                     qs%estimators(ispace)%sg(idx) = qs%estimators(ispace)%sg(idx) &
                         - (phase * real_population) / omega
@@ -246,8 +258,7 @@ module sg_correction
         
             type(qmc_state_t), intent(inout) :: qs 
             
-            real(p) :: locality = 6.0_p
-            real(p) :: d, w, sum_w, sum_wS
+            real(p) :: dx, dy, dz, d2, w, sum_w, sum_wS
             real(p) :: tolerance = 1e-8_p
             integer :: i, j, k
 
@@ -269,17 +280,21 @@ module sg_correction
                     ! Sum over S(G) values / q_vectors
                     do k = 1, size(qs%estimators(1)%q_vectors, 2)
 
-                        d = sqrt((qs%estimators(1)%fibonacci_spheres(1, j, i) - qs%estimators(1)%q_vectors(1, k))**2 &
-                               + (qs%estimators(1)%fibonacci_spheres(2, j, i) - qs%estimators(1)%q_vectors(2, k))**2 &
-                               + (qs%estimators(1)%fibonacci_spheres(3, j, i) - qs%estimators(1)%q_vectors(3, k))**2)
+                        dx = qs%estimators(1)%fibonacci_spheres(1, j, i) - qs%estimators(1)%q_vectors(1, k)
+                        dy = qs%estimators(1)%fibonacci_spheres(2, j, i) - qs%estimators(1)%q_vectors(2, k)
+                        dz = qs%estimators(1)%fibonacci_spheres(3, j, i) - qs%estimators(1)%q_vectors(3, k)
+                        d2 = dx*dx + dy*dy * dz*dz
 
-                        if (d < tolerance) then
+                        if (d2 < tolerance) then
                             sum_wS = qs%estimators(1)%sg(k)
                             sum_w = 1.0_p
                             exit 
                         end if 
-
-                        w = 1.0_p / d**locality 
+                        
+                        ! Exponent of weight w gives measure of locality, i.e., how much the interpolated value is 
+                        ! influenced by values closer or further away. Higher locality is more influenced by nearer points.
+                        ! If locality == 6 then (1 / d)**6 = (1 / d2)**3.  
+                        w = 1.0_p / (d2 * d2 * d2) 
                         sum_w = sum_w + w 
                         sum_wS = sum_wS + (w * qs%estimators(1)%sg(k))
 
@@ -499,35 +514,6 @@ module sg_correction
 
         end subroutine dump_sg_data
         
-        pure function find_q_index(q_vectors, G) result(idx)
-
-            ! Compare a vector G to list of vectors q_vectors and find the 
-            ! index of q_vectors where q_vectors(idx) == G. If not found 
-            ! return 0.
-
-            ! In:
-            !   q_vectors: List of 3D vectors.
-            !   G: One 3D vector.
-            ! Out:
-            !   idx: Index for which q_vectors(idx) == G. 0 if not Found. 
-
-            integer, intent(in) :: q_vectors(:, :)
-            integer, intent(in) :: G(3)
-            integer :: idx, n, i
-            
-            ! Total number of q_vectors in list
-            n = size(q_vectors, 2)
-            idx = 0 ! If no match is found idx is returned as is
-
-            do i = 1, n 
-                if (all(q_vectors(:, i) == G)) then
-                    idx = i 
-                    return 
-                end if
-            end do 
-
-        end function find_q_index
-
         pure function window_function(magnitude, Gc) result (window)
 
             real(p), intent(in) :: magnitude 

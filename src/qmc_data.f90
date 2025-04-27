@@ -915,6 +915,7 @@ type estimators_t
 
     ! Quantities for finite size correction via S(G)
     integer, allocatable :: q_vectors(:, :)
+    integer, allocatable :: q_map(:, :, :)
     real(p), allocatable :: sg(:)
     real(p), allocatable :: sg_fibonacci(:, :)
     real(p), allocatable :: q_mags(:)

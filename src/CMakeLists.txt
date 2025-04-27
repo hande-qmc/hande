@@ -11,6 +11,9 @@ add_library(hande-static STATIC
   $<TARGET_OBJECTS:HANDE::external>
   )
 
+target_compile_options(hande-static PRIVATE -pg)
+target_link_options   (hande-static PRIVATE -pg)
+
 # Sources that depend on Lua
 target_sources(hande-static
   PRIVATE
@@ -175,6 +178,10 @@ target_link_libraries(${HANDE_EXE_NAME}
   PRIVATE
     hande-static
   )
+
+target_compile_options(${HANDE_EXE_NAME} PRIVATE -pg)
+target_link_options   (${HANDE_EXE_NAME} PRIVATE -pg)
+
 add_custom_command(TARGET ${HANDE_EXE_NAME}
   POST_BUILD
   COMMAND
