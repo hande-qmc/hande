@@ -130,10 +130,6 @@ contains
         if (fciqmc_in%sg_correction .and. sys%system /= ueg) then
             call stop_all(this, 'Finite size correction via S(G) is currently only avaliable for UEG')
         end if
-
-        if (fciqmc_in%sg_correction .and. nprocs > 1) then 
-            call stop_all(this, 'Finite size correction via S(G) is currently not implemented for use with MPI')
-        end if 
         ! This is mainly a precaution, as the majority of functionality is possible, but totally unused.
         ! Major unresolved issue is likely to be semistochastic restart files.
         if (sys%basis%info_string_len /= 0) call stop_all(this, &
@@ -579,10 +575,6 @@ contains
             call stop_all(this, 'Excitation Generators other than no_renorm and renorm not yet implemented for linked CCMC.')
         end if
 
-        if (ccmc_in%sg_correction .and. nprocs > 1) then 
-            call stop_all(this, 'Finite size correction via S(G) is currently not implemented for use with MPI')
-        end if 
-        
         if (ccmc_in%sg_correction .and. sys%system /= ueg) then
             call stop_all(this, 'Finite size correction via S(G) is currently only avaliable for UEG')
         end if

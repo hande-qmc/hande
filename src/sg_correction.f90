@@ -8,6 +8,7 @@ module sg_correction
     use checking, only: check_allocate
     use sort, only: insert_sort_unique_vector
     use const, only: p
+    use parallel
 
     implicit none
 
@@ -159,7 +160,6 @@ module sg_correction
 
             omega = sys%lattice%box_length(1)**3
             phase = merge(-1, 1, connection%perm)
-            N0 = real(qs%psip_list%pops(ispace, 1), p) / qs%psip_list%pop_real_factor
     
             ! to_orb contains occupied orbitals, from_orb contains virtual orbitals
             km = sys%basis%basis_fns(connection%to_orb(1))%l 
@@ -177,7 +177,7 @@ module sg_correction
                 idx = find_q_index(qs%estimators(ispace)%q_vectors, G)
                 if (idx /= 0) then 
                     qs%estimators(ispace)%sg(idx) = qs%estimators(ispace)%sg(idx) &
-                        + (phase * real_population) / (N0 * omega)
+                        + (phase * real_population) / omega
                 end if 
             end if
 
@@ -187,7 +187,7 @@ module sg_correction
                 idx = find_q_index(qs%estimators(ispace)%q_vectors, G)
                 if (idx /= 0) then
                     qs%estimators(ispace)%sg(idx) = qs%estimators(ispace)%sg(idx) &
-                        - (phase * real_population) / (N0 * omega)
+                        - (phase * real_population) / omega
                 end if 
             end if
 
@@ -211,8 +211,15 @@ module sg_correction
             real(p) :: mag2
             integer :: i
             
+#ifdef PARALLEL 
+            integer :: ierr 
+            call MPI_Allreduce(MPI_IN_PLACE, qs%estimators(1)%sg, size(qs%estimators(1)%sg), &
+                               MPI_REAL8, MPI_SUM, MPI_COMM_WORLD, ierr)
+#endif      
+            ! Average over report cycles and normalise by N0
+            qs%estimators(1)%sg = qs%estimators(1)%sg / (qmc_in%ncycles * qs%estimators(1)%D0_population)
+            
             do i = 1, size(qs%estimators(1)%sg)
-                qs%estimators(1)%sg(i) = qs%estimators(1)%sg(i) / qmc_in%ncycles
                 
                 ! Prefactor converts from dimensionless to real units
                 mag2 = ((2 * acos(-1.0)) / sys%lattice%box_length(1))**2 * real(qs%estimators(1)%q_vectors(1, i)**2 & 
@@ -222,7 +229,7 @@ module sg_correction
                 ! Skip |G| = 0
                 if (mag2 /= 0.0_p) then 
                     qs%estimators(1)%energy_sg = qs%estimators(1)%energy_sg & 
-                        + (4 * acos(-1.0) / mag2) * qs%estimators(1)%sg(i)
+                        + (4 * acos(-1.0) / mag2) * qs%estimators(1)%sg(i) 
                 end if
             end do 
 
@@ -423,7 +430,7 @@ module sg_correction
                 ! Skip |G| = 0. Short range contriubtion to corrected energy
                 if (mag2 /= 0.0_p) then 
                     qs%estimators(1)%corrected_energy_sg = qs%estimators(1)%corrected_energy_sg & 
-                        + (4 * acos(-1.0) / mag2) * (1 - window) * qs%estimators(1)%sg(i)
+                        + (4 * acos(-1.0) / mag2) * (1 - window) * qs%estimators(1)%sg(i) 
                 end if
 
             end do
