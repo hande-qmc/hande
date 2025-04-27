@@ -164,7 +164,7 @@ module sg_correction
             real(p), intent(in) :: real_population
             type(qmc_state_t), intent(inout) :: qs
 
-            real(p) :: N0, omega
+            real(p) :: omega
             integer :: km(3), kn(3), kp(3), kq(3), G(3)
             integer :: sm, sn, sp, sq
             integer :: idx
@@ -222,14 +222,9 @@ module sg_correction
 
             real(p) :: mag2
             integer :: i
-            
-#ifdef PARALLEL 
-            integer :: ierr 
-            call MPI_Allreduce(MPI_IN_PLACE, qs%estimators(1)%sg, size(qs%estimators(1)%sg), &
-                               MPI_REAL8, MPI_SUM, MPI_COMM_WORLD, ierr)
-#endif      
-            ! Average over report cycles and normalise by N0
-            qs%estimators(1)%sg = qs%estimators(1)%sg / (qmc_in%ncycles * qs%estimators(1)%D0_population)
+             
+            ! The normalisation by N0 and averages over the number of cycles per repoort loop 
+            ! that were previously done here are now in energy_evaluation.
             
             do i = 1, size(qs%estimators(1)%sg)
                 
