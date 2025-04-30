@@ -343,8 +343,10 @@ contains
         use mrcc_utils, only: init_highest_dets_t, update_highest_dets
         use propagators, only: update_chebyshev
 
-        use sort, only: insert_sort_unique_vector
-        use sg_correction
+        use sg_correction, only: sg_correction_t, get_q_vectors, generate_unit_fibonacci_sphere, &
+                                 generate_unique_mag_fibonacci_sphere, interpolate_sg_fibonacci, spherical_average_sg, &
+                                 cubic_spline_sg, evaluate_spline
+        use sg_correction_energies, only: calculate_uncorrected_sg_energy, calculate_corrected_sg_energy
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -407,15 +409,7 @@ contains
         integer :: date_values(8)
         character(:), allocatable :: err_msg
 
-        real(p) :: tolerance = 1e-8_p
-        integer :: n_points, n_spheres
         integer :: idx
-        integer :: n_spline_points
-        real :: q_min 
-        real :: q_max
-        real(p), allocatable :: q_spline_vals(:)
-        real(p), allocatable :: sg_spline_vals(:)
-
 
         if (parent) then
             write (io_unit,'(1X,"CCMC")')
@@ -623,23 +617,22 @@ contains
 
         if (blocking_in%blocking_on_the_fly) &
                     call init_blocking(qmc_in, blocking_in, bl, qs%shift_damping_status)
-
+        
+        ! Initialise S(G) data
         if (ccmc_in%sg_correction) then
-            call get_q_vectors(sys, qs)
-            n_points = 199 ! Number of fibonacci_points, experiment with changing this value, keep odd for now
-            n_spline_points = 100
-            allocate(qs%estimators(1)%fibonacci_points_unit(3, n_points))
-            call generate_unit_fibonacci_sphere(n_points, qs%estimators(1)%fibonacci_points_unit)
-            call generate_unique_mag_fibonacci_sphere(qs, tolerance, qs%estimators(1)%fibonacci_points_unit, n_points)
-            n_spheres = size(qs%estimators(1)%unique_q_mags) ! Number of fibonacci spheres
-            allocate(qs%estimators(1)%sg_fibonacci(n_points, n_spheres))
-            allocate(qs%estimators(1)%spherically_averaged_sg(n_spheres))
-            allocate(qs%estimators(1)%spline_coeffs_a(n_spheres-1))
-            allocate(qs%estimators(1)%spline_coeffs_b(n_spheres-1))
-            allocate(qs%estimators(1)%spline_coeffs_c(n_spheres-1))
-            allocate(qs%estimators(1)%spline_coeffs_d(n_spheres-1))
-            allocate(q_spline_vals(n_spline_points))
-            allocate(sg_spline_vals(n_spline_points))
+            call get_q_vectors(sys, qs%sg_correction)
+            allocate(qs%sg_correction%fibonacci_points_unit(3, qs%sg_correction%n_fibonacci_points))
+            call generate_unit_fibonacci_sphere(qs%sg_correction%n_fibonacci_points, qs%sg_correction%fibonacci_points_unit)
+            call generate_unique_mag_fibonacci_sphere(qs%sg_correction, qs%sg_correction%fibonacci_points_unit, &
+                                                      qs%sg_correction%n_fibonacci_points)
+            allocate(qs%sg_correction%sg_fibonacci(qs%sg_correction%n_fibonacci_points, size(qs%sg_correction%unique_q_mags)))
+            allocate(qs%sg_correction%spherically_averaged_sg(size(qs%sg_correction%unique_q_mags)))
+            allocate(qs%sg_correction%spline_coeffs_a(size(qs%sg_correction%unique_q_mags) - 1))
+            allocate(qs%sg_correction%spline_coeffs_b(size(qs%sg_correction%unique_q_mags) - 1))
+            allocate(qs%sg_correction%spline_coeffs_c(size(qs%sg_correction%unique_q_mags) - 1))
+            allocate(qs%sg_correction%spline_coeffs_d(size(qs%sg_correction%unique_q_mags) - 1))
+            allocate(qs%sg_correction%q_spline_vals(qs%sg_correction%n_spline_points))
+            allocate(qs%sg_correction%sg_spline_vals(qs%sg_correction%n_spline_points))
         end if
 
         ! Counter for the number of discarded clusters, see ccmc_in%discard_threshold
@@ -1044,29 +1037,26 @@ contains
             qs%estimators%proj_energy = real(qs%estimators%proj_energy_comp,p)
 
             if (debug) call write_logging_select_ccmc(logging_info, iter, selection_data)
-
+            
+            ! Process gathered S(G) data and evaluate energy
             if (ccmc_in%sg_correction) then
-                call calculate_uncorrected_sg_energy(qs, qmc_in, sys)
-                ! Interpolate S(G) values onto fibonacci sphere for each unique magnitude 
-                call interpolate_sg_fibonacci(qs)
-                call spherical_average_sg(qs)
-                call cubic_spline_sg(qs)
-
-                q_min = qs%estimators(1)%unique_q_mags(1) + 1.0e-6_p ! Non-zero q_min avoids divergence in long range integral
-                q_max = qs%estimators(1)%unique_q_mags(n_spheres)
-                do i = 1, n_spline_points
+                call calculate_uncorrected_sg_energy(qs, sys)
+                call interpolate_sg_fibonacci(qs%sg_correction)
+                call spherical_average_sg(qs%sg_correction)
+                call cubic_spline_sg(qs%sg_correction)
+                qs%sg_correction%q_min = qs%sg_correction%unique_q_mags(1) + 1.0e-6_p ! Non-zero q_min avoids divergence in long range integral
+                qs%sg_correction%q_max = qs%sg_correction%unique_q_mags(size(qs%sg_correction%unique_q_mags))
+                do i = 1, qs%sg_correction%n_spline_points
                     ! Uniform distribution of q magnitudes
-                    q_spline_vals(i) = q_min + (i - 1) * (q_max - q_min) / (n_spline_points - 1) 
-                    sg_spline_vals(i) = evaluate_spline(q_spline_vals(i), n_spheres, qs)
+                    qs%sg_correction%q_spline_vals(i) = qs%sg_correction%q_min + (i - 1) &
+                                                      * (qs%sg_correction%q_max - qs%sg_correction%q_min) &
+                                                      / (qs%sg_correction%n_spline_points - 1) 
+                    qs%sg_correction%sg_spline_vals(i) = evaluate_spline(qs%sg_correction%q_spline_vals(i), & 
+                                                                         size(qs%sg_correction%unique_q_mags), & 
+                                                                         qs%sg_correction)
                 end do
-
-                call calculate_corrected_sg_energy(qs, sys, q_spline_vals, sg_spline_vals, n_spline_points)
-
-                if (ireport == qmc_in%nreport) then 
-                    call dump_sg_data(qs)
-                end if
-                q_spline_vals(:) = 0.0_p 
-                sg_spline_vals(:) = 0.0_p
+                call calculate_corrected_sg_energy(qs, sys)
+                qs%sg_correction%sg = 0.0_p
             end if
 
             call end_report_loop(io_unit, qmc_in, iter, update_tau, qs, nparticles_old, nspawn_events, &
@@ -1224,7 +1214,7 @@ contains
         use replica_rdm, only: update_rdm
         use logging, only: logging_t
 
-        use sg_correction
+        use sg_correction, only: calculate_sg_contribution
 
         type(sys_t), intent(in) :: sys
         type(ccmc_in_t), intent(in) :: ccmc_in
@@ -1284,7 +1274,7 @@ contains
         ! Calculate S(G) contribution for this cluster
         if (ccmc_in%sg_correction .and. connection%nexcit == 2) then
             pop_real = real(cluster%amplitude, p) * cluster%cluster_to_det_sign / cluster%pselect 
-            call calculate_sg_contribution(sys, connection, qs, pop_real, 1) ! ispace always = 1 in CCMC
+            call calculate_sg_contribution(sys, connection, qs%sg_correction, pop_real) ! ispace always = 1 in CCMC
         end if 
 
         if (ccmc_in%density_matrices .and. cluster%excitation_level <= 2 .and. qs%vary_shift(1) &

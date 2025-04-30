@@ -6,6 +6,7 @@ use csr, only: csrp_t
 use parallel, only: parallel_timing_t
 use importance_sampling_data
 use excit_gens, only: excit_gen_data_t
+use sg_correction, only: sg_correction_t
 use reference_determinant, only: reference_t, reference_t_json
 use dSFMT_interface, only: dSFMT_state_t
 use search, only: tree_t
@@ -913,21 +914,8 @@ type estimators_t
     ! The stochastic part of the projected energy
     real(p) :: proj_energy_stoch = 0.0_p
 
-    ! Quantities for finite size correction via S(G)
-    integer, allocatable :: q_vectors(:, :)
-    integer, allocatable :: q_map(:, :, :)
-    real(p), allocatable :: sg(:)
-    real(p), allocatable :: sg_fibonacci(:, :)
-    real(p), allocatable :: q_mags(:)
-    real(p), allocatable :: fibonacci_points_unit(:, :)
-    real(p), allocatable :: fibonacci_spheres(:, :, :)
-    real(p), allocatable :: unique_q_mags(:)
-    real(p), allocatable :: spherically_averaged_sg(:)
+    ! Uncorrected and corrected energies calculated via S(G). See sg_correction.f90 for more detail.
     real(p) :: energy_sg
-    real(p), allocatable :: spline_coeffs_a(:)
-    real(p), allocatable :: spline_coeffs_b(:)
-    real(p), allocatable :: spline_coeffs_c(:)
-    real(p), allocatable :: spline_coeffs_d(:)
     real(p) :: corrected_energy_sg
     
 end type estimators_t
@@ -1098,6 +1086,9 @@ type qmc_state_t
 
     ! Derived type object containing information on the wall-Chebyshev propagator
     type(cheb_t) :: cheby_prop
+
+    ! Derived type containing information relating to finite size correction via S(G)
+    type(sg_correction_t) :: sg_correction
 end type qmc_state_t
 
 ! Copies of various settings that are required during annihilation.  This avoids having to pass through lots of different
@@ -1137,18 +1128,8 @@ contains
         estimators%proj_energy_comp = cmplx(0.0, 0.0, p)
         estimators%proj_energy_determ = 0.0_p
         estimators%proj_energy_stoch = 0.0_p
-
-        if (allocated(estimators%sg)) then 
-            estimators%energy_sg = 0.0_p
-            estimators%sg(:) = 0.0_p
-            estimators%sg_fibonacci = 0.0_p
-            estimators%spherically_averaged_sg = 0.0_p
-            estimators%spline_coeffs_a = 0.0_p
-            estimators%spline_coeffs_b = 0.0_p
-            estimators%spline_coeffs_c = 0.0_p
-            estimators%spline_coeffs_d = 0.0_p
-            estimators%corrected_energy_sg = 0.0_p
-        end if 
+        estimators%energy_sg = 0.0_p
+        estimators%corrected_energy_sg = 0.0_p
 
     end subroutine zero_estimators_t
 
