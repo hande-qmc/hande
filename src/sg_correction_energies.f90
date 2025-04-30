@@ -104,7 +104,7 @@ module sg_correction_energies
 
                 qs%estimators%corrected_energy_sg = qs%estimators%corrected_energy_sg &
                     + real_unit_conversion * Mk * sys%lattice%box_length(1)**3 &
-                    * (2 / acos(-1.0_p)) * (h / 3.0_p) * (term1 + 4 * term2 + 2 * term3 + term4) 
+                    * (2 / acos(-1.0_p)) * (h / 3.0_p) * (term1 + 4 * term2 + 2 * term3 + term4)
 
             end subroutine calculate_corrected_sg_energy
 

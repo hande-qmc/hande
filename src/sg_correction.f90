@@ -395,7 +395,7 @@ module sg_correction
 
             ! Find which interval contains q 
             do i = 1, n_knots - 1 
-                if (q < sg_correction%unique_q_mags(i + 1)) exit 
+                if (q <= sg_correction%unique_q_mags(i + 1)) exit 
             end do 
 
             ! Evaluate spline in this interval 
