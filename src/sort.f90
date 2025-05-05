@@ -1039,9 +1039,8 @@ contains
 
     subroutine insert_sort_unique_vector(vector_list, vector)
 
-        ! Insert 3D vector into 2D array of vectors maintaining lexicographic
-        ! ordering (i.e., [0,0,0], [0,0,1], [0,1,0], [1,0,0] and so on) aswell
-        ! as unique vectors only
+        ! Insert 3D vector into array of vectors in order of their magnitudes, lexicographic ordering is used 
+        ! as a backup when the magnitudes are equal.
 
         ! In:
         !   vector: 3D vector to be inserted into a 2D list of 3D vectors
@@ -1059,11 +1058,9 @@ contains
             return ! Return vector_list with first vector
         end if
 
-        ! Get current number of vectors
         n = size(vector_list, 2)
-
         do i = 1, n 
-            if (all(vector_list(:, i) == vector)) return ! vector already in vector_list
+            if (all(vector_list(:, i) == vector)) return ! vector is not a new unique vector
         end do 
 
         insertion_pos = n + 1 ! If this is not modified by following loop then vector is the largest
@@ -1120,8 +1117,6 @@ contains
         ! Compare 2 3D vectors to determine which is lexicographically
         ! the smaller one
 
-        ! See: https://en.wikipedia.org/wiki/Lexicographic_order
-
         ! In:
         !   vector1, vector2: 2 3D vectors for comparison
         ! Out:
@@ -1141,10 +1136,10 @@ contains
             end if 
         end do 
 
-        ! If not returned by this point vectors are equal
+        ! If not returned by this point vectors are not unique so this should 
+        ! not be evaluated at any point/
         lexicographically_less = .false.
     
     end function lexicographically_less
-
 
 end module sort

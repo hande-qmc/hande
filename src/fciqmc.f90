@@ -271,19 +271,14 @@ contains
         
         ! Initialise S(G) data
         if (fciqmc_in%sg_correction) then
-            call get_q_vectors(sys, qs%sg_correction)
-            allocate(qs%sg_correction%fibonacci_points_unit(3, qs%sg_correction%n_fibonacci_points))
+            call get_q_vectors(sys%basis%nbasis, sys%basis%basis_fns, qs%sg_correction%q_vectors, qs%sg_correction%q_map, &
+                               qs%sg_correction%sg, qs%sg_correction%qx_min, qs%sg_correction%qx_max, qs%sg_correction%qy_min, &
+                               qs%sg_correction%qy_max, qs%sg_correction%qz_min, qs%sg_correction%qz_max)
             call generate_unit_fibonacci_sphere(qs%sg_correction%n_fibonacci_points, qs%sg_correction%fibonacci_points_unit)
-            call generate_unique_mag_fibonacci_sphere(qs%sg_correction, qs%sg_correction%fibonacci_points_unit, &
-                                                      qs%sg_correction%n_fibonacci_points)
-            allocate(qs%sg_correction%sg_fibonacci(qs%sg_correction%n_fibonacci_points, size(qs%sg_correction%unique_q_mags)))
-            allocate(qs%sg_correction%spherically_averaged_sg(size(qs%sg_correction%unique_q_mags)))
-            allocate(qs%sg_correction%spline_coeffs_a(size(qs%sg_correction%unique_q_mags) - 1))
-            allocate(qs%sg_correction%spline_coeffs_b(size(qs%sg_correction%unique_q_mags) - 1))
-            allocate(qs%sg_correction%spline_coeffs_c(size(qs%sg_correction%unique_q_mags) - 1))
-            allocate(qs%sg_correction%spline_coeffs_d(size(qs%sg_correction%unique_q_mags) - 1))
-            allocate(qs%sg_correction%q_spline_vals(qs%sg_correction%n_spline_points))
-            allocate(qs%sg_correction%sg_spline_vals(qs%sg_correction%n_spline_points))
+            call generate_unique_mag_fibonacci_sphere(qs%sg_correction%q_mags, qs%sg_correction%q_vectors, &
+                                                      qs%sg_correction%unique_q_mags, qs%sg_correction%tolerance, &
+                                                      qs%sg_correction%n_fibonacci_points, qs%sg_correction%fibonacci_spheres, &
+                                                      qs%sg_correction%fibonacci_points_unit)
         end if 
 
         ! Main fciqmc loop.
@@ -394,7 +389,12 @@ contains
                             
                             ! Get contribution to S(G) of this determinant
                             if (fciqmc_in%sg_correction .and. connection%nexcit == 2) then
-                                call calculate_sg_contribution(sys, connection, qs%sg_correction, real_population(ispace))
+                                call calculate_sg_contribution(sys%lattice%box_length(1), connection, sys%basis%basis_fns, &
+                                                               qs%sg_correction%q_map, qs%sg_correction%sg, & 
+                                                               real_population(ispace), qs%sg_correction%q_vectors, &
+                                                               qs%sg_correction%qx_min, qs%sg_correction%qx_max, & 
+                                                               qs%sg_correction%qy_min, qs%sg_correction%qy_max, &
+                                                               qs%sg_correction%qz_min, qs%sg_correction%qz_max)
                             end if
                          
                             nattempts_current_det_ispace = decide_nattempts(rng, real_population(ispace))
@@ -457,12 +457,25 @@ contains
             
             ! Process gathered S(G) data and evaluate energy
             if (fciqmc_in%sg_correction) then
-                call calculate_uncorrected_sg_energy(qs, sys)
-                call interpolate_sg_fibonacci(qs%sg_correction)
-                call spherical_average_sg(qs%sg_correction)
-                call cubic_spline_sg(qs%sg_correction)
+
+                call calculate_uncorrected_sg_energy(qs%sg_correction%sg, sys%lattice%box_length(1), qs%sg_correction%q_vectors, &
+                                                     qs%estimators%energy_sg)
+                call interpolate_sg_fibonacci(qs%sg_correction%n_fibonacci_points, qs%sg_correction%fibonacci_spheres, &
+                                              qs%sg_correction%unique_q_mags, qs%sg_correction%sg_fibonacci, & 
+                                              qs%sg_correction%q_vectors, qs%sg_correction%sg)
+                call spherical_average_sg(qs%sg_correction%sg_fibonacci, qs%sg_correction%spherically_averaged_sg, &
+                                          qs%sg_correction%unique_q_mags)
+                call cubic_spline_sg(qs%sg_correction%spherically_averaged_sg, qs%sg_correction%unique_q_mags, &
+                                     qs%sg_correction%spline_coeffs_a, qs%sg_correction%spline_coeffs_b, &
+                                     qs%sg_correction%spline_coeffs_c, qs%sg_correction%spline_coeffs_d)
+
                 qs%sg_correction%q_min = qs%sg_correction%unique_q_mags(1) + 1.0e-6_p ! Non-zero q_min avoids divergence in long range integral
                 qs%sg_correction%q_max = qs%sg_correction%unique_q_mags(size(qs%sg_correction%unique_q_mags))
+                if (.not. allocated(qs%sg_correction%q_spline_vals)) then 
+                    allocate(qs%sg_correction%q_spline_vals(qs%sg_correction%n_spline_points))
+                    allocate(qs%sg_correction%sg_spline_vals(qs%sg_correction%n_spline_points))
+                end if
+
                 do i = 1, qs%sg_correction%n_spline_points
                     ! Uniform distribution of q magnitudes
                     qs%sg_correction%q_spline_vals(i) = qs%sg_correction%q_min + (i - 1) &
@@ -471,9 +484,14 @@ contains
                     qs%sg_correction%sg_spline_vals(i) = evaluate_spline(qs%sg_correction%q_spline_vals(i), & 
                                                                          size(qs%sg_correction%unique_q_mags), & 
                                                                          qs%sg_correction)
-                end do
-                call calculate_corrected_sg_energy(qs, sys)
+                end do 
+
+                call calculate_corrected_sg_energy(qs%estimators%corrected_energy_sg, qs%sg_correction%q_vectors, &
+                                                   sys%lattice%box_length(1), qs%sg_correction%unique_q_mags, &
+                                                   qs%sg_correction%sg, qs%sg_correction%q_spline_vals, &
+                                                   qs%sg_correction%sg_spline_vals, qs%sg_correction%n_spline_points)
                 qs%sg_correction%sg = 0.0_p
+
             end if
 
             call end_report_loop(io_unit, qmc_in, iter, update_tau, qs, nparticles_old, &

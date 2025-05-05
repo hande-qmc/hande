@@ -620,19 +620,14 @@ contains
         
         ! Initialise S(G) data
         if (ccmc_in%sg_correction) then
-            call get_q_vectors(sys, qs%sg_correction)
-            allocate(qs%sg_correction%fibonacci_points_unit(3, qs%sg_correction%n_fibonacci_points))
+            call get_q_vectors(sys%basis%nbasis, sys%basis%basis_fns, qs%sg_correction%q_vectors, qs%sg_correction%q_map, &
+                               qs%sg_correction%sg, qs%sg_correction%qx_min, qs%sg_correction%qx_max, qs%sg_correction%qy_min, &
+                               qs%sg_correction%qy_max, qs%sg_correction%qz_min, qs%sg_correction%qz_max)
             call generate_unit_fibonacci_sphere(qs%sg_correction%n_fibonacci_points, qs%sg_correction%fibonacci_points_unit)
-            call generate_unique_mag_fibonacci_sphere(qs%sg_correction, qs%sg_correction%fibonacci_points_unit, &
-                                                      qs%sg_correction%n_fibonacci_points)
-            allocate(qs%sg_correction%sg_fibonacci(qs%sg_correction%n_fibonacci_points, size(qs%sg_correction%unique_q_mags)))
-            allocate(qs%sg_correction%spherically_averaged_sg(size(qs%sg_correction%unique_q_mags)))
-            allocate(qs%sg_correction%spline_coeffs_a(size(qs%sg_correction%unique_q_mags) - 1))
-            allocate(qs%sg_correction%spline_coeffs_b(size(qs%sg_correction%unique_q_mags) - 1))
-            allocate(qs%sg_correction%spline_coeffs_c(size(qs%sg_correction%unique_q_mags) - 1))
-            allocate(qs%sg_correction%spline_coeffs_d(size(qs%sg_correction%unique_q_mags) - 1))
-            allocate(qs%sg_correction%q_spline_vals(qs%sg_correction%n_spline_points))
-            allocate(qs%sg_correction%sg_spline_vals(qs%sg_correction%n_spline_points))
+            call generate_unique_mag_fibonacci_sphere(qs%sg_correction%q_mags, qs%sg_correction%q_vectors, &
+                                                      qs%sg_correction%unique_q_mags, qs%sg_correction%tolerance, &
+                                                      qs%sg_correction%n_fibonacci_points, qs%sg_correction%fibonacci_spheres, &
+                                                      qs%sg_correction%fibonacci_points_unit)
         end if
 
         ! Counter for the number of discarded clusters, see ccmc_in%discard_threshold
@@ -1040,12 +1035,24 @@ contains
             
             ! Process gathered S(G) data and evaluate energy
             if (ccmc_in%sg_correction) then
-                call calculate_uncorrected_sg_energy(qs, sys)
-                call interpolate_sg_fibonacci(qs%sg_correction)
-                call spherical_average_sg(qs%sg_correction)
-                call cubic_spline_sg(qs%sg_correction)
+                call calculate_uncorrected_sg_energy(qs%sg_correction%sg, sys%lattice%box_length(1), & 
+                                                     qs%sg_correction%q_vectors, qs%estimators%energy_sg)
+                call interpolate_sg_fibonacci(qs%sg_correction%n_fibonacci_points, qs%sg_correction%fibonacci_spheres, &
+                                              qs%sg_correction%unique_q_mags, qs%sg_correction%sg_fibonacci, & 
+                                              qs%sg_correction%q_vectors, qs%sg_correction%sg)
+                call spherical_average_sg(qs%sg_correction%sg_fibonacci, qs%sg_correction%spherically_averaged_sg, &
+                                          qs%sg_correction%unique_q_mags)
+                call cubic_spline_sg(qs%sg_correction%spherically_averaged_sg, qs%sg_correction%unique_q_mags, &
+                                     qs%sg_correction%spline_coeffs_a, qs%sg_correction%spline_coeffs_b, &
+                                     qs%sg_correction%spline_coeffs_c, qs%sg_correction%spline_coeffs_d)
+
                 qs%sg_correction%q_min = qs%sg_correction%unique_q_mags(1) + 1.0e-6_p ! Non-zero q_min avoids divergence in long range integral
                 qs%sg_correction%q_max = qs%sg_correction%unique_q_mags(size(qs%sg_correction%unique_q_mags))
+                if (.not. allocated(qs%sg_correction%q_spline_vals)) then 
+                    allocate(qs%sg_correction%q_spline_vals(qs%sg_correction%n_spline_points))
+                    allocate(qs%sg_correction%sg_spline_vals(qs%sg_correction%n_spline_points))
+                end if
+
                 do i = 1, qs%sg_correction%n_spline_points
                     ! Uniform distribution of q magnitudes
                     qs%sg_correction%q_spline_vals(i) = qs%sg_correction%q_min + (i - 1) &
@@ -1054,9 +1061,14 @@ contains
                     qs%sg_correction%sg_spline_vals(i) = evaluate_spline(qs%sg_correction%q_spline_vals(i), & 
                                                                          size(qs%sg_correction%unique_q_mags), & 
                                                                          qs%sg_correction)
-                end do
-                call calculate_corrected_sg_energy(qs, sys)
+                end do 
+
+                call calculate_corrected_sg_energy(qs%estimators%corrected_energy_sg, qs%sg_correction%q_vectors, &
+                                                   sys%lattice%box_length(1), qs%sg_correction%unique_q_mags, &
+                                                   qs%sg_correction%sg, qs%sg_correction%q_spline_vals, &
+                                                   qs%sg_correction%sg_spline_vals, qs%sg_correction%n_spline_points)
                 qs%sg_correction%sg = 0.0_p
+
             end if
 
             call end_report_loop(io_unit, qmc_in, iter, update_tau, qs, nparticles_old, nspawn_events, &
@@ -1217,11 +1229,11 @@ contains
         use sg_correction, only: calculate_sg_contribution
 
         type(sys_t), intent(in) :: sys
+        type(qmc_state_t), intent(inout) :: qs
         type(ccmc_in_t), intent(in) :: ccmc_in
         type(det_info_t), intent(in) :: cdet, ref_det
         type(cluster_t), intent(in) :: cluster
-        type(logging_t), intent(in) :: logging_info
-        type(qmc_state_t), intent(inout) :: qs
+        type(logging_t), intent(in) :: logging_info 
         complex(p), intent(inout) :: D0_population_cycle, proj_energy_cycle
         real(p), intent(inout) :: proj_energy_cycle_determ, proj_energy_cycle_stoch
         real(p), allocatable, intent(inout) :: rdm(:,:)
@@ -1273,8 +1285,13 @@ contains
         
         ! Calculate S(G) contribution for this cluster
         if (ccmc_in%sg_correction .and. connection%nexcit == 2) then
-            pop_real = real(cluster%amplitude, p) * cluster%cluster_to_det_sign / cluster%pselect 
-            call calculate_sg_contribution(sys, connection, qs%sg_correction, pop_real) ! ispace always = 1 in CCMC
+            pop_real = real(cluster%amplitude, p) * cluster%cluster_to_det_sign / cluster%pselect
+            call calculate_sg_contribution(sys%lattice%box_length(1), connection, sys%basis%basis_fns, &
+                                                               qs%sg_correction%q_map, qs%sg_correction%sg, & 
+                                                               pop_real, qs%sg_correction% q_vectors, qs%sg_correction%qx_min, & 
+                                                               qs%sg_correction%qx_max, qs%sg_correction%qy_min, &
+                                                               qs%sg_correction%qy_max, qs%sg_correction%qz_min, &
+                                                               qs%sg_correction%qz_max)
         end if 
 
         if (ccmc_in%density_matrices .and. cluster%excitation_level <= 2 .and. qs%vary_shift(1) &

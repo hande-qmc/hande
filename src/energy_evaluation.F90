@@ -1147,7 +1147,6 @@ contains
         type(estimators_t), intent(inout) :: estimators
         type(excit_t), intent(inout) :: excitation
         type(hmatel_t), intent(out) :: hmatel
-        integer :: q(3)
 
         hmatel%r = 0.0_p
 
