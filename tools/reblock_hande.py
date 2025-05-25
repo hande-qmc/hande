@@ -95,7 +95,7 @@ opt_block: :class:`pandas.DataFrame`
     def df_to_x(df, out_method, float_fmt, float_str, width):
         tbl_fn = getattr(df, out_method)
         try:
-            return tbl_fn(float_format=float_fmt, na_rep='n/a',
+            return tbl_fn(float_format=float_fmt, na_rep='n/a', 
                           line_width=width)
         except TypeError:
             # Annoyingly to_csv and to_string take different types for

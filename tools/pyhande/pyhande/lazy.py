@@ -424,7 +424,7 @@ info : :func:`collections.namedtuple`
         kH0jNj_D = 'D{\sum H_0j N_j}'
         kH0jNj_S= 'S{\sum H_0j N_j}'
     kShift = check_key(calc, 'Shift')
-
+    kEnerC = check_key(calc, 'sg-ener-c')
 
     if end is None:
         # Default end is the last iteration.
@@ -441,6 +441,8 @@ info : :func:`collections.namedtuple`
     if extract_psips:
         to_block.append(kHpsips)
     to_block.extend([kH0jNj, kN0, kShift])
+    if kEnerC in calc:
+        to_block.append(kEnerC)
     if semi_stoch_sep_stats:
         to_block.extend([kH0jNj_D, kH0jNj_S])
     if reweight_calc:
