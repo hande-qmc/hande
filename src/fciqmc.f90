@@ -85,11 +85,8 @@ contains
         use state_histograms
         use mrcc_utils, only: init_highest_dets_t, update_highest_dets, write_out_highest_dets
 
-        use sg_correction, only: sg_correction_t, get_q_vectors, generate_unit_fibonacci_sphere, &
-                                 generate_unique_mag_fibonacci_sphere, calculate_sg_contribution, &
-                                 interpolate_sg_fibonacci, spherical_average_sg, cubic_spline_sg, &
-                                 evaluate_spline
-        use sg_correction_energies, only: calculate_uncorrected_sg_energy, calculate_corrected_sg_energy
+        use sg_correction, only: sg_correction_t, initialise_sg_correction, calculate_sg_contribution, &
+                                 calculate_sg_correction
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -268,24 +265,16 @@ contains
             print*, 'initialising highest dets'
             call init_highest_dets_t(qs, sys, fciqmc_in)
         end if
-        
-        ! Initialise S(G) data
-        if (fciqmc_in%sg_correction) then
-            call get_q_vectors(sys%basis%nbasis, sys%basis%basis_fns, qs%sg_correction%q_vectors, qs%sg_correction%q_map, &
-                               qs%sg_correction%sg, qs%sg_correction%qx_min, qs%sg_correction%qx_max, qs%sg_correction%qy_min, &
-                               qs%sg_correction%qy_max, qs%sg_correction%qz_min, qs%sg_correction%qz_max)
-            call generate_unit_fibonacci_sphere(qs%sg_correction%n_fibonacci_points, qs%sg_correction%fibonacci_points_unit)
-            call generate_unique_mag_fibonacci_sphere(qs%sg_correction%q_mags, qs%sg_correction%q_vectors, &
-                                                      qs%sg_correction%unique_q_mags, qs%sg_correction%tolerance, &
-                                                      qs%sg_correction%n_fibonacci_points, qs%sg_correction%fibonacci_spheres, &
-                                                      qs%sg_correction%fibonacci_points_unit)
+
+        if (qmc_in%sg_correction) then
+            call initialise_sg_correction(sys%basis, qs%sg_correction)
         end if 
 
         ! Main fciqmc loop.
         if (parent) call write_qmc_report_header(qs%psip_list%nspaces, cmplx_est=sys%read_in%comp, &
                                                  rdm_energy=fciqmc_in%density_matrices, io_unit=io_unit, &
                                                  semi_stoch_sep_stats=semi_stoch_in%separate_stats, &
-                                                 sg_correction=fciqmc_in%sg_correction)
+                                                 sg_correction=qmc_in%sg_correction)
         restart_proj_est = present(qmc_state_restart) .or. (restart_in%read_restart .and. restart_version_restart >= 2)
         if (.not.restart_proj_est) call initial_ci_projected_energy(sys, qs, fciqmc_in%non_blocking_comm, nparticles_old)
         if (fciqmc_in%non_blocking_comm) then
@@ -387,14 +376,9 @@ contains
                                                             qs%estimators(ispace), connection, hmatel)
                             end if
                             
-                            ! Get contribution to S(G) of this determinant
-                            if (fciqmc_in%sg_correction .and. connection%nexcit == 2) then
-                                call calculate_sg_contribution(sys%lattice%box_length(1), connection, sys%basis%basis_fns, &
-                                                               qs%sg_correction%q_map, qs%sg_correction%sg, & 
-                                                               real_population(ispace), qs%sg_correction%q_vectors, &
-                                                               qs%sg_correction%qx_min, qs%sg_correction%qx_max, & 
-                                                               qs%sg_correction%qy_min, qs%sg_correction%qy_max, &
-                                                               qs%sg_correction%qz_min, qs%sg_correction%qz_max)
+                            if (qmc_in%sg_correction .and. connection%nexcit == 2) then
+                                call calculate_sg_contribution(sys%lattice, connection, sys%basis%basis_fns, qs%sg_correction, &
+                                                               real_population(ispace))
                             end if
                          
                             nattempts_current_det_ispace = decide_nattempts(rng, real_population(ispace))
@@ -455,43 +439,9 @@ contains
 
             error = qs%spawn_store%spawn%error .or. qs%psip_list%error
             
-            ! Process gathered S(G) data and evaluate energy
-            if (fciqmc_in%sg_correction) then
-
-                call calculate_uncorrected_sg_energy(qs%sg_correction%sg, sys%lattice%box_length(1), qs%sg_correction%q_vectors, &
-                                                     qs%estimators%energy_sg)
-                call interpolate_sg_fibonacci(qs%sg_correction%n_fibonacci_points, qs%sg_correction%fibonacci_spheres, &
-                                              qs%sg_correction%unique_q_mags, qs%sg_correction%sg_fibonacci, & 
-                                              qs%sg_correction%q_vectors, qs%sg_correction%sg)
-                call spherical_average_sg(qs%sg_correction%sg_fibonacci, qs%sg_correction%spherically_averaged_sg, &
-                                          qs%sg_correction%unique_q_mags)
-                call cubic_spline_sg(qs%sg_correction%spherically_averaged_sg, qs%sg_correction%unique_q_mags, &
-                                     qs%sg_correction%spline_coeffs_a, qs%sg_correction%spline_coeffs_b, &
-                                     qs%sg_correction%spline_coeffs_c, qs%sg_correction%spline_coeffs_d)
-
-                qs%sg_correction%q_min = qs%sg_correction%unique_q_mags(1) + 1.0e-6_p ! Non-zero q_min avoids divergence in long range integral
-                qs%sg_correction%q_max = qs%sg_correction%unique_q_mags(size(qs%sg_correction%unique_q_mags))
-                if (.not. allocated(qs%sg_correction%q_spline_vals)) then 
-                    allocate(qs%sg_correction%q_spline_vals(qs%sg_correction%n_spline_points))
-                    allocate(qs%sg_correction%sg_spline_vals(qs%sg_correction%n_spline_points))
-                end if
-
-                do i = 1, qs%sg_correction%n_spline_points
-                    ! Uniform distribution of q magnitudes
-                    qs%sg_correction%q_spline_vals(i) = qs%sg_correction%q_min + (i - 1) &
-                                                      * (qs%sg_correction%q_max - qs%sg_correction%q_min) &
-                                                      / (qs%sg_correction%n_spline_points - 1) 
-                    qs%sg_correction%sg_spline_vals(i) = evaluate_spline(qs%sg_correction%q_spline_vals(i), & 
-                                                                         size(qs%sg_correction%unique_q_mags), & 
-                                                                         qs%sg_correction)
-                end do 
-
-                call calculate_corrected_sg_energy(qs%estimators%corrected_energy_sg, qs%sg_correction%q_vectors, &
-                                                   sys%lattice%box_length(1), qs%sg_correction%unique_q_mags, &
-                                                   qs%sg_correction%sg, qs%sg_correction%q_spline_vals, &
-                                                   qs%sg_correction%sg_spline_vals, qs%sg_correction%n_spline_points)
-                qs%sg_correction%sg = 0.0_p
-
+            if (qmc_in%sg_correction) then
+                call calculate_sg_correction(qs%sg_correction, sys%lattice, qs%estimators%energy_sg, &
+                                             qs%estimators%corrected_energy_sg)
             end if
 
             call end_report_loop(io_unit, qmc_in, iter, update_tau, qs, nparticles_old, &
@@ -499,6 +449,11 @@ contains
                                  load_bal_in, bloom_stats=bloom_stats, doing_lb=fciqmc_in%doing_load_balancing, &
                                  nb_comm=fciqmc_in%non_blocking_comm, comp=sys%read_in%comp, &
                                  error=error)
+
+            if (qmc_in%sg_correction) then 
+                qs%sg_correction%sg = 0.0_p
+            end if 
+
             if (error) exit
 
             if (update_tau) call rescale_tau(qs%tau)
@@ -520,7 +475,7 @@ contains
                                         fciqmc_in%non_blocking_comm, io_unit=io_unit, &
                                         cmplx_est=sys%read_in%comp, rdm_energy=fciqmc_in%density_matrices, &
                                         semi_stoch_sep_stats=semi_stoch_in%separate_stats, &
-                                        sg_correction=fciqmc_in%sg_correction)
+                                        sg_correction=qmc_in%sg_correction)
                 if (blocking_in%blocking_on_the_fly) then
                     call do_blocking(bl, qs, qmc_in, ireport, iter, iunit, blocking_in, sys%read_in%comp)
                 end if

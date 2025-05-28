@@ -1159,8 +1159,8 @@ contains
             hmatel%r = slater_condon2_ueg(sys, excitation%from_orb(1), excitation%from_orb(2), &
                                        & excitation%to_orb(1), excitation%to_orb(2),excitation%perm)
             estimators%proj_energy = estimators%proj_energy + hmatel%r*pop(1)
-        end if
-        
+        end if 
+
     end subroutine update_proj_energy_ueg
 
     pure subroutine update_proj_energy_ringium(sys, f0, wfn_dat, cdet, pop, estimators, excitation, hmatel)

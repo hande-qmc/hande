@@ -127,9 +127,6 @@ contains
                 'Complex non-blocking comms not yet implemented.')
         end if
  
-        if (fciqmc_in%sg_correction .and. sys%system /= ueg) then
-            call stop_all(this, 'Finite size correction via S(G) is currently only avaliable for UEG')
-        end if
         ! This is mainly a precaution, as the majority of functionality is possible, but totally unused.
         ! Major unresolved issue is likely to be semistochastic restart files.
         if (sys%basis%info_string_len /= 0) call stop_all(this, &
@@ -263,6 +260,10 @@ contains
         if ((qmc_in%quasi_newton) .and. .not.(sys%nel < sys%basis%nbasis)) then
             call stop_all(this, 'Quasi-Newton requires (and only makes sense) when the number of electrons is less than the &
                 &number of spinorbitals.')
+        end if
+        
+        if (qmc_in%sg_correction .and. sys%system /= ueg) then
+            call stop_all(this, 'Finite size correction via S(G) is currently only avaliable for UEG')
         end if
 
     end subroutine check_qmc_opts
@@ -573,10 +574,6 @@ contains
         if ((ccmc_in%linked) .and. .not.((qmc_in%excit_gen == excit_gen_no_renorm) .or. &
                                          (qmc_in%excit_gen == excit_gen_renorm))) then
             call stop_all(this, 'Excitation Generators other than no_renorm and renorm not yet implemented for linked CCMC.')
-        end if
-
-        if (ccmc_in%sg_correction .and. sys%system /= ueg) then
-            call stop_all(this, 'Finite size correction via S(G) is currently only avaliable for UEG')
         end if
 
     end subroutine check_ccmc_opts

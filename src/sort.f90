@@ -5,7 +5,7 @@ use const, only: int_32, int_64, p, i0
 implicit none
 
 private
-public :: qsort, insert_sort, argsort, argsort_stable, insert_sort_unique_vector, lexicographically_less
+public :: qsort, insert_sort, argsort, argsort_stable, insert_sort_unique_vector
 
 ! Quicksort...
 interface qsort
@@ -1045,15 +1045,19 @@ contains
         ! In:
         !   vector: 3D vector to be inserted into a 2D list of 3D vectors
         ! In/Out:
-        !   vector_list: 2D list of 3D vectors (shape: (3, n)) sorted lexicographically
+        !   vector_list: 2D list of 3D vectors (shape: (3, n)) sorted by magnitude, with lexicographic ordering when magnitudes are
+        !   equal.
+
+        use checking, only: check_allocate, check_deallocate
 
         integer, allocatable, intent(inout) :: vector_list(:, :)
         integer, intent(in) :: vector(3)
-        integer :: i, n, insertion_pos
+        integer :: i, n, insertion_pos, ierr
         integer, allocatable :: tmp_vector_list(:, :)
         
         if (.not. allocated (vector_list)) then
-            allocate(vector_list(3, 1)) 
+            allocate(vector_list(3, 1), stat=ierr)
+            call check_allocate('vector_list', size(vector_list), ierr)
             vector_list(:, 1) = vector 
             return ! Return vector_list with first vector
         end if
@@ -1074,7 +1078,8 @@ contains
             end if 
         end do
 
-        allocate(tmp_vector_list(3, n + 1))
+        allocate(tmp_vector_list(3, n + 1), stat=ierr)
+        call check_allocate('tmp_vector_list', size(tmp_vector_list), ierr)
         if (insertion_pos > 1) then ! Otherwise we are inserting at the beginning and nothing to copy
             ! Copy all vectors before insert position into temporary variable
             tmp_vector_list(:, 1:insertion_pos - 1) = vector_list(:, 1:insertion_pos - 1)
@@ -1086,60 +1091,69 @@ contains
             tmp_vector_list(:, insertion_pos + 1:) = vector_list(:, insertion_pos:)
         end if
 
-        call move_alloc(tmp_vector_list, vector_list)
+
+        deallocate(vector_list, stat=ierr)
+        call check_deallocate('vector_list', ierr)
+        allocate(vector_list(3, n + 1), stat=ierr)
+        call check_allocate('vector_list', size(vector_list), ierr)
+        vector_list = tmp_vector_list 
+        deallocate(tmp_vector_list, stat=ierr)
+        call check_deallocate('tmp_vector_list', ierr)
+
+        contains   
+    
+            logical function magnitude_less(vector1, vector2) result(mag_less)
+
+                ! Compare 2 3D vectors to determine which is of smaller magnitude 
+
+                ! In:
+                !   vector1, vector2, 2 3D vectors for comparison
+                ! Out:
+                !   mag_less: true/false if vector 1 is less/more
+                !   than vector2 by magnitude
+
+                integer, intent(in) :: vector1(3), vector2(3)
+                
+                if (sum(vector1**2) < sum(vector2**2)) then
+                    mag_less = .true.
+                else if (sum(vector1**2) > sum(vector2**2)) then
+                    mag_less = .false.
+                else
+                    mag_less = lexicographically_less(vector1, vector2) ! Fallback on lexicographic ordering when equal magnitudes
+                end if 
+
+            end function magnitude_less
+
+            logical function lexicographically_less(vector1, vector2) result(lex_less)
+
+                ! Compare 2 3D vectors to determine which is lexicographically
+                ! the smaller one
+
+                ! In:
+                !   vector1, vector2: 2 3D vectors for comparison
+                ! Out:
+                !   lex_less: true/false if vector1 is less/more 
+                !   than vector2 in lexicographic ordering
+                
+                integer, intent(in) :: vector1(3), vector2(3)
+                integer :: i 
+
+                do i = 1, 3 
+                    if (vector1(i) < vector2(i)) then
+                        lex_less = .true.
+                        return 
+                    else if (vector1(i) > vector2(i)) then
+                        lex_less = .false.
+                        return
+                    end if 
+                end do 
+
+                ! If not returned by this point vectors are not unique so this should 
+                ! not be evaluated at any point/
+                lex_less = .false.
+            
+            end function lexicographically_less
 
     end subroutine insert_sort_unique_vector
-
-    logical function magnitude_less(vector1, vector2)
-
-        ! Compare 2 3D vectors to determine which is of smaller magnitude 
-
-        ! In:
-        !   vector1, vector2, 2 3D vectors for comparison
-        ! Out:
-        !   magnitude_less: true/false if vector 1 is less/more
-        !   than vector2 by magnitude
-
-        integer, intent(in) :: vector1(3), vector2(3)
-        
-        if (sum(vector1**2) < sum(vector2**2)) then
-            magnitude_less = .true.
-        else if (sum(vector1**2) > sum(vector2**2)) then
-            magnitude_less = .false.
-        else
-            magnitude_less = lexicographically_less(vector1, vector2) ! Fallback on lexicographic ordering when equal magnitudes
-        end if 
-
-    end function magnitude_less
-
-    logical function lexicographically_less(vector1, vector2)
-
-        ! Compare 2 3D vectors to determine which is lexicographically
-        ! the smaller one
-
-        ! In:
-        !   vector1, vector2: 2 3D vectors for comparison
-        ! Out:
-        !   lexicographically_less: true/false if vector1 is less/more 
-        !   than vector2 in lexicographic ordering
-        
-        integer, intent(in) :: vector1(3), vector2(3)
-        integer :: i 
-
-        do i = 1, 3 
-            if (vector1(i) < vector2(i)) then
-                lexicographically_less = .true.
-                return 
-            else if (vector1(i) > vector2(i)) then
-                lexicographically_less = .false.
-                return
-            end if 
-        end do 
-
-        ! If not returned by this point vectors are not unique so this should 
-        ! not be evaluated at any point/
-        lexicographically_less = .false.
-    
-    end function lexicographically_less
 
 end module sort

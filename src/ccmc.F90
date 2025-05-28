@@ -343,10 +343,7 @@ contains
         use mrcc_utils, only: init_highest_dets_t, update_highest_dets
         use propagators, only: update_chebyshev
 
-        use sg_correction, only: sg_correction_t, get_q_vectors, generate_unit_fibonacci_sphere, &
-                                 generate_unique_mag_fibonacci_sphere, interpolate_sg_fibonacci, spherical_average_sg, &
-                                 cubic_spline_sg, evaluate_spline
-        use sg_correction_energies, only: calculate_uncorrected_sg_energy, calculate_corrected_sg_energy
+        use sg_correction, only: sg_correction_t, initialise_sg_correction, calculate_sg_correction
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -581,7 +578,7 @@ contains
         if (parent) then
             call write_qmc_report_header(qs%psip_list%nspaces, cmplx_est=sys%read_in%comp, rdm_energy=ccmc_in%density_matrices, &
                                          nattempts=.true., io_unit=io_unit, &
-                                         semi_stoch_sep_stats=semi_stoch_in%separate_stats, sg_correction=ccmc_in%sg_correction)
+                                         semi_stoch_sep_stats=semi_stoch_in%separate_stats, sg_correction=qmc_in%sg_correction)
         end if
 
         restart_proj_est = present(qmc_state_restart) .or. (restart_in%read_restart .and. restart_version_restart >= 2)
@@ -618,16 +615,8 @@ contains
         if (blocking_in%blocking_on_the_fly) &
                     call init_blocking(qmc_in, blocking_in, bl, qs%shift_damping_status)
         
-        ! Initialise S(G) data
-        if (ccmc_in%sg_correction) then
-            call get_q_vectors(sys%basis%nbasis, sys%basis%basis_fns, qs%sg_correction%q_vectors, qs%sg_correction%q_map, &
-                               qs%sg_correction%sg, qs%sg_correction%qx_min, qs%sg_correction%qx_max, qs%sg_correction%qy_min, &
-                               qs%sg_correction%qy_max, qs%sg_correction%qz_min, qs%sg_correction%qz_max)
-            call generate_unit_fibonacci_sphere(qs%sg_correction%n_fibonacci_points, qs%sg_correction%fibonacci_points_unit)
-            call generate_unique_mag_fibonacci_sphere(qs%sg_correction%q_mags, qs%sg_correction%q_vectors, &
-                                                      qs%sg_correction%unique_q_mags, qs%sg_correction%tolerance, &
-                                                      qs%sg_correction%n_fibonacci_points, qs%sg_correction%fibonacci_spheres, &
-                                                      qs%sg_correction%fibonacci_points_unit)
+        if (qmc_in%sg_correction) then
+            call initialise_sg_correction(sys%basis, qs%sg_correction)
         end if
 
         ! Counter for the number of discarded clusters, see ccmc_in%discard_threshold
@@ -848,7 +837,7 @@ contains
                                                         D0_population_cycle, proj_energy_cycle, &
                                                         proj_energy_cycle_determ, proj_energy_cycle_stoch, &
                                                         ccmc_in, ref_det, rdm, selection_data, &
-                                                        determ, semi_stoch_in%separate_stats)
+                                                        determ, semi_stoch_in%separate_stats, qmc_in = qmc_in)
                                 call do_nc_ccmc_propagation(rng(it), sys, qs, ccmc_in, logging_info, bloom_stats, &
                                                             contrib(it), nattempts_spawn, ps_stats(it), determ)
                             end if
@@ -885,7 +874,7 @@ contains
                                                         D0_population_cycle, proj_energy_cycle, &
                                                         proj_energy_cycle_determ, proj_energy_cycle_stoch, &
                                                         ccmc_in, ref_det, rdm, selection_data, &
-                                                        determ, semi_stoch_in%separate_stats)
+                                                        determ, semi_stoch_in%separate_stats, qmc_in = qmc_in)
                                 call do_stochastic_ccmc_propagation(rng(it), sys, qs, &
                                                                     ccmc_in, logging_info, ms_stats(it), bloom_stats, &
                                                                     contrib(it), nattempts_spawn, ndeath, ps_stats(it), determ)
@@ -928,7 +917,7 @@ contains
                                                 D0_population_cycle, proj_energy_cycle, &
                                                 proj_energy_cycle_determ, proj_energy_cycle_stoch, &
                                                 ccmc_in, ref_det, rdm, selection_data, &
-                                                determ, semi_stoch_in%separate_stats)
+                                                determ, semi_stoch_in%separate_stats, qmc_in = qmc_in)
                         nattempts_spawn = nattempts_spawn + 1
                        
                         call perform_ccmc_spawning_attempt(rng(it), sys, qs, ccmc_in, logging_info, bloom_stats, &
@@ -1033,42 +1022,9 @@ contains
 
             if (debug) call write_logging_select_ccmc(logging_info, iter, selection_data)
             
-            ! Process gathered S(G) data and evaluate energy
-            if (ccmc_in%sg_correction) then
-                call calculate_uncorrected_sg_energy(qs%sg_correction%sg, sys%lattice%box_length(1), & 
-                                                     qs%sg_correction%q_vectors, qs%estimators%energy_sg)
-                call interpolate_sg_fibonacci(qs%sg_correction%n_fibonacci_points, qs%sg_correction%fibonacci_spheres, &
-                                              qs%sg_correction%unique_q_mags, qs%sg_correction%sg_fibonacci, & 
-                                              qs%sg_correction%q_vectors, qs%sg_correction%sg)
-                call spherical_average_sg(qs%sg_correction%sg_fibonacci, qs%sg_correction%spherically_averaged_sg, &
-                                          qs%sg_correction%unique_q_mags)
-                call cubic_spline_sg(qs%sg_correction%spherically_averaged_sg, qs%sg_correction%unique_q_mags, &
-                                     qs%sg_correction%spline_coeffs_a, qs%sg_correction%spline_coeffs_b, &
-                                     qs%sg_correction%spline_coeffs_c, qs%sg_correction%spline_coeffs_d)
-
-                qs%sg_correction%q_min = qs%sg_correction%unique_q_mags(1) + 1.0e-6_p ! Non-zero q_min avoids divergence in long range integral
-                qs%sg_correction%q_max = qs%sg_correction%unique_q_mags(size(qs%sg_correction%unique_q_mags))
-                if (.not. allocated(qs%sg_correction%q_spline_vals)) then 
-                    allocate(qs%sg_correction%q_spline_vals(qs%sg_correction%n_spline_points))
-                    allocate(qs%sg_correction%sg_spline_vals(qs%sg_correction%n_spline_points))
-                end if
-
-                do i = 1, qs%sg_correction%n_spline_points
-                    ! Uniform distribution of q magnitudes
-                    qs%sg_correction%q_spline_vals(i) = qs%sg_correction%q_min + (i - 1) &
-                                                      * (qs%sg_correction%q_max - qs%sg_correction%q_min) &
-                                                      / (qs%sg_correction%n_spline_points - 1) 
-                    qs%sg_correction%sg_spline_vals(i) = evaluate_spline(qs%sg_correction%q_spline_vals(i), & 
-                                                                         size(qs%sg_correction%unique_q_mags), & 
-                                                                         qs%sg_correction)
-                end do 
-
-                call calculate_corrected_sg_energy(qs%estimators%corrected_energy_sg, qs%sg_correction%q_vectors, &
-                                                   sys%lattice%box_length(1), qs%sg_correction%unique_q_mags, &
-                                                   qs%sg_correction%sg, qs%sg_correction%q_spline_vals, &
-                                                   qs%sg_correction%sg_spline_vals, qs%sg_correction%n_spline_points)
-                qs%sg_correction%sg = 0.0_p
-
+            if (qmc_in%sg_correction) then
+                call calculate_sg_correction(qs%sg_correction, sys%lattice, qs%estimators%energy_sg, &
+                                             qs%estimators%corrected_energy_sg) 
             end if
 
             call end_report_loop(io_unit, qmc_in, iter, update_tau, qs, nparticles_old, nspawn_events, &
@@ -1089,12 +1045,12 @@ contains
                 call write_qmc_report(qmc_in, qs, ireport, nparticles_old, real((t2-t1)/count_rate), .false., .false., &
                                         io_unit=io_unit, cmplx_est=sys%read_in%comp, rdm_energy=ccmc_in%density_matrices, &
                                         nattempts=.true., semi_stoch_sep_stats=semi_stoch_in%separate_stats, &
-                                        sg_correction=ccmc_in%sg_correction)
+                                        sg_correction=qmc_in%sg_correction)
                 if (blocking_in%blocking_on_the_fly) then
                     call do_blocking(bl, qs, qmc_in, ireport, iter, iunit, blocking_in, sys%read_in%comp)
                 end if
             end if
-
+            
             if (blocking_in%auto_shift_damping) call update_shift_damping(qs, bl, ireport, sys%read_in%comp)
 
             ! Update the time for the start of the next iteration.
@@ -1185,7 +1141,7 @@ contains
 
     subroutine do_ccmc_accumulation(sys, qs, cdet, cluster, logging_info, D0_population_cycle, proj_energy_cycle, &
                                     proj_energy_cycle_determ, proj_energy_cycle_stoch, ccmc_in, ref_det, rdm, selection_data, &
-                                    determ, semi_stoch_sep_stats, D0_population_noncomp_cycle)
+                                    determ, semi_stoch_sep_stats, D0_population_noncomp_cycle, qmc_in)
 
         ! Performs all accumulation of values required for given ccmc clusters.
         ! Updates projected energy and any RDMs with the contribution from the
@@ -1214,7 +1170,7 @@ contains
         !   D0_population_noncomp_cycle: running total of reference population from size 0 clusters (only used in UCC).
 
         use system, only: sys_t
-        use qmc_data, only: qmc_state_t, ccmc_in_t, estimators_t
+        use qmc_data, only: qmc_in_t, qmc_state_t, ccmc_in_t, estimators_t
         use determinants, only: det_info_t
         use ccmc_data, only: cluster_t, selection_data_t
         use ccmc_selection, only: update_selection_data
@@ -1238,6 +1194,7 @@ contains
         real(p), intent(inout) :: proj_energy_cycle_determ, proj_energy_cycle_stoch
         real(p), allocatable, intent(inout) :: rdm(:,:)
         real(p), intent(inout), optional :: D0_population_noncomp_cycle
+        type(qmc_in_t), intent(in), optional :: qmc_in
         type(selection_data_t), intent(inout) :: selection_data
         type(semi_stoch_t), intent(in) :: determ
         logical, intent(in) :: semi_stoch_sep_stats
@@ -1283,15 +1240,11 @@ contains
             end if
         end if
         
-        ! Calculate S(G) contribution for this cluster
-        if (ccmc_in%sg_correction .and. connection%nexcit == 2) then
-            pop_real = real(cluster%amplitude, p) * cluster%cluster_to_det_sign / cluster%pselect
-            call calculate_sg_contribution(sys%lattice%box_length(1), connection, sys%basis%basis_fns, &
-                                                               qs%sg_correction%q_map, qs%sg_correction%sg, & 
-                                                               pop_real, qs%sg_correction% q_vectors, qs%sg_correction%qx_min, & 
-                                                               qs%sg_correction%qx_max, qs%sg_correction%qy_min, &
-                                                               qs%sg_correction%qy_max, qs%sg_correction%qz_min, &
-                                                               qs%sg_correction%qz_max)
+        if (present(qmc_in)) then 
+            if (qmc_in%sg_correction .and. connection%nexcit == 2) then
+                pop_real = real(cluster%amplitude, p) * cluster%cluster_to_det_sign / cluster%pselect
+                call calculate_sg_contribution(sys%lattice, connection, sys%basis%basis_fns, qs%sg_correction, pop_real)
+            end if
         end if 
 
         if (ccmc_in%density_matrices .and. cluster%excitation_level <= 2 .and. qs%vary_shift(1) &
