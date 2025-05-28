@@ -211,6 +211,9 @@ type qmc_in_t
     logical :: initiator_approx = .false.
     ! Population above which a determinant is an initiator.
     real(p) :: initiator_pop = 3.0_p
+    
+    ! Using finite size correction via transition structure factor S(G)?
+    logical :: sg_correction = .false. 
 
     ! number of monte carlo cycles/report loop
     integer :: ncycles
@@ -305,9 +308,6 @@ type fciqmc_in_t
 
     ! Stochastically sample the two-body reduced density matrix.
     logical :: density_matrices = .false.
-
-    ! Whether to use finite size correction via calculation and interpolation of S(G)
-    logical :: sg_correction = .false.
 
     ! Filename to write density matrix to
     character(255) :: density_matrix_file = 'RDM'
@@ -419,8 +419,6 @@ type ccmc_in_t
     logical :: mr_read_in = .false.
     ! Whether to only include the secondary references of correct symmetry.
     logical :: mr_secref_sym_only = .false.
-    ! Whether to use finite size correction via calculation and interpolation of S(G)
-    logical :: sg_correction = .false.
     ! The threshold of amplitude/pselect (like cluster_multispawn_threshold) for a cluster, below which the cluster is discarded.
     real(p) :: discard_threshold = huge(1.0_p)
 end type ccmc_in_t
@@ -1207,6 +1205,7 @@ contains
         call json_write_key(js, 'target_reference', qmc%target_reference)
         call json_write_key(js, 'initiator_approx', qmc%initiator_approx)
         call json_write_key(js, 'initiator_pop', qmc%initiator_pop)
+        call json_write_key(js, 'sg_correction', qmc%sg_correction)
         call json_write_key(js, 'ncycles', qmc%ncycles)
         call json_write_key(js, 'nreport', qmc%nreport)
         call json_write_key(js, 'power_pitzer_min_weight', qmc%power_pitzer_min_weight)
@@ -1253,7 +1252,6 @@ contains
         call json_write_key(js, 'ref_det_factor', fciqmc%ref_det_factor)
         call json_write_key(js, 'non_blocking_comm', fciqmc%non_blocking_comm)
         call json_write_key(js, 'doing_load_balancing', fciqmc%doing_load_balancing)
-        call json_write_key(js, 'sg_correction', fciqmc%sg_correction)
         select case (fciqmc%trial_function)
         case (single_basis)
             call json_write_key(js, 'trial_function', 'single_basis')
@@ -1363,7 +1361,6 @@ contains
         call json_write_key(js, 'density_matrix_file', ccmc%density_matrix_file)
         call json_write_key(js, 'even_selection', ccmc%even_selection)
         call json_write_key(js, 'multiref', ccmc%multiref)
-        call json_write_key(js, 'sg_correction', ccmc%sg_correction)
         if (ccmc%multiref) then
             call json_write_key(js, 'n_secondary_ref', ccmc%n_secondary_ref)
             call json_write_key(js, 'mr_read_in', ccmc%mr_read_in)

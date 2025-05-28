@@ -1283,6 +1283,7 @@ contains
         !     shift_harmonic_forcing = harmonic_force_factor,
         !     shift_harmonic_crit_damp = true/false,
         !     initiator = true/false,
+        !     sg_correction = true/false,
         !     initiator_threshold = pop,
         !     use_mpi_barriers = true/false,
         !     vary_shift_from = shift or "proje",
@@ -1331,7 +1332,7 @@ contains
         integer(int_s) :: test_arr(50)
         character(1000) :: test_line
 
-        character(32), parameter :: keys(39) = [character(32) :: 'tau', 'init_pop', 'mc_cycles', 'nreports', 'state_size', &
+        character(32), parameter :: keys(40) = [character(32) :: 'tau', 'init_pop', 'mc_cycles', 'nreports', 'state_size', &
                                                                  'spawned_state_size', 'rng_seed', 'target_population', &
                                                                  'real_amplitudes', 'spawn_cutoff', 'no_renorm', 'tau_search', &
                                                                  'real_amplitude_force_32', &
@@ -1346,7 +1347,7 @@ contains
                                                                  'reference_target', 'vary_shift', 'quasi_newton', &
                                                                  'quasi_newton_threshold', 'quasi_newton_value', &
                                                                  'quasi_newton_pop_control', 'read_in_dist', 'read_in_dist_file', &
-                                                                 'chebyshev']
+                                                                 'chebyshev', 'sg_correction']
 
         if (present(short)) then
             skip = short
@@ -1391,6 +1392,7 @@ contains
         call aot_get_val(qmc_in%target_particles, err, lua_state, qmc_table, 'target_population')
         call aot_get_val(qmc_in%initiator_approx, err, lua_state, qmc_table, 'initiator')
         call aot_get_val(qmc_in%initiator_pop, err, lua_state, qmc_table, 'initiator_threshold')
+        call aot_get_val(qmc_in%sg_correction, err, lua_state, qmc_table, 'sg_correction')
         call aot_get_val(qmc_in%use_mpi_barriers, err, lua_state, qmc_table, 'use_mpi_barriers')
         call aot_get_val(qmc_in%power_pitzer_min_weight, err, lua_state, qmc_table, 'power_pitzer_min_weight')
         call aot_get_val(qmc_in%quasi_newton, err, lua_state, qmc_table, 'quasi_newton')
@@ -1583,7 +1585,6 @@ contains
         !     density_matrices = true/false,
         !     density_matrix_file = filename,
         !     density_matrix_report = report,
-        !     sg_correction = true/false,
         !     mrcc_model_space_selection = {
         !        target_ndets = integer,
         !        wfn_weightage = float,
@@ -1615,12 +1616,11 @@ contains
         integer :: fciqmc_table, ref_det, mrcc_selection, err
         character(len=12) :: str
         logical :: ref_det_flag
-        character(31), parameter :: keys(13) = [character(31) :: 'non_blocking_comm', 'load_balancing', 'guiding_function', &
+        character(31), parameter :: keys(12) = [character(31) :: 'non_blocking_comm', 'load_balancing', 'guiding_function', &
                                                                  'init_spin_inverse_reference_det', 'trial_function', &
                                                                  'select_reference_det', 'quadrature_initiator', &
                                                                  'replica_tricks', 'density_matrices', 'density_matrix_file', &
-                                                                 'density_matrix_report', 'mrcc_model_space_selection', & 
-                                                                 'sg_correction']
+                                                                 'density_matrix_report', 'mrcc_model_space_selection']
 
         if (aot_exists(lua_state, opts, 'fciqmc')) then
 
@@ -1635,7 +1635,6 @@ contains
             call aot_get_val(fciqmc_in%density_matrices, err, lua_state, fciqmc_table, 'density_matrices')
             call aot_get_val(fciqmc_in%density_matrix_file, err, lua_state, fciqmc_table, 'density_matrix_file')
             call aot_get_val(fciqmc_in%density_matrix_report, err, lua_state, fciqmc_table, 'density_matrix_report')
-            call aot_get_val(fciqmc_in%sg_correction, err, lua_state, fciqmc_table, 'sg_correction')
 
             ! If the user has asked to calculate an RDM, then replica_tricks
             ! *must* be on.
@@ -1886,7 +1885,6 @@ contains
         !     vary_shift_reference = true/false,
         !     density_matrices = true/false,
         !     density_matrix_file = filename,
-        !     sg_correction = true/false,
         !     even_selection = true/false,
         !     discard_threshold = float,
         !     multiref = true/false,
@@ -1929,13 +1927,12 @@ contains
         integer(i0) :: test_arr(50)
         integer(i0), allocatable :: bstring(:)
         character(255) :: err_msg, test_line
-        character(28), parameter :: keys(17) = [character(28) :: 'move_frequency', 'cluster_multispawn_threshold', &
+        character(28), parameter :: keys(16) = [character(28) :: 'move_frequency', 'cluster_multispawn_threshold', &
                                                                 'full_non_composite', 'linked', 'vary_shift_reference', &
                                                                 'density_matrices', 'density_matrix_file', 'even_selection', &
                                                                 'multiref', 'n_secondary_ref', 'mr_acceptance_search', &
                                                                 'mr_excit_lvl','mr_secref_file','mr_read_in', &
-                                                                'mr_secref_sym_only', 'discard_threshold', &
-                                                                'sg_correction']
+                                                                'mr_secref_sym_only', 'discard_threshold']
         character(23) :: string ! 32 bit integer has 10 digits, should be more than enough
         ! secondary_refX keywords are not hardcoded in, so we dynamically add them into the
         ! array of allowed keys 
@@ -1958,7 +1955,6 @@ contains
             call aot_get_val(ccmc_in%density_matrix_file, err, lua_state, ccmc_table, 'density_matrix_file')
             call aot_get_val(ccmc_in%even_selection, err, lua_state, ccmc_table, 'even_selection')
             call aot_get_val(ccmc_in%discard_threshold, err, lua_state, ccmc_table, 'discard_threshold')
-            call aot_get_val(ccmc_in%sg_correction, err, lua_state, ccmc_table, 'sg_correction')
             if (err == 0 .and. ccmc_in%discard_threshold <= 0.0_p) then
                 call stop_all('read_ccmc_in', 'discard_threshold must be greater than 0!') 
             end if
