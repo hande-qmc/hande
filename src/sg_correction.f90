@@ -1,4 +1,5 @@
-module sg_correction
+module sg_correction     
+! drc71
 
 ! Module performing the finite size error correction method of Liao et al (doi.org/10.1063/1.4964307). The correlation energy may be
 ! written in terms of the Coulomb kernel in reciprocal space and the transition structure factor S(G):
@@ -112,7 +113,8 @@ real (p), allocatable :: sg_spline_vals(:)
 end type sg_correction_t
 
     contains
-
+        
+        ! drc71
         subroutine initialise_sg_correction(basis, sg_correction)
 
             ! Wrapper to collect and setup any data needed for performing the finite size correction via S(G). Collects the system momentum
@@ -138,6 +140,7 @@ end type sg_correction_t
 
         end subroutine initialise_sg_correction
 
+        ! drc71
         subroutine get_q_vectors(nbasis, basis_fns, q_vectors, q_map, sg, qx_min, qx_max, qy_min, qy_max, qz_min, qz_max)
 
             ! Find all unique pairs of momentum transfer vectors (q_vectors) between basis functions 
@@ -194,7 +197,8 @@ end type sg_correction_t
             end do 
 
         end subroutine get_q_vectors
-
+        
+        ! drc71
         subroutine generate_unit_fibonacci_sphere(n_points, points)
 
             ! Generate a Fibonacci sphere with n_points points of unit magnitude. 
@@ -229,7 +233,8 @@ end type sg_correction_t
             end do
             
         end subroutine generate_unit_fibonacci_sphere
-
+        
+        ! drc71
         subroutine generate_unique_mag_fibonacci_sphere(q_mags, q_vectors, unique_q_mags, tolerance, n_fibonacci_points, &
                                                         fibonacci_spheres, fibonacci_points_unit)
 
@@ -288,7 +293,8 @@ end type sg_correction_t
             end do
 
         end subroutine generate_unique_mag_fibonacci_sphere
-
+        
+        ! drc71
         subroutine calculate_sg_contribution(lattice, connection, basis_fns, sg_correction, real_population)
 
             ! Calculate the contribution to S(G) of the current determinant or cluster.
@@ -341,8 +347,9 @@ end type sg_correction_t
             end if
 
         end subroutine calculate_sg_contribution
-
-        subroutine calculate_sg_correction(sg_correction, lattice, energy_sg, corrected_energy_sg)
+        
+        ! drc71
+        subroutine calculate_sg_correction(sg_correction, lattice, energy_sg, corrected_energy_sg, ireport, nreport)
 
             ! Wrapper to process the gathered S(G) data at the end of each report loop. Calls the interpolation and spline
             ! subroutines, as well as the routines in sg_correction_energies.
@@ -350,6 +357,8 @@ end type sg_correction_t
             ! In:
             !   lattice: sys_lattice_t object which contains information about the system lattice, in particular the side length of
             !   the simulation cell.
+            !   ireport: Current report loop number. 
+            !   nreport: Total number of report loops.
             ! In/Out:
             !   sg_correction: sg_correction_t derived type which stores relevant data for the correction scheme.
             !   energy_sg: Estimator of the uncorrected energy.
@@ -358,6 +367,8 @@ end type sg_correction_t
             type(sg_correction_t), intent(inout) :: sg_correction 
             type(sys_lattice_t), intent(in) :: lattice
             real(p), intent(inout) :: energy_sg(:), corrected_energy_sg(:)
+            integer :: ireport, nreport, unit_sg_out
+            character(len = 6) :: filename
 
             integer :: i
 
@@ -388,7 +399,21 @@ end type sg_correction_t
                 sg_correction%sg_spline_vals(i) = evaluate_spline(sg_correction%q_spline_vals(i), & 
                                                                      size(sg_correction%unique_q_mags), & 
                                                                      sg_correction)
-            end do 
+            end do
+
+            if (ireport == nreport) then 
+                filename = 'sg.dat'
+                open(unit = unit_sg_out, file = filename, status = 'replace', action = 'write', form = 'formatted')
+                write(unit_sg_out, *) '|G| vs S(|G|) spline:'
+                do i = 1, sg_correction%n_spline_points 
+                    write(unit_sg_out, '(F12.6, 1X, F12.6)') sg_correction%q_spline_vals(i), sg_correction%sg_spline_vals(i)
+                end do
+                write(unit_sg_out, *) '|G| vs S(|G|) discrete:'
+                do i = 1, size(sg_correction%unique_q_mags) 
+                   write(unit_sg_out, '(F12.6, 1X, F12.6)') sg_correction%unique_q_mags(i), sg_correction%spherically_averaged_sg(i)
+                end do 
+                close(unit_sg_out)
+            end if
 
             call calculate_corrected_sg_energy(corrected_energy_sg, sg_correction%q_vectors, &
                                                lattice%box_length, sg_correction%unique_q_mags, &
@@ -398,7 +423,8 @@ end type sg_correction_t
             sg_correction%sg = 0.0_p
 
         end subroutine calculate_sg_correction
-
+        
+        ! drc71
         subroutine interpolate_sg_fibonacci(n_fibonacci_points, fibonacci_spheres, unique_q_mags, sg_fibonacci, q_vectors, sg)
 
             ! Interpolate the calculated S(G) values of each unique magnitude onto the fibonacci
@@ -498,7 +524,8 @@ end type sg_correction_t
             end do
 
         end subroutine interpolate_sg_fibonacci
-
+        
+        ! drc71
         subroutine spherical_average_sg(sg_fibonacci, spherically_averaged_sg, unique_q_mags)
 
             ! Takes a simple spherical average of the interpolated S(G) values across each Fibonacci sphere of unique magnitude.
@@ -532,7 +559,8 @@ end type sg_correction_t
             end do 
        
         end subroutine spherical_average_sg
-
+        
+        ! drc71
         subroutine cubic_spline_sg(spherically_averaged_sg, unique_q_mags, spline_coeffs_a, spline_coeffs_b, spline_coeffs_c, &
                                    spline_coeffs_d)
 
@@ -620,7 +648,8 @@ end type sg_correction_t
             end do 
 
         end subroutine cubic_spline_sg
-
+        
+        ! drc71
         pure function evaluate_spline(q, n_knots, sg_correction) result(sg)
 
             ! Takes in a q magnitude and returns the value of S(G) at this point according to the cubic spline 
@@ -648,7 +677,8 @@ end type sg_correction_t
                                                                 + sg_correction%spline_coeffs_d(i)
 
         end function evaluate_spline
-
+        
+        ! drc71
         subroutine calculate_corrected_sg_energy(corrected_energy_sg, q_vectors, box_lengths, unique_q_mags, sg, q_spline_vals, &
                                                  sg_spline_vals, n_spline_points)
                 
@@ -725,7 +755,8 @@ end type sg_correction_t
                                     * real_unit_conversion * (term1 + 4 * term2 + 2 * term3 + term4)
 
             end subroutine calculate_corrected_sg_energy
-
+            
+            ! drc71
             pure function window_function(magnitude, Gc) result (window)
 
                 real(p), intent(in) :: magnitude 
