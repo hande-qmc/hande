@@ -262,8 +262,8 @@ contains
                 &number of spinorbitals.')
         end if
         
-        if (qmc_in%sg_correction .and. sys%system /= ueg) then
-            call stop_all(this, 'Finite size correction via S(G) is currently only avaliable for UEG')
+        if (qmc_in%sg_correction .and. sys%system /= ueg .and. sys%system /= read_in) then
+            call stop_all(this, 'Finite size correction via S(G) is not avaliable for this system type.')
         end if
 
     end subroutine check_qmc_opts

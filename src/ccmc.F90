@@ -616,7 +616,7 @@ contains
                     call init_blocking(qmc_in, blocking_in, bl, qs%shift_damping_status)
         
         if (qmc_in%sg_correction) then
-            call initialise_sg_correction(sys%basis, qs%sg_correction)
+            call initialise_sg_correction(sys, qs%sg_correction)
         end if
 
         ! Counter for the number of discarded clusters, see ccmc_in%discard_threshold
@@ -1024,7 +1024,7 @@ contains
             
             if (qmc_in%sg_correction) then
                 call calculate_sg_correction(qs%sg_correction, sys%lattice, qs%estimators%energy_sg, &
-                                             qs%estimators%corrected_energy_sg) 
+                                             qs%estimators%corrected_energy_sg, ireport, qmc_in%nreport) 
             end if
 
             call end_report_loop(io_unit, qmc_in, iter, update_tau, qs, nparticles_old, nspawn_events, &

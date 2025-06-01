@@ -20,7 +20,7 @@ module sg_correction
 ! adapted from Numerical Recipes 3rd Edition (9780521880688). The resulting spline can then be integrated in the region [0, Gmin] 
 ! using composite Simpson's quadrature to obtain a correction to the finite size error. 
 
-use system, only: sys_lattice_t
+use system, only: sys_t, sys_lattice_t
 use basis, only: basis_t, basis_fn_t
 use excitations, only: excit_t
 use checking, only: check_allocate
@@ -113,21 +113,21 @@ end type sg_correction_t
 
     contains
         
-        subroutine initialise_sg_correction(basis, sg_correction)
+        subroutine initialise_sg_correction(sys, sg_correction)
 
             ! Wrapper to collect and setup any data needed for performing the finite size correction via S(G). Collects the system momentum
             ! transfers, generates the points on a Fibonacci sphere of unit magnitude, and generates the additional Fibonacci
             ! spheres according to the unique momentum transfer magnitudes.
             
             ! In:
-            !   basis: basis_t type which holds information about the system basis set.
+            !   sys: sys_t type which holds information about the system basis set.
             ! In/Out:
             !   sg_correction: sg_correction_t derived type which stores relevant data for the correction scheme.
 
-            type(basis_t), intent(in) :: basis 
+            type(sys_t), intent(in) :: sys
             type(sg_correction_t), intent(inout) :: sg_correction
  
-            call get_q_vectors(basis%nbasis, basis%basis_fns, sg_correction%q_vectors, sg_correction%q_map, &
+            call get_q_vectors(sys%basis%nbasis, sys%basis%basis_fns, sg_correction%q_vectors, sg_correction%q_map, &
                                sg_correction%sg, sg_correction%qx_min, sg_correction%qx_max, sg_correction%qy_min, &
                                sg_correction%qy_max, sg_correction%qz_min, sg_correction%qz_max)
             call generate_unit_fibonacci_sphere(sg_correction%n_fibonacci_points, sg_correction%fibonacci_points_unit)
