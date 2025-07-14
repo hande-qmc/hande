@@ -319,7 +319,7 @@ Returns
             data['iterations'] = pd.to_numeric(data['iterations'])
         except AttributeError:
             data = data.convert_objects(convert_numeric=True, copy=False)
-        for (i,iteration) in data['iterations'].iteritems():
+        for (i,iteration) in data['iterations'].items():
             if iteration < 0:
                 data.loc[i,'iterations'] = \
                    i*metadata['qmc']['ncycles'] + data.loc[0,'iterations']
