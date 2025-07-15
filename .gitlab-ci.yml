@@ -21,24 +21,24 @@ build-lua-hdf5:
     tags: 
         - hande-testing
     script:
-        - module load icc/64/2022
+        - module load icc/2024.2.1
         - wget -q -O - http://www.lua.org/ftp/lua-5.3.5.tar.gz | tar xvzf -
         - cd lua-5.3.5
         - make linux &>/dev/null
-        - make install INSTALL_TOP=/home/gitlab-runner/builds/Yp9FKVgW/0/ch/thom/hande-public-testing/local 
+        - make install INSTALL_TOP=${CI_PROJECT_DIR}/local 
         - cd ..
-        - wget -q -O - https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.10/hdf5-1.10.4/src/hdf5-1.10.4.tar.gz | tar xvzf -
-        - cd hdf5-1.10.4
-        - ./configure --prefix=/home/gitlab-runner/builds/Yp9FKVgW/0/ch/thom/hande-public-testing/local/hdf5-gnu --enable-fortran --enable-fortran2003 --enable-cxx &> /dev/null
+        - wget -q -O - https://github.com/HDFGroup/hdf5/releases/download/hdf5_1.14.6/hdf5-1.14.6.tar.gz | tar xvzf -
+        - cd hdf5-1.14.6
+        - ./configure --prefix=${CI_PROJECT_DIR}/local/hdf5-gnu --enable-fortran --enable-fortran2003 --enable-cxx &> /dev/null
         - make -j 6 &> /dev/null
         - make install &> /dev/null
-        - cd .. && rm -r hdf5-1.10.4
-        - wget -q -O - https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.10/hdf5-1.10.4/src/hdf5-1.10.4.tar.gz | tar xvzf -
-        - cd hdf5-1.10.4
-        - export FC=ifort
-        - export CC=icc
-        - export CXX=icpc
-        - ./configure --prefix=/home/gitlab-runner/builds/Yp9FKVgW/0/ch/thom/hande-public-testing/local/hdf5-intel --enable-fortran --enable-fortran2003 --enable-cxx  &> /dev/null
+        - cd .. && rm -r hdf5-1.14.6
+        - wget -q -O - https://github.com/HDFGroup/hdf5/releases/download/hdf5_1.14.6/hdf5-1.14.6.tar.gz | tar xvzf -
+        - cd hdf5-1.14.6
+        - export FC=ifx
+        - export CC=icx
+        - export CXX=icpx
+        - ./configure --prefix=${CI_PROJECT_DIR}/local/hdf5-intel --enable-fortran --enable-fortran2003 --enable-cxx &> /dev/null  
         - make -j 6 &> /dev/null
         - make install &> /dev/null
         - cd ..
@@ -80,7 +80,7 @@ test-gcc-mpi:
     before_script:
         - module load anaconda
         - module load mpi/openmpi/64/gnu
-        - module load mkl/64/2022
+        - module load mkl/2023.2.0
         - module load cmake
     script:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack --lua=./local/ --hdf5=./local/hdf5-gnu
@@ -105,7 +105,7 @@ test-gcc-mpi-64:
     before_script:
         - module load anaconda
         - module load mpi/openmpi/64/gnu
-        - module load mkl/64/2022
+        - module load mkl/2023.2.0
         - module load cmake
     script:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack --lua=./local/ --hdf5=./local/hdf5-gnu --det-size=64 --pop-size=64
@@ -153,7 +153,7 @@ test-gcc-mpi-dbg:
     before_script:
         - module load anaconda
         - module load mpi/openmpi/64/gnu
-        - module load mkl/64/2022
+        - module load mkl/2023.2.0
         - module load cmake
     script:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-gnu --type=debug
@@ -178,7 +178,7 @@ test-gcc-mpi-64-dbg:
     before_script:
         - module load anaconda
         - module load mpi/openmpi/64/gnu
-        - module load mkl/64/2022
+        - module load mkl/2023.2.0
         - module load cmake
     script:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-gnu --det-size=64 --pop-size=64 --type=debug
@@ -202,10 +202,10 @@ test-intel:
         - hande-testing
     before_script:
         - module load anaconda
-        - module load icc/64/2022
+        - module load icc/2024.2.1
         - module load cmake
     script:
-        - ./cmakeconfig.py --fc=ifort --cc=icc --lua=./local/ --hdf5=./local/hdf5-intel --pop-size=64 --det-size=64 
+        - ./cmakeconfig.py --fc=ifx --cc=icx --lua=./local/ --hdf5=./local/hdf5-intel --pop-size=64 --det-size=64 
         - cd build && make -j 6 && cd ..
         - cd test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c serial --total-processors=6
@@ -226,10 +226,10 @@ test-intel-dbg:
         - hande-testing
     before_script:
         - module load anaconda
-        - module load icc/64/2022
+        - module load icc/2024.2.1
         - module load cmake
     script:
-        - ./cmakeconfig.py --fc=ifort --cc=icc --lua=./local/ --hdf5=./local/hdf5-intel --pop-size=64 --det-size=64  --type=debug
+        - ./cmakeconfig.py --fc=ifx --cc=icx --lua=./local/ --hdf5=./local/hdf5-intel --pop-size=64 --det-size=64  --type=debug
         - cd build && make -j 6 && cd ..
         - cd test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c serial --total-processors=6
@@ -250,10 +250,10 @@ test-intel-mpi-pop64:
         - hande-testing
     before_script:
         - module load anaconda
-        - module load icc/64/2022
-        - module load mkl/64/2022
+        - module load icc/2024.2.1
+        - module load mkl/2024.2.1
         - module load cmake
-        - module load mpi/openmpi/64/intel
+        - module load mpi/openmpi/64/intel/4.1.2
     script:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack --lua=./local/ --hdf5=./local/hdf5-intel --pop-size=64 --det-size=64
         - cd build && make -j 6 && cd ..
@@ -276,10 +276,10 @@ test-intel-mpi-pop64-dbg:
         - hande-testing
     before_script:
         - module load anaconda
-        - module load icc/64/2022
-        - module load mkl/64/2022
+        - module load icc/2024.2.1
+        - module load mkl/2024.2.1
         - module load cmake
-        - module load mpi/openmpi/64/intel
+        - module load mpi/openmpi/64/intel/4.1.2
     script:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-intel  --type=debug --pop-size=64 --det-size=64
         - cd build && make -j 6 && cd ..
@@ -302,10 +302,10 @@ test-intel-mpi:
         - hande-testing
     before_script:
         - module load anaconda
-        - module load icc/64/2022
-        - module load mkl/64/2022
+        - module load icc/2024.2.1
+        - module load mkl/2024.2.1
         - module load cmake
-        - module load mpi/openmpi/64/intel
+        - module load mpi/openmpi/64/intel/4.1.2
     script:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack --lua=./local/ --hdf5=./local/hdf5-intel
         - cd build && make -j 6 && cd ..
@@ -328,10 +328,10 @@ test-intel-mpi-dbg:
         - hande-testing
     before_script:
         - module load anaconda
-        - module load icc/64/2022
-        - module load mkl/64/2022
+        - module load icc/2024.2.1
+        - module load mkl/2024.2.1
         - module load cmake
-        - module load mpi/openmpi/64/intel
+        - module load mpi/openmpi/64/intel/4.1.2
     script:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-intel  --type=debug 
         - cd build && make -j 6 && cd ..
@@ -354,10 +354,10 @@ test-intel-quick:
         - hande-testing
     before_script:
         - module load anaconda
-        - module load icc/64/2022
-        - module load mkl/64/2022
+        - module load icc/2024.2.1
+        - module load mkl/2024.2.1
         - module load cmake
-        - module load mpi/openmpi/64/intel
+        - module load mpi/openmpi/64/intel/4.1.2
     script:
         - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-intel  --pop-size=64 --det-size=64
         - cd build && VERBOSE=1 make -j 6 && cd ..
@@ -380,7 +380,7 @@ test-gcc-quick:
         - hande-testing
     before_script:
         - module load anaconda
-        - module load mkl/64/2022
+        - module load mkl/2024.2.1
         - module load cmake
         - module load mpi/openmpi/64/gnu
     script:
