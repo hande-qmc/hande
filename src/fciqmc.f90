@@ -347,13 +347,16 @@ contains
                             ! start of the i-FCIQMC cycle than at the end, as we're
                             ! already looping over the determinants.
                             connection = get_excitation(sys%nel, sys%basis, cdet%f, qs%ref%f0)
-                            if (.not. sys%read_in%comp) then
-                                call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, [weighted_population(ispace)], &
-                                                            qs%estimators(ispace), connection, hmatel)
-                            else if (.not. imag) then
-                                call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, &
-                                                            weighted_population(ispace:ispace+1), &
-                                                            qs%estimators(ispace), connection, hmatel)
+                            if (.not. qmc_in%proj_energy_from_spawn) then
+                                if (.not. sys%read_in%comp) then
+                                    call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, &
+                                                                [weighted_population(ispace)], &
+                                                                qs%estimators(ispace), connection, hmatel)
+                                else if (.not. imag) then
+                                    call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, &
+                                                                weighted_population(ispace:ispace+1), &
+                                                                qs%estimators(ispace), connection, hmatel)
+                                end if
                             end if
 
                             nattempts_current_det_ispace = decide_nattempts(rng, real_population(ispace))
@@ -362,7 +365,20 @@ contains
                                                             nattempts_current_det_ispace, cdet, determ, determ_parent, &
                                                             qs%psip_list%pops(ispace, idet), &
                                                             sys%read_in%comp .and. modulo(ispace,2)==0, &
-                                                            ispace, accum_rdm, logging_info)
+                                                            ispace, accum_rdm, qmc_in%proj_energy_from_spawn, logging_info)
+
+                            ! If adding contributions to the projected energy estimator spawning
+                            ! attempts, then add in diagonal contributions corresponding to the
+                            ! walker death step below.
+                            if (qmc_in%proj_energy_from_spawn) then
+                                if (sys%read_in%comp) then
+                                    qs%estimators%proj_energy_comp = qs%estimators%proj_energy_comp + &
+                                                                real_population(ispace) * qs%psip_list%dat(1,idet)
+                                else
+                                    qs%estimators%proj_energy = qs%estimators%proj_energy + &
+                                                                real_population(ispace) * qs%psip_list%dat(1,idet)
+                                end if
+                            end if
 
                             ! Clone or die.
                             if (.not. determ_parent) then
@@ -615,7 +631,7 @@ contains
                 call do_fciqmc_spawning_attempt(rng, spawn_to_send, rdm_spawn, bloom_stats, sys, qs, nattempts_current_det, &
                                             cdet, determ, .false., int_pop(ispace), &
                                             sys%read_in%comp .and. modulo(ispace,2) == 0, &
-                                            ispace, .false., logging_info)
+                                            ispace, .false., qmc_in%proj_energy_from_spawn, logging_info)
 
                 ! Clone or die.
                 ! list_pop is meaningless as particle_t%nparticles is updated upon annihilation.
@@ -634,7 +650,7 @@ contains
 
     subroutine do_fciqmc_spawning_attempt(rng, spawn, rdm_spawn, bloom_stats, sys, qs, nattempts_current_det, &
                                           cdet, determ, determ_parent, pop, imag_parent, ispace, &
-                                          calc_rdm, logging_info)
+                                          calc_rdm, proje_from_spawn, logging_info)
 
         ! Perform spawning from a given determinant in a given space.
 
@@ -653,6 +669,8 @@ contains
         !   determ: derived type containing information on semistochastic
         !       space within propogation.
         !   calc_rdm: are we accumulating the 2-RDM?
+        !   proje_from_spawn: do we add to the projected energy estimator
+        !       using information from the spawning attempt?
         ! In/Out:
         !   rng: random number generator.
         !   bloom_stats: information on blooms during calculation.
@@ -681,7 +699,7 @@ contains
         type(logging_t), intent(in) :: logging_info
         integer, intent(in) :: nattempts_current_det, ispace
         type(det_info_t), intent(inout) :: cdet
-        logical, intent(in) :: determ_parent, imag_parent, calc_rdm
+        logical, intent(in) :: determ_parent, imag_parent, calc_rdm, proje_from_spawn
         integer(int_p), intent(in) :: pop
 
         type(dSFMT_t), intent(inout) :: rng
@@ -695,6 +713,7 @@ contains
         integer(i0) :: f_child(sys%basis%tot_string_len)
         logical :: determ_child
         integer(int_p) :: scratch
+        real(p) :: nspawned_real
 
         nspawned_im = 0_int_p
         nspawned_rdm = 0_int_p
@@ -747,6 +766,16 @@ contains
                         nspawned = 0_int_p
                     end if
                 else
+                    ! If needed, add in contribution to the projected energy using the spawned walker
+                    if (proje_from_spawn) then
+                        nspawned_real = real(nspawned,p)/qs%psip_list%pop_real_factor
+                        if (sys%read_in%comp) then
+                            qs%estimators%proj_energy_comp = qs%estimators%proj_energy_comp - nspawned_real / qs%tau
+                        else
+                            qs%estimators%proj_energy = qs%estimators%proj_energy - nspawned_real / qs%tau
+                        end if
+                    end if
+
                     call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, connection, nspawned, space_real, &
                                                      spawn)
                 end if

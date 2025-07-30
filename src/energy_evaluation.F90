@@ -1126,6 +1126,44 @@ contains
 
     end subroutine update_proj_energy_ueg
 
+    pure subroutine update_proj_energy_trotter(sys, f0, wfn_dat, cdet, pop, estimators, excitation, hmatel)
+
+        ! Define an empty function for updating the projected energy in Trotter
+        ! calculations, since we will update this energy estimator directly
+        ! from the spawned walkers instead.
+
+        ! In:
+        !    sys: system being studied.
+        !    f0: reference determinant.
+        !    wfn_dat: trial wavefunction data (unused, included for interface compatibility).
+        !    cdet: info on the current determinant (cdet) that we will spawn
+        !        from.  Only the bit string field needs to be set.
+        !    pop: population on current determinant.
+        ! In/Out:
+        !    estimators: estimators_t object containing running totals of N_0
+        !        and proj energy contribution.
+        !    excitation: excitation connecting the determinant to the reference determinant.
+        ! Out:
+        !    hmatel: <D_i|H|D_0>, the Hamiltonian matrix element between the
+        !       determinant and the reference determinant.
+
+        use determinant_data, only: det_info_t
+        use excitations, only: excit_t
+        use hamiltonian_molecular, only: slater_condon1_mol_excit, slater_condon2_mol_excit
+        use read_in_symmetry, only: cross_product_basis_read_in
+        use system, only: sys_t
+
+        type(sys_t), intent(in) :: sys
+        integer(i0), intent(in) :: f0(:)
+        real(p), intent(in) :: wfn_dat(:)
+        type(det_info_t), intent(in) :: cdet
+        real(p), intent(in) :: pop(:)
+        type(estimators_t), intent(inout) :: estimators
+        type(excit_t), intent(inout) :: excitation
+        type(hmatel_t), intent(out) :: hmatel
+
+    end subroutine update_proj_energy_trotter
+
     pure subroutine update_proj_energy_ringium(sys, f0, wfn_dat, cdet, pop, estimators, excitation, hmatel)
 
         ! Add the contribution of the current determinant to the projected

@@ -249,6 +249,9 @@ type qmc_in_t
     real(p) :: chebyshev_scale = 1.1_p
     ! Do we skip the Gershgorin estimate of upper spectral range and just use the highest diagonal (with fudge factors)?
     logical :: chebyshev_skip_gershgorin = .false.
+
+    ! If true then sample the numerator of the projected energy using spawned walkers.
+    logical :: proj_energy_from_spawn = .false.
 end type qmc_in_t
 
 type fciqmc_in_t

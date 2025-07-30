@@ -70,10 +70,17 @@ contains
                 ! Two electron operator
                 hmatel%c = slater_condon2_periodic_complex(sys, excitation%from_orb(1), excitation%from_orb(2), &
                                             & excitation%to_orb(1), excitation%to_orb(2), excitation%perm)
+
             case default
                 ! If f1 & f2 differ by more than two spin orbitals integral value is zero.
 
             end select
+
+            if (sys%read_in%remove_sign_problem) then
+                if (real(hmatel%c) > 0.0) then
+                    hmatel%c = -hmatel%c
+                end if
+            end if
 
         end if
 
@@ -109,6 +116,12 @@ contains
         ! If wanted to check this could try to write test; as inside pure procedure more
         ! trouble than worth. Further optimisation could remove accretion of imaginary
         ! component in slater_condon_periodic_orb_list_complex.
+
+        if (sys%read_in%remove_sign_problem) then
+            if (hmatel > 0.0) then
+                hmatel = -hmatel
+            end if
+        end if
 
     end function slater_condon0_periodic_complex
 
@@ -184,6 +197,12 @@ contains
             end do
         end associate
 
+        if (sys%read_in%remove_sign_problem) then
+            if (real(hmatel) > 0.0) then
+                hmatel = -hmatel
+            end if
+        end if
+
     end function slater_condon0_periodic_orb_list_complex
 
     pure function slater_condon1_periodic_complex(sys, occ_list, i, a, perm) result(hmatel)
@@ -246,6 +265,12 @@ contains
             end associate
 
             if (perm) hmatel = -hmatel
+
+            if (sys%read_in%remove_sign_problem) then
+                if (real(hmatel) > 0.0) then
+                    hmatel = -hmatel
+                end if
+            end if
         end if
 
     end function slater_condon1_periodic_complex
@@ -321,6 +346,12 @@ contains
 
         if (perm) hmatel%c = -hmatel%c
 
+        if (sys%read_in%remove_sign_problem) then
+            if (real(hmatel%c) > 0.0) then
+                hmatel%c = -hmatel%c
+            end if
+        end if
+
     end function slater_condon1_periodic_excit_complex
 
     pure function slater_condon2_periodic_complex(sys, i, j, a, b, perm) result(hmatel)
@@ -361,6 +392,12 @@ contains
                                         i, j, b, a, sys)
 
         if (perm) hmatel = -hmatel
+
+        if (sys%read_in%remove_sign_problem) then
+            if (real(hmatel) > 0.0) then
+                hmatel = -hmatel
+            end if
+        end if
 
     end function slater_condon2_periodic_complex
 
@@ -415,6 +452,12 @@ contains
             hmatel%c = hmatel%c - cmplx(re, im, p)
         end if
         if (perm) hmatel%c = -hmatel%c
+
+        if (sys%read_in%remove_sign_problem) then
+            if (real(hmatel%c) > 0.0) then
+                hmatel%c = -hmatel%c
+            end if
+        end if
 
     end function slater_condon2_periodic_excit_complex
 

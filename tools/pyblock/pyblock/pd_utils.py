@@ -159,7 +159,7 @@ ValueError
                      for col in block_sub_info.columns.get_level_values(level)]
         if not any(opt_cols):
             raise ValueError('No optimal block data')
-        iterator = block_sub_info.loc[:,opt_cols].iteritems()
+        iterator = block_sub_info.loc[:,opt_cols].items()
 
     opt = -1
     for (name, col) in iterator:

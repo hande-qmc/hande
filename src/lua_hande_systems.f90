@@ -542,6 +542,8 @@ contains
         !        sym = S,
         !        CAS = {cas1, cas2}
         !        complex = true/false,
+        !        trotter = true/false,
+        !        remove_sign_problem = true/false,
         !        max_broadcast_chunk = block_size,
         !        ex_int_file = '...',
         !    }
@@ -572,9 +574,9 @@ contains
         logical :: new, new_basis, verbose, hdf5, t_exists
         integer :: err
 
-        character(20), parameter :: keys(13) = [character(20) :: 'sys', 'nel', 'electrons', 'int_file', 'dipole_int_file', 'Lz', &
+        character(20), parameter :: keys(15) = [character(20) :: 'sys', 'nel', 'electrons', 'int_file', 'dipole_int_file', 'Lz', &
                                                                 'sym', 'ms', 'CAS', 'complex', 'verbose', 'max_broadcast_chunk', &
-                                                                'ex_int_file']
+                                                                'ex_int_file', 'trotter', 'remove_sign_problem']
 
         call cpu_time(t1)
 
@@ -620,6 +622,8 @@ contains
 
             call aot_get_val(sys%read_in%useLz, err, lua_state, opts, 'Lz')
             call aot_get_val(sys%read_in%comp, err, lua_state, opts, 'complex')
+            call aot_get_val(sys%read_in%trotter, err, lua_state, opts, 'trotter')
+            call aot_get_val(sys%read_in%remove_sign_problem, err, lua_state, opts, 'remove_sign_problem')
 
             new_basis = new .or. aot_exists(lua_state, opts, 'int_file') &
                             .or. aot_exists(lua_state, opts, 'CAS')

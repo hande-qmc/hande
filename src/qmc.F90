@@ -258,6 +258,7 @@ contains
         use excit_gen_op_hub_k
         use excit_gen_real_lattice
         use excit_gen_ringium
+        use excit_gen_trotter
         use excit_gen_ueg, only: gen_excit_ueg_no_renorm
         use hamiltonian_chung_landau, only: slater_condon0_chung_landau
         use hamiltonian_hub_k, only: slater_condon0_hub_k
@@ -272,6 +273,7 @@ contains
                                                 create_weighted_excitation_list_periodic_complex, abs_hmatel_periodic_complex, &
                                                 single_excitation_weight_periodic
         use hamiltonian_ringium, only: slater_condon0_ringium
+        use hamiltonian_trotter, only: slater_condon0_trotter, slater_condon1_trotter_excit, slater_condon2_trotter_excit
         use hamiltonian_ueg, only: slater_condon0_ueg, kinetic_energy_ueg, exchange_energy_ueg, potential_energy_ueg
 
         use heisenberg_estimators
@@ -389,79 +391,98 @@ contains
             end if
 
         case(read_in)
-            if (sys%read_in%comp) then
-                update_proj_energy_ptr => update_proj_energy_periodic_complex
-                sc0_ptr => slater_condon0_periodic_complex
-                energy_diff_ptr => null()
-                spawner_ptr => spawn_complex
-                slater_condon1_excit_ptr => slater_condon1_periodic_excit_complex
-                slater_condon2_excit_ptr => slater_condon2_periodic_excit_complex
-                create_weighted_excitation_list_ptr => create_weighted_excitation_list_periodic_complex
-                abs_hmatel_ptr => abs_hmatel_periodic_complex
-                single_excitation_weight_ptr => single_excitation_weight_periodic
+            if (.not. sys%read_in%trotter) then
+                if (sys%read_in%comp) then
+                    update_proj_energy_ptr => update_proj_energy_periodic_complex
+                    sc0_ptr => slater_condon0_periodic_complex
+                    energy_diff_ptr => null()
+                    spawner_ptr => spawn_complex
+                    slater_condon1_excit_ptr => slater_condon1_periodic_excit_complex
+                    slater_condon2_excit_ptr => slater_condon2_periodic_excit_complex
+                    create_weighted_excitation_list_ptr => create_weighted_excitation_list_periodic_complex
+                    abs_hmatel_ptr => abs_hmatel_periodic_complex
+                    single_excitation_weight_ptr => single_excitation_weight_periodic
+                else
+                    update_proj_energy_ptr => update_proj_energy_mol
+                    sc0_ptr => slater_condon0_mol
+                    energy_diff_ptr => double_counting_correction_mol
+                    slater_condon1_excit_ptr => slater_condon1_mol_excit
+                    slater_condon2_excit_ptr => slater_condon2_mol_excit
+                    create_weighted_excitation_list_ptr => create_weighted_excitation_list_mol
+                    ! Default: we use Power Pitzer type integrals when using on-the-fly weights for doubles.
+                    get_two_body_int_cou_ex_mol_real_ptr => get_two_body_int_ex_mol_real
+                    abs_hmatel_ptr => abs_hmatel_mol
+                    single_excitation_weight_ptr => single_excitation_weight_mol
+                end if
+
+                select case(qmc_in%excit_gen)
+                case(excit_gen_no_renorm)
+                    gen_excit_ptr%full => gen_excit_mol_no_renorm
+                    decoder_ptr => decode_det_occ
+                case(excit_gen_no_renorm_spin)
+                    gen_excit_ptr%full => gen_excit_mol_no_renorm_spin
+                    decoder_ptr => decode_det_spinocc
+                case(excit_gen_renorm)
+                    gen_excit_ptr%full => gen_excit_mol
+                    decoder_ptr => decode_det_occ_symunocc
+                case(excit_gen_renorm_spin)
+                    gen_excit_ptr%full => gen_excit_mol_spin
+                    decoder_ptr => decode_det_spinocc_symunocc
+                case(excit_gen_power_pitzer_occ)
+                    gen_excit_ptr%full => gen_excit_mol_power_pitzer_occ
+                    decoder_ptr => decode_det_spinocc_spinsymunocc
+                case(excit_gen_power_pitzer_occ_ij)
+                    gen_excit_ptr%full => gen_excit_mol_power_pitzer_occ
+                    decoder_ptr => decode_det_spinocc_spinsymunocc
+                case(excit_gen_cauchy_schwarz_occ)
+                    gen_excit_ptr%full => gen_excit_mol_power_pitzer_occ
+                    decoder_ptr => decode_det_spinocc_spinsymunocc
+                    get_two_body_int_cou_ex_mol_real_ptr => get_two_body_int_cou_mol_real
+                case(excit_gen_cauchy_schwarz_occ_ij)
+                    gen_excit_ptr%full => gen_excit_mol_power_pitzer_occ
+                    decoder_ptr => decode_det_spinocc_spinsymunocc
+                    get_two_body_int_cou_ex_mol_real_ptr => get_two_body_int_cou_mol_real
+                case(excit_gen_power_pitzer)
+                    gen_excit_ptr%full => gen_excit_mol_power_pitzer_occ_ref
+                    decoder_ptr => decode_det_occ
+                case(excit_gen_power_pitzer_orderN)
+                    ! [todo] - check this decoder is correct.
+                    gen_excit_ptr%full => gen_excit_mol_power_pitzer_orderN
+                    decoder_ptr => decode_det_occ
+                case(excit_gen_heat_bath)
+                    gen_excit_ptr%full => gen_excit_mol_heat_bath
+                    decoder_ptr => decode_det_occ
+                case(excit_gen_heat_bath_uniform)
+                    gen_excit_ptr%full => gen_excit_mol_heat_bath_uniform
+                    decoder_ptr => decode_det_occ_symunocc
+                case(excit_gen_heat_bath_single)
+                    gen_excit_ptr%full => gen_excit_mol_heat_bath_uniform
+                    ! [todo] - the unocc part is only needed for singles. Too expensive here?
+                    decoder_ptr => decode_det_occ_unocc
+                case default
+                    call stop_all('init_proc_pointers', 'Selected excitation generator not implemented.')
+                end select
+
+                get_one_e_int_ptr => get_one_e_int_mol
+                get_two_e_int_ptr => get_two_e_int_mol
             else
-                update_proj_energy_ptr => update_proj_energy_mol
-                sc0_ptr => slater_condon0_mol
-                energy_diff_ptr => double_counting_correction_mol
-                slater_condon1_excit_ptr => slater_condon1_mol_excit
-                slater_condon2_excit_ptr => slater_condon2_mol_excit
-                create_weighted_excitation_list_ptr => create_weighted_excitation_list_mol
-                ! Default: we use Power Pitzer type integrals when using on-the-fly weights for doubles.
-                get_two_body_int_cou_ex_mol_real_ptr => get_two_body_int_ex_mol_real
-                abs_hmatel_ptr => abs_hmatel_mol
-                single_excitation_weight_ptr => single_excitation_weight_mol
+                ! For Trotter VTV commutators bounds:
+                update_proj_energy_ptr => update_proj_energy_trotter
+                sc0_ptr => slater_condon0_trotter
+                energy_diff_ptr => null()
+                slater_condon1_excit_ptr => slater_condon1_trotter_excit
+                slater_condon2_excit_ptr => slater_condon2_trotter_excit
+                create_weighted_excitation_list_ptr => null()
+                get_two_body_int_cou_ex_mol_real_ptr => null()
+                abs_hmatel_ptr => null()
+                single_excitation_weight_ptr => null()
+
+                gen_excit_ptr%full => gen_excit_trotter
+                decoder_ptr => decode_det_occ_symunocc
+
+                get_one_e_int_ptr => null()
+                get_two_e_int_ptr => null()
             end if
-
-            select case(qmc_in%excit_gen)
-            case(excit_gen_no_renorm)
-                gen_excit_ptr%full => gen_excit_mol_no_renorm
-                decoder_ptr => decode_det_occ
-            case(excit_gen_no_renorm_spin)
-                gen_excit_ptr%full => gen_excit_mol_no_renorm_spin
-                decoder_ptr => decode_det_spinocc
-            case(excit_gen_renorm)
-                gen_excit_ptr%full => gen_excit_mol
-                decoder_ptr => decode_det_occ_symunocc
-            case(excit_gen_renorm_spin)
-                gen_excit_ptr%full => gen_excit_mol_spin
-                decoder_ptr => decode_det_spinocc_symunocc
-            case(excit_gen_power_pitzer_occ)
-                gen_excit_ptr%full => gen_excit_mol_power_pitzer_occ
-                decoder_ptr => decode_det_spinocc_spinsymunocc
-            case(excit_gen_power_pitzer_occ_ij)
-                gen_excit_ptr%full => gen_excit_mol_power_pitzer_occ
-                decoder_ptr => decode_det_spinocc_spinsymunocc
-            case(excit_gen_cauchy_schwarz_occ)
-                gen_excit_ptr%full => gen_excit_mol_power_pitzer_occ
-                decoder_ptr => decode_det_spinocc_spinsymunocc
-                get_two_body_int_cou_ex_mol_real_ptr => get_two_body_int_cou_mol_real
-            case(excit_gen_cauchy_schwarz_occ_ij)
-                gen_excit_ptr%full => gen_excit_mol_power_pitzer_occ
-                decoder_ptr => decode_det_spinocc_spinsymunocc
-                get_two_body_int_cou_ex_mol_real_ptr => get_two_body_int_cou_mol_real
-            case(excit_gen_power_pitzer)
-                gen_excit_ptr%full => gen_excit_mol_power_pitzer_occ_ref
-                decoder_ptr => decode_det_occ
-            case(excit_gen_power_pitzer_orderN)
-                ! [todo] - check this decoder is correct.
-                gen_excit_ptr%full => gen_excit_mol_power_pitzer_orderN
-                decoder_ptr => decode_det_occ
-            case(excit_gen_heat_bath)
-                gen_excit_ptr%full => gen_excit_mol_heat_bath
-                decoder_ptr => decode_det_occ
-            case(excit_gen_heat_bath_uniform)
-                gen_excit_ptr%full => gen_excit_mol_heat_bath_uniform
-                decoder_ptr => decode_det_occ_symunocc
-            case(excit_gen_heat_bath_single)
-                gen_excit_ptr%full => gen_excit_mol_heat_bath_uniform
-                ! [todo] - the unocc part is only needed for singles. Too expensive here?
-                decoder_ptr => decode_det_occ_unocc
-            case default
-                call stop_all('init_proc_pointers', 'Selected excitation generator not implemented.')
-            end select
-
-            get_one_e_int_ptr => get_one_e_int_mol
-            get_two_e_int_ptr => get_two_e_int_mol
 
         case(ueg)
 

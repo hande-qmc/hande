@@ -305,6 +305,19 @@ type sys_read_in_t
     ! Is system complex?
     logical :: comp = .false.
 
+    ! Are we performing calculation of a Trotter error norm? Specifically, this
+    ! allows us to consider [[V,T],V] commutators for Hamiltonians in a dual
+    ! plane wave (DPW) basis set, where the Hamiltonian has O(N^2) terms.
+    logical :: trotter = .false.
+
+    ! If true then make all Hamiltonian matrix elements negative. This has
+    ! the effect of removing any sign problem from the simulation. Note that
+    ! we also make the diagonal elements negative, which is not strictly
+    ! needed but helps simplify some aspects. Currently, this is only
+    ! implemented for complex Hamiltonians, as used by VTT-type Trotter
+    ! error calculations.
+    logical :: remove_sign_problem = .false.
+
     ! FCIDUMP filename (contains additional exchange integrals which can be required to make up
     ! Hamiltonian matrix with periodic boundary conditions).
     ! Must be text file for now. 
@@ -797,6 +810,7 @@ contains
             end if
             call json_write_key(js, 'CAS', sys%CAS)
             call json_write_key(js, 'useLz', sys%read_in%useLz)
+            call json_write_key(js, 'trotter', sys%read_in%trotter)
             call json_write_key(js, 'complex', sys%read_in%comp, terminal=.true.)
             call json_object_end(js, terminal=.true.)
 

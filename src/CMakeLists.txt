@@ -66,6 +66,7 @@ target_sources(hande-static
     excit_gen_power_pitzer_mol.F90
     excit_gen_real_lattice.f90
     excit_gen_ringium.f90
+    excit_gen_trotter.f90
     excit_gens.f90
     excit_gen_ueg.f90
     excit_gen_utils.f90
@@ -83,6 +84,7 @@ target_sources(hande-static
     hamiltonian_molecular.f90
     hamiltonian_periodic_complex.f90
     hamiltonian_ringium.f90
+    hamiltonian_trotter.f90
     hamiltonian_ueg.f90
     hande_top_level.f90
     hdf5_system.F90

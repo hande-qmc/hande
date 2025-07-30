@@ -32,6 +32,7 @@ contains
         use hamiltonian_molecular, only: get_hmatel_mol
         use hamiltonian_ueg, only: get_hmatel_ueg
         use hamiltonian_ringium, only: get_hmatel_ringium
+        use hamiltonian_trotter, only: get_hmatel_trotter
         use system
 
         type(hmatel_t) :: hmatel
@@ -48,7 +49,11 @@ contains
         case(heisenberg)
             hmatel = get_hmatel_heisenberg(sys, f1, f2)
         case(read_in)
-            hmatel = get_hmatel_mol(sys, f1, f2)
+            if (sys%read_in%trotter) then
+                hmatel = get_hmatel_trotter(sys, f1, f2)
+            else
+                hmatel = get_hmatel_mol(sys, f1, f2)
+            end if
         case (ueg)
             hmatel = get_hmatel_ueg(sys, f1, f2)
         case(ringium)
