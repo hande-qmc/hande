@@ -86,7 +86,7 @@ contains
         use mrcc_utils, only: init_highest_dets_t, update_highest_dets, write_out_highest_dets
 
         use sg_correction, only: sg_correction_t, initialise_sg_correction, calculate_sg_contribution, &
-                                 calculate_sg_correction
+                                 calculate_sg_correction, finalise_sg_correction
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -521,6 +521,10 @@ contains
         if (blocking_in%blocking_on_the_fly) call deallocate_blocking(bl)
         if (blocking_in%blocking_on_the_fly .and. parent) call date_and_time(VALUES=date_values)
         if (blocking_in%blocking_on_the_fly .and. parent) call write_date_time_close(iunit, date_values)
+
+        if (qmc_in%sg_correction) then
+             call finalise_sg_correction(qs%sg_correction)
+        end if
 
         if (fciqmc_in%non_blocking_comm) call end_non_blocking_comm(sys, rng, qmc_in, annihilation_flags, ireport, &
                                                                     qs, qs%spawn_store%spawn_recv,  req_data_s,  &

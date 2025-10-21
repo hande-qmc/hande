@@ -18,12 +18,15 @@ module sg_correction
 ! distance weighting procedure is taken from: doi.org/10.1145/800186.810616. The spherical average 
 ! of each sphere is taken to yield S_{avg}(|G|). A cubic spline is constructed with S_{avg}(|G|) as the knots, code for this spline
 ! adapted from Numerical Recipes 3rd Edition (9780521880688). The resulting spline can then be integrated in the region [0, Gmin] 
-! using composite Simpson's quadrature to obtain a correction to the finite size error. 
+! using composite Simpson's quadrature to obtain a correction for the finite size error.
+! This method is implemented for both CCMC and FCIQMC, the only difference being that in CCMC calculate_sg_contribution is called
+! within the do_ccmc_accumulation subroutine, i.e., the contribution is totalled for every excitor, whereas in FCIQMC it is simply
+! called once per determinant.
 
 use system, only: sys_t, sys_lattice_t
 use basis, only: basis_t, basis_fn_t
 use excitations, only: excit_t
-use checking, only: check_allocate
+use checking, only: check_allocate, check_deallocate
 use sort, only: insert_sort_unique_vector
 use const, only: p
 
@@ -365,7 +368,6 @@ end type sg_correction_t
 
             integer :: i
 
-            energy_sg(:) = 0.0_p
             corrected_energy_sg(:) = 0.0_p
 
             call interpolate_sg_fibonacci(sg_correction%n_fibonacci_points, sg_correction%fibonacci_spheres, &
@@ -395,7 +397,7 @@ end type sg_correction_t
             end do
 
             if (ireport == nreport) then 
-                filename = 'sg.dat'
+                filename = 'SG'
                 open(unit = unit_sg_out, file = filename, status = 'replace', action = 'write', form = 'formatted')
                 write(unit_sg_out, *) '|G| vs S(|G|) spline:'
                 do i = 1, sg_correction%n_spline_points 
@@ -575,7 +577,8 @@ end type sg_correction_t
             real(p), allocatable, intent(out) :: spline_coeffs_c(:)
             real(p), allocatable, intent(out) :: spline_coeffs_d(:)
 
-            integer :: n_spline_points, i, w, ierr
+            integer :: n_spline_points, i, ierr
+            real(p) :: w
             real(p), allocatable :: h(:)
             real(p), allocatable :: lower_diag(:), main_diag(:), upper_diag(:) 
             real(p), allocatable :: m_vector(:), right_vector(:)
@@ -585,7 +588,7 @@ end type sg_correction_t
             allocate(spline_coeffs_b(size(unique_q_mags) - 1), stat=ierr)
             call check_allocate('spline_coeffs_b', size(spline_coeffs_b), ierr)
             allocate(spline_coeffs_c(size(unique_q_mags) - 1), stat=ierr)
-            call check_allocate('spline_coeffs_c', size(spline_coeffs_d), ierr)
+            call check_allocate('spline_coeffs_c', size(spline_coeffs_c), ierr)
             allocate(spline_coeffs_d(size(unique_q_mags) - 1), stat=ierr)
             call check_allocate('spline_coeffs_d', size(spline_coeffs_d), ierr)
 
@@ -759,5 +762,80 @@ end type sg_correction_t
                 end if
                 
             end function window_function
+
+    subroutine finalise_sg_correction(sg)
+
+        ! Deallocate all S(G) correction arrays 
+
+        ! In/Out: 
+        !   sg: sg_correction_t type which stores all S(G) correction associated arrays and variables
+
+        type(sg_correction_t), intent(inout) :: sg
+
+        integer :: ierr
+        
+        if (allocated(sg%q_vectors)) then
+            deallocate(sg%q_vectors, stat=ierr)
+            call check_deallocate('sg%q_vectors', ierr)
+        end if
+        if (allocated(sg%q_map)) then
+            deallocate(sg%q_map, stat=ierr)
+            call check_deallocate('sg%q_map', ierr)
+        end if
+        if (allocated(sg%q_mags)) then
+            deallocate(sg%q_mags, stat=ierr)
+            call check_deallocate('sg%q_mags', ierr)
+        end if
+        if (allocated(sg%unique_q_mags)) then
+            deallocate(sg%unique_q_mags, stat=ierr)
+            call check_deallocate('sg%unique_q_mags', ierr)
+        end if
+        if (allocated(sg%fibonacci_points_unit)) then
+            deallocate(sg%fibonacci_points_unit, stat=ierr)
+            call check_deallocate('sg%fibonacci_points_unit', ierr)
+        end if
+        if (allocated(sg%fibonacci_spheres)) then
+            deallocate(sg%fibonacci_spheres, stat=ierr)
+            call check_deallocate('sg%fibonacci_spheres', ierr)
+        end if
+        if (allocated(sg%sg)) then
+            deallocate(sg%sg, stat=ierr)
+            call check_deallocate('sg%sg', ierr)
+        end if
+        if (allocated(sg%sg_fibonacci)) then
+            deallocate(sg%sg_fibonacci, stat=ierr)
+            call check_deallocate('sg%sg_fibonacci', ierr)
+        end if
+        if (allocated(sg%spherically_averaged_sg)) then
+            deallocate(sg%spherically_averaged_sg, stat=ierr)
+            call check_deallocate('sg%spherically_averaged_sg', ierr)
+        end if
+        if (allocated(sg%spline_coeffs_a)) then
+            deallocate(sg%spline_coeffs_a, stat=ierr)
+            call check_deallocate('sg%spline_coeffs_a', ierr)
+        end if
+        if (allocated(sg%spline_coeffs_b)) then
+            deallocate(sg%spline_coeffs_b, stat=ierr)
+            call check_deallocate('sg%spline_coeffs_b', ierr)
+        end if
+        if (allocated(sg%spline_coeffs_c)) then
+            deallocate(sg%spline_coeffs_c, stat=ierr)
+            call check_deallocate('sg%spline_coeffs_c', ierr)
+        end if
+        if (allocated(sg%spline_coeffs_d)) then
+            deallocate(sg%spline_coeffs_d, stat=ierr)
+            call check_deallocate('sg%spline_coeffs_d', ierr)
+        end if
+        if (allocated(sg%q_spline_vals)) then
+            deallocate(sg%q_spline_vals, stat=ierr) 
+            call check_deallocate('sg%q_spline_vals', ierr)
+        end if
+        if (allocated(sg%sg_spline_vals)) then
+            deallocate(sg%sg_spline_vals, stat=ierr) 
+            call check_deallocate('sg%sg_spline_vals', ierr)
+        end if
+
+    end subroutine finalise_sg_correction
+
 
 end module sg_correction
