@@ -20,7 +20,7 @@ import statsmodels.tsa.stattools as tsastats
 
 
 def find_starting_iteration_mser_min(data, md, start_max_frac=0.9, n_blocks=100, verbose=None, end=None):
-    '''Find the best iteration to start analysing CCMC/FCIQMC data based on MSER minimization scheme.
+    r'''Find the best iteration to start analysing CCMC/FCIQMC data based on MSER minimization scheme.
 
 .. warning::
     
@@ -177,7 +177,7 @@ info : :func:`collections.namedtuple`
         index=['Proj. Energy'])
     kN0 = check_key(calc, 'N_0')
     kHpsips = check_key(calc, '# H psips')
-    kH0jNj = check_key(calc,'\sum H_0j N_j')
+    kH0jNj = check_key(calc,r'\sum H_0j N_j')
     kShift = check_key(calc, 'Shift')
     no_opt_block = [kN0, kShift, kHpsips, kH0jNj]
     tuple_fields = ('metadata data data_len reblock covariance opt_block '
@@ -355,13 +355,13 @@ metadata : list of dict
     for (md, df) in filter_calcs(hande_out, ('FCIQMC', 'CCMC', 'Simple FCIQMC','UCCMC', 'Trotterized UCCMC')):
         kN0 = check_key(df, 'N_0')
         kHpsips = check_key(df, '# H psips')
-        kH0jNj = check_key(df, '\sum H_0j N_j')
+        kH0jNj = check_key(df, r'\sum H_0j N_j')
         kShift = check_key(df, 'Shift')
         if reweight_history > 0:
             weights = pyhande.weight.reweight(df, md['qmc']['ncycles'],
                 md['qmc']['tau'], reweight_history, mean_shift,
                 weight_key=kShift)
-            df['W * \sum H_0j N_j'] = df[kH0jNj] * weights
+            df[r'W * \sum H_0j N_j'] = df[kH0jNj] * weights
             df['W * N_0'] = df[kN0] * weights
         # The next uncommented line is dangerous and possibly very
         # confusing!  [todo] Fix.
@@ -407,7 +407,7 @@ info : :func:`collections.namedtuple`
     # Set up the keys for data, taking into account the situation if there is more than one replica.
     kN0 = check_key(calc, 'N_0')
     kHpsips = check_key(calc, '# H psips')
-    kH0jNj = check_key(calc,'\sum H_0j N_j')
+    kH0jNj = check_key(calc,r'\sum H_0j N_j')
     kShift = check_key(calc, 'Shift')
 
 
@@ -427,7 +427,7 @@ info : :func:`collections.namedtuple`
         to_block.append(kHpsips)
     to_block.extend([kH0jNj, kN0, kShift])
     if reweight_calc:
-        to_block.extend(['W * \sum H_0j N_j', 'W * N_0'])
+        to_block.extend([r'W * \sum H_0j N_j', 'W * N_0'])
     if extract_rep_loop_time:
         to_block.append('time')
     if 'uccmc' in md.keys() :#and not(md['uccmc']['trot']):
@@ -446,7 +446,7 @@ info : :func:`collections.namedtuple`
 
     if reweight_calc:
         proje = pyhande.analysis.projected_energy(reblock, covariance,
-                    data_len, sum_key='W * \sum H_0j N_j', ref_key='W * N_0',
+                    data_len, sum_key=r'W * \sum H_0j N_j', ref_key='W * N_0',
                     col_name='Weighted Proj. E.')
         reblock = pd.concat([reblock, proje], axis=1)
         to_block.append('Weighted Proj. E.')
@@ -576,7 +576,7 @@ calcs : list of :class:`pandas.DataFrame`
 def find_starting_iteration(data, md, frac_screen_interval=300,
     number_of_reblockings=30, number_of_reblocks_to_cut_off=1, pos_min_frac=0.8,
     verbose=0, show_graph=False, end=None):
-    '''Find the best iteration to start analysing CCMC/FCIQMC data.
+    r'''Find the best iteration to start analysing CCMC/FCIQMC data.
 
 .. warning::
 
@@ -676,12 +676,12 @@ starting_iteration: integer
 
     kN0 = check_key(data, 'N_0')
     kHpsips = check_key(data, '# H psips')
-    kH0jNj = check_key(data,'\sum H_0j N_j')
+    kH0jNj = check_key(data,r'\sum H_0j N_j')
     kShift = check_key(data, 'Shift')
 
     kN0 = check_key(data, 'N_0')
     kHpsips = check_key(data, '# H psips')
-    kH0jNj = check_key(data,'\sum H_0j N_j')
+    kH0jNj = check_key(data,r'\sum H_0j N_j')
     kShift = check_key(data, 'Shift')
 
     if end is None:
