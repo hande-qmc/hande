@@ -12,7 +12,7 @@ if not pkgutil.find_loader('pyblock'):
 import pyblock
 
 def projected_energy(reblock_data, covariance, data_length,
-                     sum_key='\sum H_0j N_j', ref_key='N_0',
+                     sum_key=r'\sum H_0j N_j', ref_key='N_0',
                      col_name='Proj. Energy'):
     '''Calculate the projected energy estimator and associated error.
 
@@ -61,7 +61,7 @@ See also
             [(col_name, col) for col in proje.columns])
     return proje
 
-def qmc_summary(data, keys=('\sum H_0j N_j', 'N_0', 'Shift', 'Proj. Energy'),
+def qmc_summary(data, keys=(r'\sum H_0j N_j', 'N_0', 'Shift', 'Proj. Energy'),
                             summary_tuple=None):
     '''Summarise a reblocked data set by the optimal block.
 
@@ -253,7 +253,7 @@ Shepherd14
 
 
 
-def inefficiency(opt_block, dtau, iterations, sum_key='\sum H_0j N_j',
+def inefficiency(opt_block, dtau, iterations, sum_key=r'\sum H_0j N_j',
                  ref_key='N_0', total_key='# H psips',
                  proje_key = 'Proj. Energy'):
     '''Estimate the inefficiency of a calculation from the blocked data.
