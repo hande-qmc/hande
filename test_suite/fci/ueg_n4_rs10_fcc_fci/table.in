@@ -1,0 +1,15 @@
+fci {
+    sys = ueg {
+        nel = 4,
+        ms = 4,
+        sym = 1,
+        dim = 3,
+        cutoff = 1.001,
+        rs = 10.0,
+        use_mom_vec = true,
+        cubic_lattice = 'face_centered',
+    },
+    fci = {
+        determinant_table_only = true,
+    },
+}

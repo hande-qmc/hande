@@ -138,9 +138,9 @@ Options
     Possible values: 'simple', 'body_centered', and 'face_centered'.
 
     Only used for the three-dimensional jellium. Defines the underlying
-    cubic lattice type to simulate. This is achieved by changing the
-    reciprocal lattice vectors used to generate the wavevectors/sites
-    for the orbital basis.
+    cubic lattice type, defined relative to the real space configuration,
+    to simulate. This is achieved by changing the reciprocal lattice vectors
+    used to generate the wavevectors/sites for the orbital basis.
 
     Note that for the non-simple lattice types the energy cutoff defining
     the basis will progress in slightly different ways. Normally the
