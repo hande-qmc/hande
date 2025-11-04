@@ -96,6 +96,7 @@ contains
         !   ternary_conserve: array of allowed excitations.
 
         use system, only: sys_t
+        use ueg_types, only: simple
 
         use checking, only: check_allocate
 
@@ -104,6 +105,8 @@ contains
 
         integer :: ierr, a, bit_pos, bit_el, k(3), k1, k2, k3, ktest(sys%lattice%ndim), kija(sys%lattice%ndim)
 
+        real(p) :: kinfac
+
         k = 0
         k(1:sys%lattice%ndim) = 2*sys%ueg%basis%kmax
         ! [todo] rewrite using on bit_string_len, as we don't require the additional info_string_len info.
@@ -111,28 +114,30 @@ contains
         call check_allocate('ternary_conserve', (sys%basis%bit_string_len+1)*(2*k(1)+1)*(2*k(2)+1)*(2*k(3)+1), ierr)
         ternary_conserve = 0_i0
         !$omp parallel do default(none) shared(k,sys,ternary_conserve) &
-        !$omp private(k1,k2,k3,a,kija,ktest,bit_pos,bit_el)
+        !$omp private(k1,k2,k3,a,kija,kinfac,ktest,bit_pos,bit_el)
         do k3 = -k(3), k(3)
             if (sys%lattice%ndim == 3) ktest(3) = k3
             do k2 = -k(2), k(2)
-               if (sys%lattice%ndim >= 2) ktest(2) = k2
-               do k1 = -k(1), k(1)
-                   ktest(1) = k1
-                   ! If this is still slow, we can improve matters by
-                   ! restricting the range of a such that there must be at least one b
-                   ! (i.e. all components of k_i+k_j-k_a must lie within +/- ! sys%ueg%basis%kmax,
-                   ! thus providing lower and upper bounds for a).
-                   do a = 1, sys%basis%nbasis-1, 2 ! only bother with alpha orbitals
-                       kija = ktest - sys%basis%basis_fns(a)%l
-                       if (sys%ueg%int_fact*real(dot_product(kija,kija),p)/2 - sys%ueg%ecutoff < 1.e-8) then
-                           ! There exists an allowed b in the basis!
-                           ternary_conserve(0,k1,k2,k3) = ternary_conserve(0,k1,k2,k3) + 1
-                           bit_pos = sys%basis%bit_lookup(1, a)
-                           bit_el = sys%basis%bit_lookup(2, a)
-                           ternary_conserve(bit_el,k1,k2,k3) = ibset(ternary_conserve(bit_el,k1,k2,k3), bit_pos)
-                       end if
-                   end do
-               end do
+                if (sys%lattice%ndim >= 2) ktest(2) = k2
+                do k1 = -k(1), k(1)
+                    ktest(1) = k1
+                    ! If this is still slow, we can improve matters by
+                    ! restricting the range of a such that there must be at least one b
+                    ! (i.e. all components of k_i+k_j-k_a must lie within +/- ! sys%ueg%basis%kmax,
+                    ! thus providing lower and upper bounds for a).
+                    do a = 1, sys%basis%nbasis-1, 2 ! only bother with alpha orbitals
+                        kija = ktest - sys%basis%basis_fns(a)%l
+                        kinfac = real(dot_product(kija,kija),p)/2
+                        if (sys%ueg%cub_latt /= simple) kinfac = kinfac/2.0_p
+                        if (kinfac - sys%ueg%ecutoff < 1.e-8) then
+                            ! There exists an allowed b in the basis!
+                            ternary_conserve(0,k1,k2,k3) = ternary_conserve(0,k1,k2,k3) + 1
+                            bit_pos = sys%basis%bit_lookup(1, a)
+                            bit_el = sys%basis%bit_lookup(2, a)
+                            ternary_conserve(bit_el,k1,k2,k3) = ibset(ternary_conserve(bit_el,k1,k2,k3), bit_pos)
+                        end if
+                    end do
+                end do
             end do
         end do
         !$omp end parallel do
