@@ -1,0 +1,29 @@
+dmqmc {
+    sys = ueg {
+        nel = 4,
+        ms = 4,
+        sym = 1,
+        dim = 3,
+        cutoff = 0.501,
+        rs = 10.0,
+        cubic_lattice = 'body_centered',
+    },
+    qmc = {
+        tau = 0.1,
+        rng_seed = 7,
+        init_pop = 5113,
+        mc_cycles = 1,
+        nreports = 100,
+        target_population = 0,
+        state_size = -100,
+        spawned_state_size = -100,
+        real_amplitudes = true,
+    },
+    dmqmc = {
+        beta_loops = 2,
+        all_sym_sectors = true,
+    },
+    operators = {
+        energy = true,
+    },
+}
