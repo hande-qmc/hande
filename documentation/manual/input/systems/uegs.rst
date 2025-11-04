@@ -110,6 +110,15 @@ Options
     To determine valid values for ``sym``, use the ``determinant_table_only``
     keyword in the :ref:`fci` table. See the folder 'ueg_n6_rs5_fci' folder in
     the fci test_suite for an example.
+``trunc_table``
+    type: boolean.
+
+    Optional. Default: false.
+
+    Only used when ``use_mom_vec`` is true. This flag is used to truncate
+    the determinant table reported during full configuration interaction
+    so that only the reference symmetry is reported. Useful when a system
+    has a large determinant table which can bloat the file sizes.
 
 Ringium
 -------

@@ -430,16 +430,31 @@ contains
                 ! Reverse both arrays so we have largest to smallest.
                 sym_space_size(:ki) = sym_space_size(ki:1:-1)
                 mom_sym_vect(:ki,:) = mom_sym_vect(ki:1:-1,:)
-                write(iunit, '(/, 1x, a14, 4x, a16, 2x, a12)') &
-                    'Symmetry index', 'Momentum vector', '# dets'
-                do imom = 1, ki
-                    write(iunit, '(1x, i14, 4x, "(", i4, ",", i4, ",", i4, ")", 2x, i12)') &
-                        imom, &
-                        mom_sym_vect(imom,1), &
-                        mom_sym_vect(imom,2), &
-                        mom_sym_vect(imom,3), &
-                        sym_space_size(imom)
-                end do
+                if (sys%ueg%trunc_table) then
+                    if ((ref_sym >= 1) .and. (ref_sym <= ki)) then
+                        write(iunit, '(1x, a47)') &
+                            'Truncating the table to the reference symmetry.'
+                        write(iunit, '(/, 1x, a14, 4x, a16, 2x, a12)') &
+                            'Symmetry index', 'Momentum vector', '# dets'
+                        write(iunit, '(1x, i14, 4x, "(", i4, ",", i4, ",", i4, ")", 2x, i12)') &
+                            ref_sym, &
+                            mom_sym_vect(ref_sym,1), &
+                            mom_sym_vect(ref_sym,2), &
+                            mom_sym_vect(ref_sym,3), &
+                            sym_space_size(ref_sym)
+                    end if
+                else
+                    write(iunit, '(/, 1x, a14, 4x, a16, 2x, a12)') &
+                        'Symmetry index', 'Momentum vector', '# dets'
+                    do imom = 1, ki
+                        write(iunit, '(1x, i14, 4x, "(", i4, ",", i4, ",", i4, ")", 2x, i12)') &
+                            imom, &
+                            mom_sym_vect(imom,1), &
+                            mom_sym_vect(imom,2), &
+                            mom_sym_vect(imom,3), &
+                            sym_space_size(imom)
+                    end do
+                end if
                 write (iunit,'()')
                 write (iunit,'(1x, a, i12)') '# Total symmetries:', ki
             else

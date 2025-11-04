@@ -261,8 +261,13 @@ type sys_ueg_t
     ! Symmetry information: we only store the gamma point
     integer :: gamma_sym
 
-    ! For FCI only, to indicate we are using momentum vectors for symmetry labels.
+    ! == Used in FCI only ==
+    ! True if we are using momentum vectors for symmetry labels.
     logical :: use_mom_vec = .false.
+    ! True if we are to skip reporting the full list of each symmetries
+    ! determinant count, instead only report the reference symmetry.
+    ! Note this will only be checked when use_mom_vec = true.
+    logical :: trunc_table = .false.
 
 end type sys_ueg_t
 
@@ -793,8 +798,12 @@ contains
             call json_write_key(js, 'k_fermi', sys%ueg%kf)
             call json_write_key(js, 'E_fermi', sys%ueg%ef)
             call json_write_key(js, 'ktwist', sys%k_lattice%ktwist)
-            call json_write_key(js, 'L', sys%lattice%box_length)
-            call json_write_key(js, 'use_mom_vec', sys%ueg%use_mom_vec, terminal=.true.)
+            call json_write_key(js, 'L', sys%lattice%box_length, terminal=.not. sys%ueg%use_mom_vec)
+            ! Only report these flags when use_mom_vec is true.
+            if (sys%ueg%use_mom_vec) then
+                call json_write_key(js, 'use_mom_vec', sys%ueg%use_mom_vec)
+                call json_write_key(js, 'trunc_table', sys%ueg%trunc_table, terminal=.true.)
+            end if
             call json_object_end(js, terminal=.true.)
         end if
 

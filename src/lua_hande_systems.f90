@@ -783,8 +783,8 @@ contains
         logical :: new_basis, new, verbose
         integer :: err
 
-        character(11), parameter :: keys(11) = [character(11) :: 'sys', 'cutoff', 'dim', 'rs', 'nel', 'electrons', &
-                                               'ms', 'sym', 'twist', 'verbose', 'use_mom_vec']
+        character(11), parameter :: keys(12) = [character(11) :: 'sys', 'cutoff', 'dim', 'rs', 'nel', 'electrons', &
+                                               'ms', 'sym', 'twist', 'verbose', 'use_mom_vec', 'trunc_table']
 
         call cpu_time(t1)
 
@@ -810,6 +810,7 @@ contains
         call aot_get_val(sys%ueg%r_s, err, lua_state, opts, 'rs')
         call aot_get_val(sys%lattice%ndim, err, lua_state, opts, 'dim')
         call aot_get_val(sys%ueg%use_mom_vec, err, lua_state, opts, 'use_mom_vec')
+        call aot_get_val(sys%ueg%trunc_table, err, lua_state, opts, 'trunc_table')
 
         call get_ktwist(lua_state, sys, opts)
 

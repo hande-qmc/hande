@@ -50,6 +50,7 @@ for isym = 1, gettestnsym(), 1 do
             cutoff = 1.01,
             rs = 5.0,
             use_mom_vec = true,
+            trunc_table = true,
         },
     }
 end
