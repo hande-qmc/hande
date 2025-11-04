@@ -400,11 +400,13 @@ contains
             ! Double counted the ab, and ij exchange terms so remove these explicitly.
             if (mod(a,2) == mod(b,2)) then
             diff_ijab = diff_ijab + &
-                        & sys%ueg%exchange_int(sys%lattice%box_length(1), sys%basis, connection%to_orb(1), connection%to_orb(2))
+                        & sys%ueg%exchange_int(sys%lattice%box_length(1), sys%ueg%int_fact, &
+                                               sys%basis, connection%to_orb(1), connection%to_orb(2))
             end if
             if (mod(i,2) == mod(j,2)) then
                 diff_ijab = diff_ijab - &
-                        & sys%ueg%exchange_int(sys%lattice%box_length(1), sys%basis, connection%from_orb(1), connection%from_orb(2))
+                        & sys%ueg%exchange_int(sys%lattice%box_length(1), sys%ueg%int_fact, &
+                                               sys%basis, connection%from_orb(1), connection%from_orb(2))
             end if
             hmatel = exp(-trial_func(sys%max_number_excitations+1)*diff_ijab) * hmatel
         end if

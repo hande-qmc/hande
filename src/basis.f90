@@ -294,6 +294,8 @@ contains
         type(basis_fn_t), pointer :: basis_fn_p
         integer, allocatable :: basis_fns_ranking(:)
 
+        real(p) :: kin
+
         iunit = 6
 
         t_store = .true.
@@ -374,6 +376,7 @@ contains
             do concurrent (i=1:sys%lattice%ndim)
                 nmax(i) = ceiling(sqrt(2*sys%ueg%ecutoff))
             end do
+            sys%ueg%basis%kmax = 0
             nspatial = (2*nmax(1)+1)**sys%lattice%ndim
         case(ringium)
             nspatial = sys%ringium%maxlz + 1
@@ -390,7 +393,32 @@ contains
                     do i = -nmax(1), nmax(1)
                         ! kp is the Wavevector in terms of the reciprocal lattice vectors of
                         ! the crystal cell.
-                        kp = (/ i, j, k /)
+                        ! When considering the 3D jellium the wavevectors are
+                        !    kp = \sum_i m_i b_i
+                        ! where m_i are the values in the vector m = {k, j, i}
+                        ! and b_i are the colum (row) vectors for the integerized
+                        ! reciprocal-lattice matrix. For each symmetry these are:
+                        !    Simple
+                        !        [  1  0  0 ]
+                        !        [  0  1  0 ]
+                        !        [  0  0  1 ]
+                        !    Body-centered
+                        !        [  0  1  1 ]
+                        !        [  1  0  1 ]
+                        !        [  1  1  0 ]
+                        !    Face-centered
+                        !        [ -1  1  1 ]
+                        !        [  1 -1  1 ]
+                        !        [  1  1 -1 ]
+                        ! where the normalization is not included for
+                        ! the body-centered and face-centered vectors.
+                        if (sys%ueg%cub_latt == body_centered) then
+                            kp = (/ j+k, i+k, i+j /)
+                        else if (sys%ueg%cub_latt == face_centered) then
+                            kp = (/ -i+j+k, i-j+k, i+j-k /)
+                        else
+                            kp = (/ i, j, k /)
+                        end if
                         if (in_FBZ(sys%system, sys%lattice, kp(1:sys%lattice%ndim))) then
                             if (ibasis == nspatial) then
                                 call stop_all(this,'Too many basis functions found.')
@@ -399,18 +427,32 @@ contains
                                 ! Add 2 spin orbitals to the set of the basis functions.
                                 ibasis = ibasis + 1
                                 call init_basis_fn(sys, tmp_basis_fns(ibasis), l=kp(1:sys%lattice%ndim), ms=1)
-                                if (sys%system==ueg .and. real(dot_product(kp,kp),p)/2 > sys%ueg%ecutoff) then
-                                    ! Have found a wavevector with too large KE.
-                                    ! Discard.
-                                    ! Note that we don't use the calculated kinetic
-                                    ! energy as it's in a.u. (sys%ueg%ecutoff is in
-                                    ! scaled units) and includes any twist.
-                                    ! Avoid the chance of having allocated
-                                    ! additional %l elements (eg if rejecting the
-                                    ! final basis function tested).
-                                    deallocate(tmp_basis_fns(ibasis)%l, stat=ierr)
-                                    call check_deallocate('tmp_basis_fns(basis_fns_ranking(i',ierr)
-                                    ibasis = ibasis - 1
+                                if (sys%system==ueg) then
+                                    kin = real(dot_product(kp,kp),p)/2.0_p
+                                    if (sys%ueg%cub_latt /= simple) kin = kin/2.0_p
+                                    if (kin > sys%ueg%ecutoff) then
+                                        ! Have found a wavevector with too large KE.
+                                        ! Discard.
+                                        ! Note that we don't use the calculated kinetic
+                                        ! energy as it's in a.u. (sys%ueg%ecutoff is in
+                                        ! scaled units) and includes any twist.
+                                        ! Avoid the chance of having allocated
+                                        ! additional %l elements (eg if rejecting the
+                                        ! final basis function tested).
+                                        deallocate(tmp_basis_fns(ibasis)%l, stat=ierr)
+                                        call check_deallocate('tmp_basis_fns(ibasis)%l',ierr)
+                                        ibasis = ibasis - 1
+                                    else if (maxval(abs(kp)) > sys%ueg%basis%kmax) then
+                                        ! Normally we can determine kmax trivially as
+                                        ! kmax ~ ceiling(sqrt(2*cutoff)), however this
+                                        ! is only straight forward for simple cubic. In
+                                        ! the case of body-centered (BCC) and face-centered (FCC)
+                                        ! cubic we must use more complex algebra due to the
+                                        ! addition of the component terms i, j, and k when
+                                        ! constructing the kp. To avoid the complex algebra
+                                        ! for these cases, we simply set it here.
+                                        sys%ueg%basis%kmax = maxval(abs(kp))
+                                    end if
                                 end if
                             end if
                         end if
@@ -479,7 +521,7 @@ contains
                 call init_basis_fn(sys, sys%basis%basis_fns(2*i), l=basis_fn_p%l, ms=-basis_fn_p%ms)
             end select
             deallocate(tmp_basis_fns(basis_fns_ranking(i))%l, stat=ierr)
-            call check_deallocate('tmp_basis_fns(basis_fns_ranking(i',ierr)
+            call check_deallocate('tmp_basis_fns(basis_fns_ranking(i))%l',ierr)
         end do
         deallocate(tmp_basis_fns, stat=ierr)
         call check_deallocate('tmp_basis_fns',ierr)

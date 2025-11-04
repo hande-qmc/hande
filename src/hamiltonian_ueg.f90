@@ -148,7 +148,8 @@ contains
                 ! background-background interactions.
                 if (mod(occ_list(i),2) == mod(occ_list(j),2)) then
                     ! Have an exchange term
-                    hmatel = hmatel - sys%ueg%exchange_int(sys%lattice%box_length(1), sys%basis, occ_list(i), occ_list(j))
+                    hmatel = hmatel - sys%ueg%exchange_int(sys%lattice%box_length(1), &
+                                                           sys%ueg%int_fact, sys%basis, occ_list(i), occ_list(j))
                 end if
             end do
         end do
@@ -214,9 +215,11 @@ contains
         hmatel = 0.0_p
 
         if (sys%basis%basis_fns(i)%Ms == sys%basis%basis_fns(a)%Ms) &
-            hmatel = sys%ueg%coulomb_int(sys%lattice%box_length(1), sys%basis, i, a)
+            hmatel = sys%ueg%coulomb_int(sys%lattice%box_length(1), &
+                                         sys%ueg%int_fact, sys%basis, i, a)
         if (sys%basis%basis_fns(i)%Ms == sys%basis%basis_fns(b)%Ms) &
-            hmatel = hmatel - sys%ueg%coulomb_int(sys%lattice%box_length(1), sys%basis, i, b)
+            hmatel = hmatel - sys%ueg%coulomb_int(sys%lattice%box_length(1), &
+                                                  sys%ueg%int_fact, sys%basis, i, b)
 
         if (perm) hmatel = -hmatel
 
@@ -247,7 +250,8 @@ contains
         weight_tot = 0.0_p 
         do k=1, a_list_len
             if (a_list(k) /= i) then
-                weight = sys%ueg%coulomb_int(sys%lattice%box_length(1), sys%basis, i, a_list(k))
+                weight = sys%ueg%coulomb_int(sys%lattice%box_length(1), &
+                                             sys%ueg%int_fact, sys%basis, i, a_list(k))
                 weight = abs(weight)
             else
                 weight = 0.0_p
@@ -319,7 +323,8 @@ contains
         ex = 0.0_p
         do iorb = 1, sys%nel
             if (mod(occ_list(iorb),2) == mod(i,2) .and. occ_list(iorb) /= i) then
-                ex = ex - sys%ueg%exchange_int(sys%lattice%box_length(1), sys%basis, occ_list(iorb), i)
+                ex = ex - sys%ueg%exchange_int(sys%lattice%box_length(1), &
+                                               sys%ueg%int_fact, sys%basis, occ_list(iorb), i)
             end if
         end do
 
