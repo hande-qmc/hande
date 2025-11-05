@@ -17,8 +17,8 @@ module sg_correction
 ! Fibonacci spheres using inverse distance weighting to obtain an isotropic distribution of S(G) in momentum space. The inversion
 ! distance weighting procedure is taken from: doi.org/10.1145/800186.810616. The spherical average 
 ! of each sphere is taken to yield S_{avg}(|G|). A cubic spline is constructed with S_{avg}(|G|) as the knots, code for this spline
-! adapted from Numerical Recipes 3rd Edition (9780521880688). The resulting spline can then be integrated in the region [0, Gmin] 
-! using composite Simpson's quadrature to obtain a correction for the finite size error.
+! and the associated 'Thomas algorithm' are adapted from Numerical Recipes 3rd Edition (9780521880688). The resulting spline 
+! can then be integrated in the region [0, Gmin] using composite Simpson's quadrature to obtain a correction for the finite size error.
 ! This method is implemented for both CCMC and FCIQMC, the only difference being that in CCMC calculate_sg_contribution is called
 ! within the do_ccmc_accumulation subroutine, i.e., the contribution is totalled for every excitor, whereas in FCIQMC it is simply
 ! called once per determinant.
@@ -320,8 +320,15 @@ end type sg_correction_t
             omega = lattice%box_length(1) * lattice%box_length(2) * lattice%box_length(3) 
             phase = 1
             if (connection%perm) phase = -phase
-    
-            ! Term 1
+            
+            ! The transition structure factor is S(\mathbf{G}) = C_{ij}^{ab} [C_i^a(\mathbf{G})C_b^{j*}(\mathbf{G}) 
+            ! - C_i^b(\mathbf{G})C_a^{j*}(\mathbf{G})] for a given set of orbitals i, j, k, l.
+            ! The orbitals in the UEG are plane waves, and as such the Fourier coefficients of the orbital overlap 
+            ! density C_i^a(\textbf{G}) become delta conditions on both the spin and k-vectors of the orbitals.
+            ! This gives rise to a determinants contribution to S(G) being calculated as seen below.
+           
+            !(\delta_{\sigma_m, \sigma_p}\delta_{\mathbf{k}_m -\mathbf{k}_p, \mathbf{G}})
+            ! * (\delta_{\sigma_q, \sigma_n}\delta_{\mathbf{k}_n -\mathbf{k}_q, -\mathbf{G}})
             G = basis_fns(connection%to_orb(1))%l - basis_fns(connection%from_orb(1))%l
             if (basis_fns(connection%to_orb(1))%ms == basis_fns(connection%from_orb(1))%ms .and. &
                 basis_fns(connection%to_orb(2))%ms == basis_fns(connection%from_orb(2))%ms .and. &
@@ -331,8 +338,9 @@ end type sg_correction_t
                     sg_correction%sg(idx) = sg_correction%sg(idx) + (phase * real_population) / omega
                 end if 
             end if
-
-            ! Term 2 
+            
+            !- (\delta_{\sigma_m, \sigma_q}\delta_{\mathbf{k}_m -\mathbf{k}_q, \mathbf{G}})
+            ! * (\delta_{\sigma_p, \sigma_n}\delta_{\mathbf{k}_n -\mathbf{k}_p, -\mathbf{G}})
             G = basis_fns(connection%to_orb(1))%l  - basis_fns(connection%from_orb(2))%l 
             if (basis_fns(connection%to_orb(1))%ms == basis_fns(connection%from_orb(2))%ms .and. &
                 basis_fns(connection%to_orb(2))%ms == basis_fns(connection%from_orb(1))%ms .and. &
@@ -357,8 +365,10 @@ end type sg_correction_t
             !   nreport: Total number of report loops.
             ! In/Out:
             !   sg_correction: sg_correction_t derived type which stores relevant data for the correction scheme.
-            !   energy_sg: Estimator of the uncorrected energy.
-            !   corrected_energy_sg: Estimator of the corrected energy.
+            !   energy_sg: Estimator of the uncorrected energy. Elements of array are equivalent to different walker 
+            !   spaces such as with complex systems or when using replica tricks. Since UEG populations are always real 
+            !   however, nspaces should always be 1 when using sg_correction here. 
+            !   corrected_energy_sg: Estimator of the corrected energy. Array elements same as above.
 
             type(sg_correction_t), intent(inout) :: sg_correction 
             type(sys_lattice_t), intent(in) :: lattice
@@ -558,8 +568,8 @@ end type sg_correction_t
 
             ! Constructs a continous cubic spline through all avaliable data points, those being the unique q magnitudes 
             ! and the corresponding spherically averaged values of S(G). Spline currently uses natural boundary conditions 
-            ! but this is potentially open to experimentation. The Thomas algorithm is used to find the coefficients of the spline 
-            ! in each region between knots. Code for this spline adapted from Numerical Recipes 3rd Edition (9780521880688).
+            ! but this is may need to be modified for larger systems. The Thomas algorithm  is used to find the coefficients 
+            ! of the spline in each region between knots. Code here is adapted from Numerical Recipes 3rd Edition (9780521880688).
 
             ! In:
             !   spherically_averaged_sg: Spherical average of the interpolated S(G) valaues.

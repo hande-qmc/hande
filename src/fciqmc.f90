@@ -143,7 +143,6 @@ contains
         integer :: iunit, restart_version_restart
         integer :: date_values(8)
         character(:), allocatable :: err_msg
-        integer :: i, idx
         
         if (parent) then
             write (io_unit,'(1X,"FCIQMC")')
@@ -310,6 +309,8 @@ contains
                 spawner_ptr => spawn_rdm 
             end if
 
+            if (qmc_in%sg_correction) qs%sg_correction%sg = 0.0_p
+
             do icycle = 1, qmc_in%ncycles
                 iter = qs%mc_cycles_done + (ireport-1)*qmc_in%ncycles + icycle
 
@@ -449,10 +450,6 @@ contains
                                  load_bal_in, bloom_stats=bloom_stats, doing_lb=fciqmc_in%doing_load_balancing, &
                                  nb_comm=fciqmc_in%non_blocking_comm, comp=sys%read_in%comp, &
                                  error=error)
-
-            if (qmc_in%sg_correction) then 
-                qs%sg_correction%sg = 0.0_p
-            end if 
 
             if (error) exit
 

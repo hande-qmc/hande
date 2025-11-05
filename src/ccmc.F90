@@ -406,8 +406,6 @@ contains
         integer :: date_values(8)
         character(:), allocatable :: err_msg
 
-        integer :: idx
-
         if (parent) then
             write (io_unit,'(1X,"CCMC")')
             write (io_unit,'(1X,"----",/)')
@@ -1162,6 +1160,7 @@ contains
         !   determ: the semi_stoch_t object holding information relevant to semi-stochastic CCMC.
         !   semi_stoch_sep_stats: True if doing semi-stochastic and report 
         !       deterministic and stochastic contributions to E_proj separately.
+        !   qmc_in(optional): input options relating to qmc methods
 
         ! In/Out:
         !   qs: information on current state of qmc calculation.
