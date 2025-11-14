@@ -756,6 +756,9 @@ contains
         !        ms = Ms,
         !        sym = sym_index,
         !        twist = {...},    -- D-dimensional vector
+        !        use_mom_vec = true/false,
+        !        trunc_table = true/false, -- requires use_mom_vec = true.
+        !        cubic_lattice = '...', -- requires dim = 3.
         !    }
         !    Returns: sys_t object.
 
@@ -786,7 +789,7 @@ contains
         integer :: err
         character(len=13) :: str
 
-        character(13), parameter :: keys(13) = [character(11) :: 'sys', 'cutoff', 'dim', 'rs', 'nel', 'electrons', &
+        character(13), parameter :: keys(13) = [character(13) :: 'sys', 'cutoff', 'dim', 'rs', 'nel', 'electrons', &
                                                'ms', 'sym', 'twist', 'verbose', 'use_mom_vec', 'trunc_table', &
                                                'cubic_lattice']
 

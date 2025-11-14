@@ -294,7 +294,7 @@ contains
         type(basis_fn_t), pointer :: basis_fn_p
         integer, allocatable :: basis_fns_ranking(:)
 
-        real(p) :: kin
+        real(p) :: kinfac
 
         iunit = 6
 
@@ -428,9 +428,9 @@ contains
                                 ibasis = ibasis + 1
                                 call init_basis_fn(sys, tmp_basis_fns(ibasis), l=kp(1:sys%lattice%ndim), ms=1)
                                 if (sys%system==ueg) then
-                                    kin = real(dot_product(kp,kp),p)/2.0_p
-                                    if (sys%ueg%cub_latt /= simple) kin = kin/2.0_p
-                                    if (kin > sys%ueg%ecutoff) then
+                                    kinfac = real(dot_product(kp,kp),p)/2.0_p
+                                    if (sys%ueg%cub_latt /= simple) kinfac = kinfac/2.0_p
+                                    if (kinfac > sys%ueg%ecutoff) then
                                         ! Have found a wavevector with too large KE.
                                         ! Discard.
                                         ! Note that we don't use the calculated kinetic
