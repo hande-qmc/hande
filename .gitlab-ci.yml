@@ -114,7 +114,7 @@ test-gcc-mpi-64:
     resource_group: main_pipeline
 
 test-gcc-dbg:
-    stage: BUILD AND TEST GCC dbg
+    stage: BUILD AND TEST GCC
     tags: 
         - hande-testing
     before_script:
