@@ -1,4 +1,4 @@
-Gstages:
+stages:
     - BUILD AND TEST GCC
     - BUILD AND TEST INTEL
     - TEST PYHANDE
