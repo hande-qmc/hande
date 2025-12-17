@@ -1,18 +1,6 @@
 stages:
     - BUILD AND TEST GCC
-    - BUILD AND TEST GCC MPI
-    - BUILD AND TEST GCC MPI POP64
-    - BUILD AND TEST GCC dbg
-    - BUILD AND TEST GCC MPI dbg
-    - BUILD AND TEST GCC MPI POP64 dbg
     - BUILD AND TEST INTEL
-    - BUILD AND TEST INTEL MPI 
-    - BUILD AND TEST INTEL MPI POP64
-    - BUILD AND TEST INTEL dbg
-    - BUILD AND TEST INTEL MPI dbg
-    - BUILD AND TEST INTEL MPI POP64 dbg
-    - BUILD AND TEST INTEL QUICK
-    - BUILD AND TEST GCC QUICK
     - TEST PYHANDE
 
 
@@ -74,7 +62,7 @@ test-gcc:
     resource_group: main_pipeline
 
 test-gcc-mpi:
-    stage: BUILD AND TEST GCC MPI
+    stage: BUILD AND TEST GCC
     tags: 
         - hande-testing
     before_script:
@@ -99,7 +87,7 @@ test-gcc-mpi:
     resource_group: main_pipeline
 
 test-gcc-mpi-64:
-    stage: BUILD AND TEST GCC MPI POP64
+    stage: BUILD AND TEST GCC
     tags: 
         - hande-testing
     before_script:
@@ -124,7 +112,7 @@ test-gcc-mpi-64:
     resource_group: main_pipeline
 
 test-gcc-dbg:
-    stage: BUILD AND TEST GCC dbg
+    stage: BUILD AND TEST GCC
     tags: 
         - hande-testing
     before_script:
@@ -147,7 +135,7 @@ test-gcc-dbg:
     resource_group: main_pipeline
 
 test-gcc-mpi-dbg:
-    stage: BUILD AND TEST GCC MPI dbg
+    stage: BUILD AND TEST GCC
     tags: 
         - hande-testing
     before_script:
@@ -172,7 +160,7 @@ test-gcc-mpi-dbg:
     resource_group: main_pipeline
 
 test-gcc-mpi-64-dbg:
-    stage: BUILD AND TEST GCC MPI POP64 dbg
+    stage: BUILD AND TEST GCC
     tags: 
         - hande-testing
     before_script:
@@ -221,7 +209,7 @@ test-intel:
     resource_group: main_pipeline
 
 test-intel-dbg:
-    stage: BUILD AND TEST INTEL dbg
+    stage: BUILD AND TEST INTEL
     tags: 
         - hande-testing
     before_script:
@@ -245,7 +233,7 @@ test-intel-dbg:
     resource_group: main_pipeline
 
 test-intel-mpi-pop64:
-    stage: BUILD AND TEST INTEL MPI POP64
+    stage: BUILD AND TEST INTEL
     tags: 
         - hande-testing
     before_script:
@@ -271,7 +259,7 @@ test-intel-mpi-pop64:
     resource_group: main_pipeline
 
 test-intel-mpi-pop64-dbg:
-    stage: BUILD AND TEST INTEL MPI POP64 dbg
+    stage: BUILD AND TEST INTEL
     tags: 
         - hande-testing
     before_script:
@@ -297,7 +285,7 @@ test-intel-mpi-pop64-dbg:
     resource_group: main_pipeline
         
 test-intel-mpi:
-    stage: BUILD AND TEST INTEL MPI
+    stage: BUILD AND TEST INTEL
     tags: 
         - hande-testing
     before_script:
@@ -323,7 +311,7 @@ test-intel-mpi:
     resource_group: main_pipeline
 
 test-intel-mpi-dbg:
-    stage: BUILD AND TEST INTEL MPI dbg
+    stage: BUILD AND TEST INTEL
     tags: 
         - hande-testing
     before_script:
@@ -349,7 +337,7 @@ test-intel-mpi-dbg:
     resource_group: main_pipeline
 
 test-intel-quick:
-    stage: BUILD AND TEST INTEL QUICK
+    stage: BUILD AND TEST INTEL
     tags: 
         - hande-testing
     before_script:
@@ -375,7 +363,7 @@ test-intel-quick:
     resource_group: main_pipeline
 
 test-gcc-quick:
-    stage: BUILD AND TEST GCC QUICK
+    stage: BUILD AND TEST GCC
     tags: 
         - hande-testing
     before_script:
