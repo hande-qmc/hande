@@ -1,4 +1,4 @@
-stages:
+Gstages:
     - BUILD AND TEST GCC
     - BUILD AND TEST INTEL
     - TEST PYHANDE
@@ -401,5 +401,3 @@ test-pyhande:
     except:
         - schedules
     resource_group: pyhande
-
-    
