@@ -87,7 +87,7 @@ test-gcc-mpi:
     resource_group: main_pipeline
 
 test-gcc-mpi-64:
-    stage: BUILD AND TEST GCC MPI POP64
+    stage: BUILD AND TEST GCC
     tags: 
         - hande-testing
     before_script:
