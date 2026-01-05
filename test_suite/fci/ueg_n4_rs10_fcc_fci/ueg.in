@@ -1,0 +1,57 @@
+function isfile(file)
+    local handle = io.open(file, 'rb')
+    if handle then
+        handle:close()
+    end
+    return handle ~= nil
+end
+
+function getnsym(file)
+    local line
+    local nsym = -1
+    if not isfile(file) then
+        return nsym
+    end
+    for line in io.lines(file) do
+        if string.find(line, '# Total symmetries:') then
+            nsym = string.match(line, '%d+')
+            break
+        end
+    end
+    return nsym
+end
+
+function gettestnsym()
+    -- No way to really prevent multiple outputs from existing, so search
+    -- them all and return value if they all agree otherwise -1.
+    local file, fsym
+    local nsym = -1
+    local handle = io.popen('find test.out.*.inp=table.in -type f')
+    for file in handle:lines() do
+        fsym = getnsym(file)
+        if nsym == -1 then
+            nsym = fsym
+        end
+        if (fsym == -1) or (fsym ~= nsym) then
+            nsym = -1
+            break
+        end 
+    end
+    return nsym
+end
+
+for isym = 1, gettestnsym(), 1 do
+    fci {
+        sys = ueg {
+            nel = 4,
+            ms = 4,
+            sym = isym,
+            dim = 3,
+            cutoff = 1.001,
+            rs = 10.0,
+            use_mom_vec = true,
+            trunc_table = true,
+            cubic_lattice = 'face_centered',
+        },
+    }
+end

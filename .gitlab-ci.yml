@@ -1,18 +1,6 @@
 stages:
     - BUILD AND TEST GCC
-    - BUILD AND TEST GCC MPI
-    - BUILD AND TEST GCC MPI POP64
-    - BUILD AND TEST GCC dbg
-    - BUILD AND TEST GCC MPI dbg
-    - BUILD AND TEST GCC MPI POP64 dbg
     - BUILD AND TEST INTEL
-    - BUILD AND TEST INTEL MPI 
-    - BUILD AND TEST INTEL MPI POP64
-    - BUILD AND TEST INTEL dbg
-    - BUILD AND TEST INTEL MPI dbg
-    - BUILD AND TEST INTEL MPI POP64 dbg
-    - BUILD AND TEST INTEL QUICK
-    - BUILD AND TEST GCC QUICK
     - TEST PYHANDE
 
 
@@ -25,11 +13,11 @@ build-lua-hdf5:
         - wget -q -O - http://www.lua.org/ftp/lua-5.3.5.tar.gz | tar xvzf -
         - cd lua-5.3.5
         - make linux &>/dev/null
-        - make install INSTALL_TOP=/home/gitlab-runner/builds/Yp9FKVgW/0/ch/thom/hande-testing/local 
+        - make install INSTALL_TOP=/home/gitlab-runner/builds/PXn9dzVwm/0/ch/thom/hande-testing/local 
         - cd ..
         - wget -q -O - https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.10/hdf5-1.10.4/src/hdf5-1.10.4.tar.gz | tar xvzf -
         - cd hdf5-1.10.4
-        - ./configure --prefix=/home/gitlab-runner/builds/Yp9FKVgW/0/ch/thom/hande-testing/local/hdf5-gnu --enable-fortran --enable-fortran2003 --enable-cxx &> /dev/null
+        - ./configure --prefix=/home/gitlab-runner/builds/PXn9dzVwm/0/ch/thom/hande-testing/local/hdf5-gnu --enable-fortran --enable-fortran2003 --enable-cxx &> /dev/null
         - make -j 6 &> /dev/null
         - make install &> /dev/null
         - cd .. && rm -r hdf5-1.10.4
@@ -38,7 +26,7 @@ build-lua-hdf5:
         - export FC=ifort
         - export CC=icc
         - export CXX=icpc
-        - ./configure --prefix=/home/gitlab-runner/builds/Yp9FKVgW/0/ch/thom/hande-testing/local/hdf5-intel --enable-fortran --enable-fortran2003 --enable-cxx  &> /dev/null
+        - ./configure --prefix=/home/gitlab-runner/builds/PXn9dzVwm/0/ch/thom/hande-testing/local/hdf5-intel --enable-fortran --enable-fortran2003 --enable-cxx  &> /dev/null
         - make -j 6 &> /dev/null
         - make install &> /dev/null
         - cd ..
@@ -74,7 +62,7 @@ test-gcc:
     resource_group: main_pipeline
 
 test-gcc-mpi:
-    stage: BUILD AND TEST GCC MPI
+    stage: BUILD AND TEST GCC
     tags: 
         - hande-testing
     before_script:
@@ -100,7 +88,7 @@ test-gcc-mpi:
     resource_group: main_pipeline
 
 test-gcc-mpi-64:
-    stage: BUILD AND TEST GCC MPI POP64
+    stage: BUILD AND TEST GCC
     tags: 
         - hande-testing
     before_script:
@@ -126,7 +114,7 @@ test-gcc-mpi-64:
     resource_group: main_pipeline
 
 test-gcc-dbg:
-    stage: BUILD AND TEST GCC dbg
+    stage: BUILD AND TEST GCC
     tags: 
         - hande-testing
     before_script:
@@ -149,7 +137,7 @@ test-gcc-dbg:
     resource_group: main_pipeline
 
 test-gcc-mpi-dbg:
-    stage: BUILD AND TEST GCC MPI dbg
+    stage: BUILD AND TEST GCC
     tags: 
         - hande-testing
     before_script:
@@ -175,7 +163,7 @@ test-gcc-mpi-dbg:
     resource_group: main_pipeline
 
 test-gcc-mpi-64-dbg:
-    stage: BUILD AND TEST GCC MPI POP64 dbg
+    stage: BUILD AND TEST GCC
     tags: 
         - hande-testing
     before_script:
@@ -225,7 +213,7 @@ test-intel:
     resource_group: main_pipeline
 
 test-intel-dbg:
-    stage: BUILD AND TEST INTEL dbg
+    stage: BUILD AND TEST INTEL
     tags: 
         - hande-testing
     before_script:
@@ -249,7 +237,7 @@ test-intel-dbg:
     resource_group: main_pipeline
 
 test-intel-mpi-pop64:
-    stage: BUILD AND TEST INTEL MPI POP64
+    stage: BUILD AND TEST INTEL
     tags: 
         - hande-testing
     before_script:
@@ -276,7 +264,7 @@ test-intel-mpi-pop64:
     resource_group: main_pipeline
 
 test-intel-mpi-pop64-dbg:
-    stage: BUILD AND TEST INTEL MPI POP64 dbg
+    stage: BUILD AND TEST INTEL
     tags: 
         - hande-testing
     before_script:
@@ -303,7 +291,7 @@ test-intel-mpi-pop64-dbg:
     resource_group: main_pipeline
         
 test-intel-mpi:
-    stage: BUILD AND TEST INTEL MPI
+    stage: BUILD AND TEST INTEL
     tags: 
         - hande-testing
     before_script:
@@ -330,7 +318,7 @@ test-intel-mpi:
     resource_group: main_pipeline
 
 test-intel-mpi-dbg:
-    stage: BUILD AND TEST INTEL MPI dbg
+    stage: BUILD AND TEST INTEL
     tags: 
         - hande-testing
     before_script:
@@ -357,7 +345,7 @@ test-intel-mpi-dbg:
     resource_group: main_pipeline
 
 test-intel-quick:
-    stage: BUILD AND TEST INTEL QUICK
+    stage: BUILD AND TEST INTEL
     tags: 
         - hande-testing
     before_script:
@@ -384,7 +372,7 @@ test-intel-quick:
     resource_group: main_pipeline
 
 test-gcc-quick:
-    stage: BUILD AND TEST GCC QUICK
+    stage: BUILD AND TEST GCC
     tags: 
         - hande-testing
     before_script:

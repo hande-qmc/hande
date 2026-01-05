@@ -756,6 +756,9 @@ contains
         !        ms = Ms,
         !        sym = sym_index,
         !        twist = {...},    -- D-dimensional vector
+        !        use_mom_vec = true/false,
+        !        trunc_table = true/false, -- requires use_mom_vec = true.
+        !        cubic_lattice = '...', -- requires dim = 3.
         !    }
         !    Returns: sys_t object.
 
@@ -769,9 +772,11 @@ contains
         use basis, only: init_model_basis_fns
         use momentum_symmetry, only: init_momentum_symmetry
         use ueg_system, only: init_ueg_proc_pointers
+        use ueg_types, only: simple, body_centered, face_centered
         use check_input, only: check_sys
         use parallel, only: parent
         use errors, only: stop_all
+        use const, only: p
 
         integer(c_int) :: nreturn
         type(c_ptr), value :: L
@@ -782,9 +787,11 @@ contains
         real :: t1, t2
         logical :: new_basis, new, verbose
         integer :: err
+        character(len=13) :: str
 
-        character(11), parameter :: keys(11) = [character(11) :: 'sys', 'cutoff', 'dim', 'rs', 'nel', 'electrons', &
-                                               'ms', 'sym', 'twist', 'verbose', 'use_mom_vec']
+        character(13), parameter :: keys(13) = [character(13) :: 'sys', 'cutoff', 'dim', 'rs', 'nel', 'electrons', &
+                                               'ms', 'sym', 'twist', 'verbose', 'use_mom_vec', 'trunc_table', &
+                                               'cubic_lattice']
 
         call cpu_time(t1)
 
@@ -810,8 +817,26 @@ contains
         call aot_get_val(sys%ueg%r_s, err, lua_state, opts, 'rs')
         call aot_get_val(sys%lattice%ndim, err, lua_state, opts, 'dim')
         call aot_get_val(sys%ueg%use_mom_vec, err, lua_state, opts, 'use_mom_vec')
+        call aot_get_val(sys%ueg%trunc_table, err, lua_state, opts, 'trunc_table')
 
         call get_ktwist(lua_state, sys, opts)
+
+        if (aot_exists(lua_state, opts, 'cubic_lattice')) then
+            call aot_get_val(str, err, lua_state, opts, 'cubic_lattice')
+            select case(trim(str))
+            case('simple')
+                sys%ueg%cub_latt = simple
+                sys%ueg%int_fact = 1.0_p
+            case('body_centered')
+                sys%ueg%cub_latt = body_centered
+                sys%ueg%int_fact = (1.0_p/2.0_p)**(2.0_p/3.0_p)
+            case('face_centered')
+                sys%ueg%cub_latt = face_centered
+                sys%ueg%int_fact = (1.0_p/2.0_p)**(4.0_p/3.0_p)
+            case default
+                if (parent) call stop_all('lua_ueg', 'Unknown cubic symmetry!')
+            end select
+        end if
 
         if (new_basis) then
             ! [todo] - deallocate existing basis info and start afresh.
@@ -827,6 +852,8 @@ contains
             ! This check can't go with the rest of check_sys as it has to happen after the basis is initialised.
             if (sys%symmetry < huge(0) .and. (sys%symmetry > sys%sym_max .or. sys%symmetry < sys%sym0)) &
                 call stop_all('lua_ueg', 'Symmetry out of range.')
+            if (sys%ueg%cub_latt /= simple .and. sys%lattice%ndim /= 3) &
+                call stop_all('lua_ueg', 'The face-centered and body-centered cubic symmetries only apply in 3D.')
         end if
 
         call warn_unused_args(lua_state, keys, opts)

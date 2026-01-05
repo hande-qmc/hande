@@ -42,7 +42,7 @@ contains
             ! For the UEG the kinetic energy of a wavevector is given by
             !    k^2/2
             ! in atomic units (the most sensible choice!)
-            kinetic = 2*pi**2*dot_product(kc,kc)
+            kinetic = 2*pi**2*dot_product(kc,kc)*sys%ueg%int_fact
         case(ringium)
             ! Not really a wavevector, but the kinetic energy of the function with
             ! angular momentum lz is
