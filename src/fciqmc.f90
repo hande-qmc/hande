@@ -85,6 +85,9 @@ contains
         use state_histograms
         use mrcc_utils, only: init_highest_dets_t, update_highest_dets, write_out_highest_dets
 
+        use sg_correction, only: sg_correction_t, initialise_sg_correction, calculate_sg_contribution, &
+                                 calculate_sg_correction, finalise_sg_correction
+
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
         type(fciqmc_in_t), intent(in) :: fciqmc_in
@@ -140,7 +143,7 @@ contains
         integer :: iunit, restart_version_restart
         integer :: date_values(8)
         character(:), allocatable :: err_msg
-
+        
         if (parent) then
             write (io_unit,'(1X,"FCIQMC")')
             write (io_unit,'(1X,"------",/)')
@@ -262,10 +265,15 @@ contains
             call init_highest_dets_t(qs, sys, fciqmc_in)
         end if
 
+        if (qmc_in%sg_correction) then
+            call initialise_sg_correction(sys, qs%sg_correction)
+        end if 
+
         ! Main fciqmc loop.
         if (parent) call write_qmc_report_header(qs%psip_list%nspaces, cmplx_est=sys%read_in%comp, &
                                                  rdm_energy=fciqmc_in%density_matrices, io_unit=io_unit, &
-                                                 semi_stoch_sep_stats=semi_stoch_in%separate_stats)
+                                                 semi_stoch_sep_stats=semi_stoch_in%separate_stats, &
+                                                 sg_correction=qmc_in%sg_correction)
         restart_proj_est = present(qmc_state_restart) .or. (restart_in%read_restart .and. restart_version_restart >= 2)
         if (.not.restart_proj_est) call initial_ci_projected_energy(sys, qs, fciqmc_in%non_blocking_comm, nparticles_old)
         if (fciqmc_in%non_blocking_comm) then
@@ -301,6 +309,8 @@ contains
                 spawner_ptr => spawn_rdm 
             end if
 
+            if (qmc_in%sg_correction) qs%sg_correction%sg = 0.0_p
+
             do icycle = 1, qmc_in%ncycles
                 iter = qs%mc_cycles_done + (ireport-1)*qmc_in%ncycles + icycle
 
@@ -322,7 +332,7 @@ contains
                                                 qs%par_info, determ)
                     if (fciqmc_in%non_blocking_comm) qs%spawn_store%spawn_recv%proc_map = qs%par_info%load%proc_map
                     ideterm = 0
-
+                    
                     do idet = 1, qs%psip_list%nstates ! loop over walkers/dets
                         cdet%f => qs%psip_list%states(:,idet)
                         cdet%data => qs%psip_list%dat(:,idet)
@@ -366,7 +376,12 @@ contains
                                                             weighted_population(ispace:ispace+1), &
                                                             qs%estimators(ispace), connection, hmatel)
                             end if
-
+                            
+                            if (qmc_in%sg_correction .and. connection%nexcit == 2) then
+                                call calculate_sg_contribution(sys%lattice, connection, sys%basis%basis_fns, qs%sg_correction, &
+                                                               real_population(ispace))
+                            end if
+                         
                             nattempts_current_det_ispace = decide_nattempts(rng, real_population(ispace))
 
                             call do_fciqmc_spawning_attempt(rng, qs%spawn_store%spawn, rdm_spawn, bloom_stats, sys, qs, &
@@ -416,7 +431,7 @@ contains
                     end if
                 end do
             end do
-
+            
             if (accum_rdm) then
                 call calc_rdm_energy(sys, qs%ref, rdm, qs%estimators(1)%rdm_energy, qs%estimators(1)%rdm_trace)
             end if
@@ -424,12 +439,18 @@ contains
             update_tau = bloom_stats%nblooms_curr > 0
 
             error = qs%spawn_store%spawn%error .or. qs%psip_list%error
+            
+            if (qmc_in%sg_correction) then
+                call calculate_sg_correction(qs%sg_correction, sys%lattice, qs%estimators%energy_sg, &
+                                             qs%estimators%corrected_energy_sg, ireport, qmc_in%nreport)
+            end if
 
             call end_report_loop(io_unit, qmc_in, iter, update_tau, qs, nparticles_old, &
                                  nspawn_events, semi_stoch_in%shift_iter, semi_stoch_iter, soft_exit, &
                                  load_bal_in, bloom_stats=bloom_stats, doing_lb=fciqmc_in%doing_load_balancing, &
                                  nb_comm=fciqmc_in%non_blocking_comm, comp=sys%read_in%comp, &
                                  error=error)
+
             if (error) exit
 
             if (update_tau) call rescale_tau(qs%tau)
@@ -450,7 +471,8 @@ contains
                 call write_qmc_report(qmc_in, qs, ireport, nparticles_old, t2-t1, .false., &
                                         fciqmc_in%non_blocking_comm, io_unit=io_unit, &
                                         cmplx_est=sys%read_in%comp, rdm_energy=fciqmc_in%density_matrices, &
-                                        semi_stoch_sep_stats=semi_stoch_in%separate_stats)
+                                        semi_stoch_sep_stats=semi_stoch_in%separate_stats, &
+                                        sg_correction=qmc_in%sg_correction)
                 if (blocking_in%blocking_on_the_fly) then
                     call do_blocking(bl, qs, qmc_in, ireport, iter, iunit, blocking_in, sys%read_in%comp)
                 end if
@@ -496,6 +518,10 @@ contains
         if (blocking_in%blocking_on_the_fly) call deallocate_blocking(bl)
         if (blocking_in%blocking_on_the_fly .and. parent) call date_and_time(VALUES=date_values)
         if (blocking_in%blocking_on_the_fly .and. parent) call write_date_time_close(iunit, date_values)
+
+        if (qmc_in%sg_correction) then
+             call finalise_sg_correction(qs%sg_correction)
+        end if
 
         if (fciqmc_in%non_blocking_comm) call end_non_blocking_comm(sys, rng, qmc_in, annihilation_flags, ireport, &
                                                                     qs, qs%spawn_store%spawn_recv,  req_data_s,  &
@@ -543,7 +569,7 @@ contains
         end if
 
         if (state_hist_in%state_histograms) call deallocate_histogram_t(state_hist)
-
+        
         call dSFMT_end(rng)
 
     end subroutine do_fciqmc

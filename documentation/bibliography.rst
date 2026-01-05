@@ -44,3 +44,4 @@ Bibliography
 .. [Yang20] M. Yang, E. Pahl, J. Brand, Improved walker population control for full configuration interaction quantum Monte Carlo, J. Chem. Phys. 153, 174103 (2020).
 .. [Davidson75] E.R. Davidson, The iterative calculation of a few of the lowest eigenvalues and corresponding eigenvectors of large real-symmetric matrices, J. Comp. Phys. 17, 1 (1975).
 .. [Zhang16] T. Zhang, F.A. Evangelista, A Deterministic Projector Configuration Interaction Approach for the Ground State of Quantum Many-Body Systems, J. Chem. Theory Comput. 12, 9, 4326-4337 (2016).
+.. [Liao20] K. Liao, A. Grüneis, Communication: Finite size correction in periodic coupled cluster theory calculations of solids, J. Chem. Phys. 145, 144102 (2016).

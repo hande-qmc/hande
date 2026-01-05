@@ -1283,6 +1283,7 @@ contains
         !     shift_harmonic_forcing = harmonic_force_factor,
         !     shift_harmonic_crit_damp = true/false,
         !     initiator = true/false,
+        !     sg_correction = true/false,
         !     initiator_threshold = pop,
         !     use_mpi_barriers = true/false,
         !     vary_shift_from = shift or "proje",
@@ -1331,7 +1332,7 @@ contains
         integer(int_s) :: test_arr(50)
         character(1000) :: test_line
 
-        character(32), parameter :: keys(39) = [character(32) :: 'tau', 'init_pop', 'mc_cycles', 'nreports', 'state_size', &
+        character(32), parameter :: keys(40) = [character(32) :: 'tau', 'init_pop', 'mc_cycles', 'nreports', 'state_size', &
                                                                  'spawned_state_size', 'rng_seed', 'target_population', &
                                                                  'real_amplitudes', 'spawn_cutoff', 'no_renorm', 'tau_search', &
                                                                  'real_amplitude_force_32', &
@@ -1346,7 +1347,7 @@ contains
                                                                  'reference_target', 'vary_shift', 'quasi_newton', &
                                                                  'quasi_newton_threshold', 'quasi_newton_value', &
                                                                  'quasi_newton_pop_control', 'read_in_dist', 'read_in_dist_file', &
-                                                                 'chebyshev']
+                                                                 'chebyshev', 'sg_correction']
 
         if (present(short)) then
             skip = short
@@ -1391,6 +1392,7 @@ contains
         call aot_get_val(qmc_in%target_particles, err, lua_state, qmc_table, 'target_population')
         call aot_get_val(qmc_in%initiator_approx, err, lua_state, qmc_table, 'initiator')
         call aot_get_val(qmc_in%initiator_pop, err, lua_state, qmc_table, 'initiator_threshold')
+        call aot_get_val(qmc_in%sg_correction, err, lua_state, qmc_table, 'sg_correction')
         call aot_get_val(qmc_in%use_mpi_barriers, err, lua_state, qmc_table, 'use_mpi_barriers')
         call aot_get_val(qmc_in%power_pitzer_min_weight, err, lua_state, qmc_table, 'power_pitzer_min_weight')
         call aot_get_val(qmc_in%quasi_newton, err, lua_state, qmc_table, 'quasi_newton')

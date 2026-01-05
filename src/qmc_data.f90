@@ -6,6 +6,7 @@ use csr, only: csrp_t
 use parallel, only: parallel_timing_t
 use importance_sampling_data
 use excit_gens, only: excit_gen_data_t
+use sg_correction, only: sg_correction_t
 use reference_determinant, only: reference_t, reference_t_json
 use dSFMT_interface, only: dSFMT_state_t
 use search, only: tree_t
@@ -210,6 +211,9 @@ type qmc_in_t
     logical :: initiator_approx = .false.
     ! Population above which a determinant is an initiator.
     real(p) :: initiator_pop = 3.0_p
+    
+    ! Using finite size correction via transition structure factor S(G)?
+    logical :: sg_correction = .false. 
 
     ! number of monte carlo cycles/report loop
     integer :: ncycles
@@ -907,6 +911,11 @@ type estimators_t
     real(p) :: proj_energy_determ = 0.0_p
     ! The stochastic part of the projected energy
     real(p) :: proj_energy_stoch = 0.0_p
+
+    ! Uncorrected and corrected energies calculated via S(G). See sg_correction.f90 for more detail.
+    real(p) :: energy_sg
+    real(p) :: corrected_energy_sg
+    
 end type estimators_t
 
 type propagator_t
@@ -1075,6 +1084,9 @@ type qmc_state_t
 
     ! Derived type object containing information on the wall-Chebyshev propagator
     type(cheb_t) :: cheby_prop
+
+    ! Derived type containing information relating to finite size correction via S(G)
+    type(sg_correction_t) :: sg_correction
 end type qmc_state_t
 
 ! Copies of various settings that are required during annihilation.  This avoids having to pass through lots of different
@@ -1114,6 +1126,8 @@ contains
         estimators%proj_energy_comp = cmplx(0.0, 0.0, p)
         estimators%proj_energy_determ = 0.0_p
         estimators%proj_energy_stoch = 0.0_p
+        estimators%energy_sg = 0.0_p
+        estimators%corrected_energy_sg = 0.0_p
 
     end subroutine zero_estimators_t
 
@@ -1191,6 +1205,7 @@ contains
         call json_write_key(js, 'target_reference', qmc%target_reference)
         call json_write_key(js, 'initiator_approx', qmc%initiator_approx)
         call json_write_key(js, 'initiator_pop', qmc%initiator_pop)
+        call json_write_key(js, 'sg_correction', qmc%sg_correction)
         call json_write_key(js, 'ncycles', qmc%ncycles)
         call json_write_key(js, 'nreport', qmc%nreport)
         call json_write_key(js, 'power_pitzer_min_weight', qmc%power_pitzer_min_weight)

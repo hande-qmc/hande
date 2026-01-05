@@ -138,6 +138,7 @@ target_sources(hande-static
     uccmc_utils.f90
     ueg.f90
     ueg_types.f90
+    sg_correction.f90
   )
 target_compile_definitions(hande-static
   PRIVATE
@@ -174,6 +175,7 @@ target_link_libraries(${HANDE_EXE_NAME}
   PRIVATE
     hande-static
   )
+
 add_custom_command(TARGET ${HANDE_EXE_NAME}
   POST_BUILD
   COMMAND

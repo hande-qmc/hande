@@ -343,6 +343,8 @@ contains
         use mrcc_utils, only: init_highest_dets_t, update_highest_dets
         use propagators, only: update_chebyshev
 
+        use sg_correction, only: sg_correction_t, initialise_sg_correction, calculate_sg_correction, finalise_sg_correction
+
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
         type(ccmc_in_t), intent(in) :: ccmc_in
@@ -574,7 +576,7 @@ contains
         if (parent) then
             call write_qmc_report_header(qs%psip_list%nspaces, cmplx_est=sys%read_in%comp, rdm_energy=ccmc_in%density_matrices, &
                                          nattempts=.true., io_unit=io_unit, &
-                                         semi_stoch_sep_stats=semi_stoch_in%separate_stats)
+                                         semi_stoch_sep_stats=semi_stoch_in%separate_stats, sg_correction=qmc_in%sg_correction)
         end if
 
         restart_proj_est = present(qmc_state_restart) .or. (restart_in%read_restart .and. restart_version_restart >= 2)
@@ -610,6 +612,10 @@ contains
 
         if (blocking_in%blocking_on_the_fly) &
                     call init_blocking(qmc_in, blocking_in, bl, qs%shift_damping_status)
+        
+        if (qmc_in%sg_correction) then
+            call initialise_sg_correction(sys, qs%sg_correction)
+        end if
 
         ! Counter for the number of discarded clusters, see ccmc_in%discard_threshold
         count_discard = 0_i0
@@ -829,7 +835,7 @@ contains
                                                         D0_population_cycle, proj_energy_cycle, &
                                                         proj_energy_cycle_determ, proj_energy_cycle_stoch, &
                                                         ccmc_in, ref_det, rdm, selection_data, &
-                                                        determ, semi_stoch_in%separate_stats)
+                                                        determ, semi_stoch_in%separate_stats, qmc_in = qmc_in)
                                 call do_nc_ccmc_propagation(rng(it), sys, qs, ccmc_in, logging_info, bloom_stats, &
                                                             contrib(it), nattempts_spawn, ps_stats(it), determ)
                             end if
@@ -866,7 +872,7 @@ contains
                                                         D0_population_cycle, proj_energy_cycle, &
                                                         proj_energy_cycle_determ, proj_energy_cycle_stoch, &
                                                         ccmc_in, ref_det, rdm, selection_data, &
-                                                        determ, semi_stoch_in%separate_stats)
+                                                        determ, semi_stoch_in%separate_stats, qmc_in = qmc_in)
                                 call do_stochastic_ccmc_propagation(rng(it), sys, qs, &
                                                                     ccmc_in, logging_info, ms_stats(it), bloom_stats, &
                                                                     contrib(it), nattempts_spawn, ndeath, ps_stats(it), determ)
@@ -909,7 +915,7 @@ contains
                                                 D0_population_cycle, proj_energy_cycle, &
                                                 proj_energy_cycle_determ, proj_energy_cycle_stoch, &
                                                 ccmc_in, ref_det, rdm, selection_data, &
-                                                determ, semi_stoch_in%separate_stats)
+                                                determ, semi_stoch_in%separate_stats, qmc_in = qmc_in)
                         nattempts_spawn = nattempts_spawn + 1
                        
                         call perform_ccmc_spawning_attempt(rng(it), sys, qs, ccmc_in, logging_info, bloom_stats, &
@@ -1013,6 +1019,11 @@ contains
             qs%estimators%proj_energy = real(qs%estimators%proj_energy_comp,p)
 
             if (debug) call write_logging_select_ccmc(logging_info, iter, selection_data)
+            
+            if (qmc_in%sg_correction) then
+                call calculate_sg_correction(qs%sg_correction, sys%lattice, qs%estimators%energy_sg, &
+                                             qs%estimators%corrected_energy_sg, ireport, qmc_in%nreport) 
+            end if
 
             call end_report_loop(io_unit, qmc_in, iter, update_tau, qs, nparticles_old, nspawn_events, &
                                  semi_stoch_in%shift_iter, semi_stoch_iter, soft_exit, &
@@ -1031,12 +1042,13 @@ contains
                 if (bloom_stats%nblooms_curr > 0) call bloom_stats_warning(bloom_stats, io_unit=io_unit)
                 call write_qmc_report(qmc_in, qs, ireport, nparticles_old, real((t2-t1)/count_rate), .false., .false., &
                                         io_unit=io_unit, cmplx_est=sys%read_in%comp, rdm_energy=ccmc_in%density_matrices, &
-                                        nattempts=.true., semi_stoch_sep_stats=semi_stoch_in%separate_stats)
+                                        nattempts=.true., semi_stoch_sep_stats=semi_stoch_in%separate_stats, &
+                                        sg_correction=qmc_in%sg_correction)
                 if (blocking_in%blocking_on_the_fly) then
                     call do_blocking(bl, qs, qmc_in, ireport, iter, iunit, blocking_in, sys%read_in%comp)
                 end if
             end if
-
+            
             if (blocking_in%auto_shift_damping) call update_shift_damping(qs, bl, ireport, sys%read_in%comp)
 
             ! Update the time for the start of the next iteration.
@@ -1074,6 +1086,10 @@ contains
         if (blocking_in%blocking_on_the_fly) call deallocate_blocking(bl)
         if (blocking_in%blocking_on_the_fly .and. parent) call date_and_time(VALUES=date_values)
         if (blocking_in%blocking_on_the_fly .and. parent) call write_date_time_close(iunit, date_values)
+
+        if (qmc_in%sg_correction) then
+            call finalise_sg_correction(qs%sg_correction) 
+        end if
 
         if (parent) write (io_unit,'()')
         call write_bloom_report(bloom_stats, io_unit=io_unit)
@@ -1127,7 +1143,7 @@ contains
 
     subroutine do_ccmc_accumulation(sys, qs, cdet, cluster, logging_info, D0_population_cycle, proj_energy_cycle, &
                                     proj_energy_cycle_determ, proj_energy_cycle_stoch, ccmc_in, ref_det, rdm, selection_data, &
-                                    determ, semi_stoch_sep_stats, D0_population_noncomp_cycle)
+                                    determ, semi_stoch_sep_stats, D0_population_noncomp_cycle, qmc_in)
 
         ! Performs all accumulation of values required for given ccmc clusters.
         ! Updates projected energy and any RDMs with the contribution from the
@@ -1135,7 +1151,6 @@ contains
 
         ! In:
         !   sys: information on system under consideration.
-        !   qs: information on current state of qmc calculation.
         !   ccmc_in: options relating to ccmc passed in to calculation.
         !   cdet: information on determinant resulting from collapsing current
         !       cluster.
@@ -1145,8 +1160,10 @@ contains
         !   determ: the semi_stoch_t object holding information relevant to semi-stochastic CCMC.
         !   semi_stoch_sep_stats: True if doing semi-stochastic and report 
         !       deterministic and stochastic contributions to E_proj separately.
+        !   qmc_in(optional): input options relating to qmc methods
 
         ! In/Out:
+        !   qs: information on current state of qmc calculation.
         !   D0_population_cycle: running total of reference population from any size cluster.
         !   proj_energy_cycle: running total of projected energy contributions.
         !   proj_energy_cycle_determ: running total of projected energy contributions.
@@ -1156,7 +1173,7 @@ contains
         !   D0_population_noncomp_cycle: running total of reference population from size 0 clusters (only used in UCC).
 
         use system, only: sys_t
-        use qmc_data, only: qmc_state_t, ccmc_in_t, estimators_t
+        use qmc_data, only: qmc_in_t, qmc_state_t, ccmc_in_t, estimators_t
         use determinants, only: det_info_t
         use ccmc_data, only: cluster_t, selection_data_t
         use ccmc_selection, only: update_selection_data
@@ -1168,16 +1185,19 @@ contains
         use replica_rdm, only: update_rdm
         use logging, only: logging_t
 
+        use sg_correction, only: calculate_sg_contribution
+
         type(sys_t), intent(in) :: sys
-        type(qmc_state_t), intent(in) :: qs
+        type(qmc_state_t), intent(inout) :: qs
         type(ccmc_in_t), intent(in) :: ccmc_in
         type(det_info_t), intent(in) :: cdet, ref_det
         type(cluster_t), intent(in) :: cluster
-        type(logging_t), intent(in) :: logging_info
+        type(logging_t), intent(in) :: logging_info 
         complex(p), intent(inout) :: D0_population_cycle, proj_energy_cycle
         real(p), intent(inout) :: proj_energy_cycle_determ, proj_energy_cycle_stoch
         real(p), allocatable, intent(inout) :: rdm(:,:)
         real(p), intent(inout), optional :: D0_population_noncomp_cycle
+        type(qmc_in_t), intent(in), optional :: qmc_in
         type(selection_data_t), intent(inout) :: selection_data
         type(semi_stoch_t), intent(in) :: determ
         logical, intent(in) :: semi_stoch_sep_stats
@@ -1185,7 +1205,7 @@ contains
         type(excit_t) :: connection
         type(hmatel_t) :: hmatel
         type(estimators_t) :: estimators_cycle
-        real(p) :: pop
+        real(p) :: pop, pop_real
         if (debug) call update_selection_data(selection_data, cluster, logging_info)
 
         if (cluster%excitation_level /= huge(0)) then
@@ -1222,6 +1242,13 @@ contains
                 end if
             end if
         end if
+        
+        if (present(qmc_in)) then 
+            if (qmc_in%sg_correction .and. connection%nexcit == 2) then
+                pop_real = real(cluster%amplitude, p) * cluster%cluster_to_det_sign / cluster%pselect
+                call calculate_sg_contribution(sys%lattice, connection, sys%basis%basis_fns, qs%sg_correction, pop_real)
+            end if
+        end if 
 
         if (ccmc_in%density_matrices .and. cluster%excitation_level <= 2 .and. qs%vary_shift(1) &
             .and. cluster%excitation_level /= 0 .and. .not. sys%read_in%comp) then

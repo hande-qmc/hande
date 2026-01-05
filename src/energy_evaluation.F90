@@ -39,6 +39,8 @@ enum, bind(c)
     enumerator :: rdm_trace_ind
     enumerator :: nattempts_ind
     enumerator :: reblock_done_ind
+    enumerator :: energy_sg_ind
+    enumerator :: corrected_energy_sg_ind
     enumerator :: error_ind
 end enum
 ! Index of last single-data entry in estimator buffer.
@@ -405,6 +407,9 @@ contains
         rep_loop_loc(rdm_energy_ind) = qs%estimators(1)%rdm_energy
         rep_loop_loc(rdm_trace_ind) = qs%estimators(1)%rdm_trace
 
+        rep_loop_loc(energy_sg_ind) = qs%estimators(1)%energy_sg 
+        rep_loop_loc(corrected_energy_sg_ind) = qs%estimators(1)%corrected_energy_sg
+
         rep_loop_loc(nattempts_ind) = real(qs%estimators(1)%nattempts, dp)
 
         if (present(comms_found)) then
@@ -545,6 +550,9 @@ contains
         qs%estimators%rdm_trace = real(rep_loop_sum(rdm_trace_ind), p)
         qs%estimators%nattempts = int(rep_loop_sum(nattempts_ind), int_64)
 
+        qs%estimators(1)%energy_sg = rep_loop_sum(energy_sg_ind)
+        qs%estimators(1)%corrected_energy_sg = rep_loop_sum(corrected_energy_sg_ind)
+
         if (present(comms_found)) then
             comms_found = abs(rep_loop_sum(comms_found_ind)) > depsilon
         end if
@@ -591,6 +599,10 @@ contains
         qs%estimators%D0_population_comp = qs%estimators%D0_population_comp/qmc_in%ncycles
         ! average spawning rate over report loop and processor.
         qs%spawn_store%rspawn = qs%spawn_store%rspawn/(qmc_in%ncycles*qs%cheby_prop%order*nprocs)
+        
+        qs%estimators(1)%energy_sg = qs%estimators(1)%energy_sg/(qs%estimators(1)%D0_population*qmc_in%ncycles)
+        qs%estimators(1)%corrected_energy_sg = qs%estimators(1)%corrected_energy_sg &
+                                             / (qs%estimators(1)%D0_population*qmc_in%ncycles)
 
         if (doing_calc(hfs_fciqmc_calc)) then
             if (qs%vary_shift(1)) then
@@ -1147,7 +1159,7 @@ contains
             hmatel%r = slater_condon2_ueg(sys, excitation%from_orb(1), excitation%from_orb(2), &
                                        & excitation%to_orb(1), excitation%to_orb(2),excitation%perm)
             estimators%proj_energy = estimators%proj_energy + hmatel%r*pop(1)
-        end if
+        end if 
 
     end subroutine update_proj_energy_ueg
 

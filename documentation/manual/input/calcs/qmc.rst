@@ -650,4 +650,15 @@ algorithms and control the core settings in the algorithms.
 
         As the estimation of the highest eigenvalue by the Gershgorin circle theorem requires summing entries in the highest 
         row of the Hamiltonian, this could be time consuming. If ``true``, then only the highest diagonal element is used as the 
-        estimate, which can then be modified with the shift and scale parameters above. 
+        estimate, which can then be modified with the shift and scale parameters above.
+
+    ``sg_correction``
+        type: boolean. 
+
+        Optional. Default: false.
+
+        Utilise the transition structure factor :math:`S(\mathbf{G})` interpolation method of [Liao20]_ for finite-size error correction in periodic systems. Implemented for the UEG with CCMC and FCIQMC. 
+
+
+
+    
