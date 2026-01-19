@@ -75,8 +75,10 @@ contains
         write (iunit,'(1X,"spawn_events: number of successful spawning events across all processors.")')
         write (iunit,'(1X,"R_spawn: average rate of spawning across all processors.")')
         write (iunit,'(1X,"time: average time per Monte Carlo cycle.")')
-        if (present(sg_correction) .and. sg_correction) then 
-            write (iunit, '(1X, "sg-ener-c: Finite size corrected energy calculated via S(G).",/)')
+        if (present(sg_correction)) then
+            if (sg_correction) then 
+                write (iunit, '(1X, "sg-ener-c: Finite size corrected energy calculated via S(G).",/)')
+            end if
         end if
         write (iunit,'(1X,"Note that all particle populations are averaged over the report loop.",/)')
 
@@ -161,8 +163,10 @@ contains
         call write_column_title(iunit, 'R_spawn', low_prec_val=.true.)
         call write_column_title(iunit, '  time', low_prec_val=.true., justify=2)
 
-        if (present(sg_correction) .and. sg_correction) then 
-            call write_column_title(iunit, 'sg-ener-c')
+        if (present(sg_correction)) then
+            if (sg_correction) then 
+                call write_column_title(iunit, 'sg-ener-c')
+            end if
         end if
 
         write (iunit,'()')
@@ -593,8 +597,10 @@ contains
         call write_qmc_var(iunit, qs%spawn_store%rspawn, low_prec=.true.)
         call write_qmc_var(iunit, elapsed_time/qmc_in%ncycles, low_prec=.true.)
 
-        if (present(sg_correction) .and. sg_correction) then 
-            call write_qmc_var(iunit, qs%estimators(1)%corrected_energy_sg)
+        if (present(sg_correction)) then
+            if (sg_correction) then 
+                call write_qmc_var(iunit, qs%estimators(1)%corrected_energy_sg)
+            end if
         end if 
 
         write (iunit,'()')
