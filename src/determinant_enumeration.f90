@@ -403,6 +403,19 @@ contains
 
         end select
 
+        if (usemomsym .and. init) then
+            ! Sort momentum symmetry by determinant count (smallest to
+            ! largest) up to the elements ki.
+            allocate(isort(ki), stat=ierr)
+            call check_allocate('isort', ki, ierr)
+            call argsort_stable(sym_space_size, isort, ki)
+            ! Sort momentum vectors to match sym_space_size again.
+            mom_sym_vect(:ki,:) = mom_sym_vect(isort,:)
+            ! Reverse both arrays so we have largest to smallest.
+            sym_space_size(:ki) = sym_space_size(ki:1:-1)
+            mom_sym_vect(:ki,:) = mom_sym_vect(ki:1:-1,:)
+        end if
+
         if (verbose .and. parent) then
             ! Output information about the size of the space.
             Ms = nalpha_loc - nbeta_loc
@@ -419,17 +432,7 @@ contains
             if (cas_set) then
                 write (iunit,'(1X,A)') 'Only determinants in the specified CAS are included.'
             end if
-            if (usemomsym) then
-                ! Sort momentum symmetry by determinant count (smallest to
-                ! largest) up to the elements ki.
-                allocate(isort(ki), stat=ierr)
-                call check_allocate('isort', ki, ierr)
-                call argsort_stable(sym_space_size, isort, ki)
-                ! Sort momentum vectors to match sym_space_size again.
-                mom_sym_vect(:ki,:) = mom_sym_vect(isort,:)
-                ! Reverse both arrays so we have largest to smallest.
-                sym_space_size(:ki) = sym_space_size(ki:1:-1)
-                mom_sym_vect(:ki,:) = mom_sym_vect(ki:1:-1,:)
+            if (usemomsym .and. init) then
                 if (sys%ueg%trunc_table) then
                     if ((ref_sym >= 1) .and. (ref_sym <= ki)) then
                         write(iunit, '(1x, a47)') &
