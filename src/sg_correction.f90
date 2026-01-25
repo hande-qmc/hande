@@ -406,20 +406,6 @@ end type sg_correction_t
                                                                      sg_correction)
             end do
 
-            if (ireport == nreport) then 
-                filename = 'SG'
-                open(unit = unit_sg_out, file = filename, status = 'replace', action = 'write', form = 'formatted')
-                write(unit_sg_out, *) '|G| vs S(|G|) spline:'
-                do i = 1, sg_correction%n_spline_points 
-                    write(unit_sg_out, '(F12.6, 1X, F12.6)') sg_correction%q_spline_vals(i), sg_correction%sg_spline_vals(i)
-                end do
-                write(unit_sg_out, *) '|G| vs S(|G|) discrete:'
-                do i = 1, size(sg_correction%unique_q_mags) 
-                   write(unit_sg_out, '(F12.6, 1X, F12.6)') sg_correction%unique_q_mags(i), sg_correction%spherically_averaged_sg(i)
-                end do 
-                close(unit_sg_out)
-            end if
-
             call calculate_corrected_sg_energy(corrected_energy_sg, sg_correction%q_vectors, &
                                                lattice%box_length, sg_correction%unique_q_mags, &
                                                sg_correction%sg, sg_correction%q_spline_vals, &
