@@ -15,14 +15,14 @@ build-lua-hdf5:
         - make linux &>/dev/null
         - make install INSTALL_TOP=/home/gitlab-runner/builds/PXn9dzVwm/0/ch/thom/hande-testing/local 
         - cd ..
-        - wget -q -O - https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.10/hdf5-1.10.4/src/hdf5-1.10.4.tar.gz | tar xvzf -
-        - cd hdf5-1.10.4
+        - wget -q -O - https://support.hdfgroup.org/releases/hdf5/v1_14/v1_14_6/downloads/hdf5-1.14.6.tar.gz  | tar xvzf -
+        - cd hdf5-1.14.6
         - ./configure --prefix=/home/gitlab-runner/builds/PXn9dzVwm/0/ch/thom/hande-testing/local/hdf5-gnu --enable-fortran --enable-fortran2003 --enable-cxx &> /dev/null
         - make -j 6 &> /dev/null
         - make install &> /dev/null
-        - cd .. && rm -r hdf5-1.10.4
-        - wget -q -O - https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.10/hdf5-1.10.4/src/hdf5-1.10.4.tar.gz | tar xvzf -
-        - cd hdf5-1.10.4
+        - cd .. && rm -r hdf5-1.14.6
+        - wget -q -O - https://support.hdfgroup.org/releases/hdf5/v1_14/v1_14_6/downloads/hdf5-1.14.6.tar.gz  | tar xvzf -
+        - cd hdf5-1.14.6
         - export FC=ifort
         - export CC=icx
         - export CXX=icpx
