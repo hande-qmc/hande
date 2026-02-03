@@ -24,8 +24,8 @@ build-lua-hdf5:
         - wget -q -O - https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.10/hdf5-1.10.4/src/hdf5-1.10.4.tar.gz | tar xvzf -
         - cd hdf5-1.10.4
         - export FC=ifort
-        - export CC=icc
-        - export CXX=icpc
+        - export CC=icx
+        - export CXX=icpx
         - ./configure --prefix=/home/gitlab-runner/builds/PXn9dzVwm/0/ch/thom/hande-testing/local/hdf5-intel --enable-fortran --enable-fortran2003 --enable-cxx  &> /dev/null
         - make -j 6 &> /dev/null
         - make install &> /dev/null
