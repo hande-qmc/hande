@@ -20,7 +20,7 @@ end interface
 
 contains
 
-    subroutine write_qmc_report_header(ntypes, cmplx_est, rdm_energy, nattempts, io_unit, semi_stoch_sep_stats, sg_correction)
+    subroutine write_qmc_report_header(ntypes, cmplx_est, rdm_energy, nattempts, io_unit, semi_stoch_sep_stats, do_sg_correction)
 
         ! In:
         !    ntypes: number of particle types being sampled.
@@ -35,7 +35,7 @@ contains
         use calc, only: doing_calc, hfs_fciqmc_calc, uccmc_calc, trot_uccmc_calc
 
         integer, intent(in) :: ntypes
-        logical, optional, intent(in) :: cmplx_est, rdm_energy, nattempts, semi_stoch_sep_stats, sg_correction
+        logical, optional, intent(in) :: cmplx_est, rdm_energy, nattempts, semi_stoch_sep_stats, do_sg_correction
         integer, intent(in), optional :: io_unit
 
         logical :: cmplx_est_set, semi_stoch_sep_stats_loc
@@ -75,8 +75,8 @@ contains
         write (iunit,'(1X,"spawn_events: number of successful spawning events across all processors.")')
         write (iunit,'(1X,"R_spawn: average rate of spawning across all processors.")')
         write (iunit,'(1X,"time: average time per Monte Carlo cycle.")')
-        if (present(sg_correction)) then
-            if (sg_correction) then 
+        if (present(do_sg_correction)) then
+            if (do_sg_correction) then 
                 write (iunit, '(1X, "sg-ener-c: Finite size corrected energy calculated via S(G).",/)')
             end if
         end if
@@ -163,8 +163,8 @@ contains
         call write_column_title(iunit, 'R_spawn', low_prec_val=.true.)
         call write_column_title(iunit, '  time', low_prec_val=.true., justify=2)
 
-        if (present(sg_correction)) then
-            if (sg_correction) then 
+        if (present(do_sg_correction)) then
+            if (do_sg_correction) then 
                 call write_column_title(iunit, 'sg-ener-c')
             end if
         end if
@@ -486,7 +486,7 @@ contains
     end subroutine write_column_title
 
     subroutine write_qmc_report(qmc_in, qs, ireport, ntot_particles, elapsed_time, comment, non_blocking_comm, io_unit, cmplx_est, &
-                                rdm_energy, nattempts, semi_stoch_sep_stats, sg_correction)
+                                rdm_energy, nattempts, semi_stoch_sep_stats, do_sg_correction)
 
         ! Write the report line at the end of a report loop.
 
@@ -516,7 +516,7 @@ contains
         real(dp), intent(in) :: ntot_particles(:)
         real, intent(in) :: elapsed_time
         logical, intent(in) :: comment, non_blocking_comm
-        logical, intent(in), optional :: cmplx_est, rdm_energy, nattempts, semi_stoch_sep_stats, sg_correction
+        logical, intent(in), optional :: cmplx_est, rdm_energy, nattempts, semi_stoch_sep_stats, do_sg_correction
         integer, intent(in), optional :: io_unit
 
         logical :: cmplx_est_set, nattempts_set, semi_stoch_sep_stats_loc
@@ -597,8 +597,8 @@ contains
         call write_qmc_var(iunit, qs%spawn_store%rspawn, low_prec=.true.)
         call write_qmc_var(iunit, elapsed_time/qmc_in%ncycles, low_prec=.true.)
 
-        if (present(sg_correction)) then
-            if (sg_correction) then 
+        if (present(do_sg_correction)) then
+            if (do_sg_correction) then 
                 call write_qmc_var(iunit, qs%estimators(1)%corrected_energy_sg)
             end if
         end if 
