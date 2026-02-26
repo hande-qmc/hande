@@ -110,7 +110,7 @@ contains
         character(3) :: xc
 
         xc = indent_level(js%level)
-        write (js%io,'('//xc//'a)', advance='no') '"'//trim(key)//'": '
+        write (js%io,'('//xc//',a)', advance='no') '"'//trim(key)//'": '
 
     end subroutine write_key
 
