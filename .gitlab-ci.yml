@@ -246,7 +246,7 @@ test-intel-mpi-pop64:
         - module load cmake
         - module load mpi/openmpi/64/intel/4.1.2
     script:
-        - ./cmakeconfig.py --mpi --omp --omp-determ --fc=mpif90 --cc=mpicc --mpi-with-scalapack --lua=./local/ --hdf5=./local/hdf5-intel --pop-size=64 --det-size=64
+        - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack --lua=./local/ --hdf5=./local/hdf5-intel --pop-size=64 --det-size=64
         - cd build && make -j 6 && cd ..
         - export OMP_NUM_THREADS=1
         - cd test_suite
@@ -272,7 +272,7 @@ test-intel-mpi-pop64-dbg:
         - module load cmake
         - module load mpi/openmpi/64/intel/4.1.2
     script:
-        - ./cmakeconfig.py --mpi --omp --omp-determ --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-intel  --type=debug --pop-size=64 --det-size=64
+        - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-intel  --type=debug --pop-size=64 --det-size=64
         - cd build && make -j 6 && cd ..
         - export OMP_NUM_THREADS=1
         - cd test_suite
@@ -298,7 +298,7 @@ test-intel-mpi:
         - module load cmake
         - module load mpi/openmpi/64/intel/4.1.2
     script:
-        - ./cmakeconfig.py --mpi --omp --omp-determ --fc=mpif90 --cc=mpicc --mpi-with-scalapack --lua=./local/ --hdf5=./local/hdf5-intel
+        - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack --lua=./local/ --hdf5=./local/hdf5-intel
         - cd build && make -j 6 && cd ..
         - export OMP_NUM_THREADS=1
         - cd test_suite
@@ -324,7 +324,7 @@ test-intel-mpi-dbg:
         - module load cmake
         - module load mpi/openmpi/64/intel/4.1.2
     script:
-        - ./cmakeconfig.py --mpi --omp --omp-determ --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-intel  --type=debug 
+        - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-intel  --type=debug 
         - cd build && make -j 6 && cd ..
         - export OMP_NUM_THREADS=1
         - cd test_suite
@@ -350,7 +350,7 @@ test-intel-quick:
         - module load cmake
         - module load mpi/openmpi/64/intel/4.1.2
     script:
-        - ./cmakeconfig.py --mpi --omp --omp-determ --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-intel  --pop-size=64 --det-size=64
+        - ./cmakeconfig.py --mpi --fc=mpif90 --cc=mpicc --mpi-with-scalapack  --lua=./local/ --hdf5=./local/hdf5-intel  --pop-size=64 --det-size=64
         - cd build && make -j 6 && cd ..
         - export OMP_NUM_THREADS=1
         - cd test_suite
