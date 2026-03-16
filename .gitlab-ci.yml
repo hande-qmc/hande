@@ -23,7 +23,7 @@ build-lua-hdf5:
         - cd .. && rm -r hdf5-1.14.6
         - wget -q -O - https://support.hdfgroup.org/releases/hdf5/v1_14/v1_14_6/downloads/hdf5-1.14.6.tar.gz  | tar xvzf -
         - cd hdf5-1.14.6
-        - export FC=ifort
+        - export FC=ifx
         - export CC=icx
         - export CXX=icpx
         - ./configure --prefix=/home/gitlab-runner/builds/PXn9dzVwm/0/ch/thom/hande-testing/local/hdf5-intel --enable-fortran --enable-fortran2003 --enable-cxx  &> /dev/null
