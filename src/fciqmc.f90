@@ -273,7 +273,7 @@ contains
         if (parent) call write_qmc_report_header(qs%psip_list%nspaces, cmplx_est=sys%read_in%comp, &
                                                  rdm_energy=fciqmc_in%density_matrices, io_unit=io_unit, &
                                                  semi_stoch_sep_stats=semi_stoch_in%separate_stats, &
-                                                 sg_correction=qmc_in%sg_correction)
+                                                 do_sg_correction=qmc_in%sg_correction)
         restart_proj_est = present(qmc_state_restart) .or. (restart_in%read_restart .and. restart_version_restart >= 2)
         if (.not.restart_proj_est) call initial_ci_projected_energy(sys, qs, fciqmc_in%non_blocking_comm, nparticles_old)
         if (fciqmc_in%non_blocking_comm) then
@@ -472,7 +472,7 @@ contains
                                         fciqmc_in%non_blocking_comm, io_unit=io_unit, &
                                         cmplx_est=sys%read_in%comp, rdm_energy=fciqmc_in%density_matrices, &
                                         semi_stoch_sep_stats=semi_stoch_in%separate_stats, &
-                                        sg_correction=qmc_in%sg_correction)
+                                        do_sg_correction=qmc_in%sg_correction)
                 if (blocking_in%blocking_on_the_fly) then
                     call do_blocking(bl, qs, qmc_in, ireport, iter, iunit, blocking_in, sys%read_in%comp)
                 end if
