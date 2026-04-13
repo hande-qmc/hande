@@ -197,7 +197,7 @@ test-intel:
         - module load icc/2024.2.1
         - module load cmake
     script:
-        - ./cmakeconfig.py --fc=ifort --cc=icc --lua=./local/ --hdf5=./local/hdf5-intel --pop-size=64 --det-size=64 
+        - ./cmakeconfig.py --fc=ifort --cc=icx --lua=./local/ --hdf5=./local/hdf5-intel --pop-size=64 --det-size=64 
         - cd build && make -j 6 && cd ..
         - cd test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c serial --total-processors=6
@@ -221,7 +221,7 @@ test-intel-dbg:
         - module load icc/2024.2.1
         - module load cmake
     script:
-        - ./cmakeconfig.py --fc=ifort --cc=icc --lua=./local/ --hdf5=./local/hdf5-intel --pop-size=64 --det-size=64  --type=debug
+        - ./cmakeconfig.py --fc=ifort --cc=icx --lua=./local/ --hdf5=./local/hdf5-intel --pop-size=64 --det-size=64  --type=debug
         - cd build && make -j 6 && cd ..
         - cd test_suite
         - ../testcode/bin/testcode.py -e ../bin/hande.x -c serial --total-processors=6
